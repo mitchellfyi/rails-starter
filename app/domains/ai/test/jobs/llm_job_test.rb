@@ -149,4 +149,71 @@ class LLMJobTest < ActiveJob::TestCase
     assert_equal template, output.prompt
     assert_equal 'completed', output.status
   end
+
+  test "should enrich context with MCP fetchers" do
+    # Mock a simple fetcher
+    mock_fetcher = Class.new do
+      def self.fetch(user:, **)
+        { additional_data: "extra context for #{user.name}" }
+      end
+    end
+    
+    Mcp::Registry.stubs(:get).with(:test_fetcher).returns(mock_fetcher)
+
+    mcp_fetchers = [
+      { key: :test_fetcher, params: {} }
+    ]
+
+    output = LLMJob.perform_now(
+      template: "Hello {{name}}, {{additional_data}}",
+      model: @model,
+      context: { name: "Alice" },
+      user_id: @user.id,
+      mcp_fetchers: mcp_fetchers
+    )
+
+    # Check that the MCP data was included
+    assert_includes output.prompt, "extra context for"
+    assert output.context.key?('additional_data')
+  end
+
+  test "should handle MCP fetcher failures gracefully" do
+    # Mock a failing fetcher
+    mock_fetcher = Class.new do
+      def self.fetch(**)
+        raise StandardError, "Fetcher failed"
+      end
+    end
+    
+    Mcp::Registry.stubs(:get).with(:failing_fetcher).returns(mock_fetcher)
+
+    mcp_fetchers = [
+      { key: :failing_fetcher, params: {} }
+    ]
+
+    # Should not raise error
+    assert_nothing_raised do
+      LLMJob.perform_now(
+        template: @template,
+        model: @model,
+        context: @context,
+        user_id: @user.id,
+        mcp_fetchers: mcp_fetchers
+      )
+    end
+  end
+
+  test "should work without MCP fetchers" do
+    # Ensure backward compatibility
+    output = LLMJob.perform_now(
+      template: @template,
+      model: @model,
+      context: @context,
+      format: @format,
+      user_id: @user.id
+    )
+
+    assert_equal 'completed', output.status
+    assert_includes output.prompt, "Alice"
+  end
 end

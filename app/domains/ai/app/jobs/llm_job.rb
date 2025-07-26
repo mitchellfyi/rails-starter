@@ -17,7 +17,7 @@ class LLMJob < ApplicationJob
     delay
   end
 
-  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil)
+  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil, mcp_fetchers: [])
     Rails.logger.info "Starting LLMJob", {
       template: template,
       model: model,
@@ -25,14 +25,18 @@ class LLMJob < ApplicationJob
       format: format,
       user_id: user_id,
       agent_id: agent_id,
+      mcp_fetchers: mcp_fetchers,
       job_id: job_id
     }
+
+    # Build MCP context with base data
+    enriched_context = build_mcp_context(context, mcp_fetchers, user_id)
 
     # Get the prompt template
     prompt_template = find_prompt_template(template)
     
     # Interpolate context variables into the template
-    prompt = interpolate_template(prompt_template, context)
+    prompt = interpolate_template(prompt_template, enriched_context)
     
     # Call the LLM API
     response = call_llm_api(model, prompt, format)
@@ -41,7 +45,7 @@ class LLMJob < ApplicationJob
     llm_output = store_output(
       template: template,
       model: model,
-      context: context,
+      context: enriched_context,
       format: format,
       prompt: prompt,
       raw_response: response[:raw],
@@ -68,6 +72,46 @@ class LLMJob < ApplicationJob
   end
 
   private
+
+  # Build enriched context using MCP fetchers
+  def build_mcp_context(base_context, mcp_fetchers, user_id)
+    # Create MCP context with base data
+    user = user_id ? User.find_by(id: user_id) : nil
+    mcp_context = Mcp::Context.new(**base_context.merge(user: user))
+
+    # Process MCP fetchers if provided
+    if mcp_fetchers.present?
+      mcp_fetchers.each do |fetcher_config|
+        fetcher_key = fetcher_config[:key]&.to_sym
+        fetcher_params = fetcher_config[:params] || {}
+        
+        next unless fetcher_key
+
+        begin
+          Rails.logger.info("MCP: Fetching data for '#{fetcher_key}' with params: #{fetcher_params}")
+          mcp_context.fetch(fetcher_key, **fetcher_params)
+        rescue => e
+          Rails.logger.error("MCP: Failed to fetch '#{fetcher_key}': #{e.message}")
+          # Continue with other fetchers even if one fails
+        end
+      end
+    end
+
+    # Return enriched context
+    enriched_context = mcp_context.to_h
+    
+    Rails.logger.info "LLMJob context enrichment", {
+      original_keys: base_context.keys,
+      enriched_keys: enriched_context.keys,
+      mcp_errors: mcp_context.error_keys
+    }
+
+    enriched_context
+  rescue => e
+    Rails.logger.error("MCP context building failed: #{e.message}")
+    # Fallback to original context if MCP fails
+    base_context
+  end
 
   def find_prompt_template(template)
     # In a real implementation, this would fetch from a PromptTemplate model

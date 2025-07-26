@@ -4,265 +4,357 @@
 # This file demonstrates how to use MCP to enrich AI prompts with dynamic data
 
 class McpUsageExample
-  # Example 1: Basic context fetching
-  def self.basic_example(user, workspace)
+  # Example 1: Basic context fetching with new LLMJob integration
+  def self.basic_llm_example(user, workspace)
+    # Simple approach: Use LLMJob with MCP fetchers
+    LLMJob.perform_later(
+      template: "Hello {{user_name}}, you have {{count}} recent orders totaling ${{summary_total_value}}. How can I help you today?",
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
+        {
+          key: :recent_orders,
+          params: { limit: 5 }
+        }
+      ]
+    )
+  end
+
+  # Example 2: Advanced multi-source context enrichment
+  def self.customer_support_example(user, issue_description)
+    # Template that uses multiple data sources
+    support_template = <<~TEMPLATE
+      Customer Support Analysis for {{user_name}}:
+      
+      RECENT ACTIVITY:
+      - Orders: {{count}} recent orders ({{summary_statuses}})
+      - Total Spent: ${{summary_total_value}}
+      - Account Type: Premium Customer
+      
+      GITHUB PROFILE:
+      {{#profile}}
+      - Developer: {{profile_name}} ({{profile_public_repos}} repositories)
+      - GitHub Activity: {{profile_followers}} followers
+      {{/profile}}
+      
+      ISSUE DESCRIPTION:
+      {{issue_description}}
+      
+      DOCUMENT CONTEXT:
+      {{#summary}}
+      Related Documentation: {{summary}}
+      Key Topics: {{keywords}}
+      {{/summary}}
+      
+      Please provide a comprehensive support response addressing the customer's technical level and purchase history.
+    TEMPLATE
+
+    # Configure multiple MCP fetchers
+    mcp_fetchers = [
+      {
+        key: :recent_orders,
+        params: { 
+          limit: 10,
+          include_details: true,
+          since: 3.months.ago
+        }
+      }
+    ]
+
+    # Add GitHub info if available
+    if user.github_username.present?
+      mcp_fetchers << {
+        key: :github_info,
+        params: {
+          username: user.github_username,
+          github_token: Rails.application.credentials.github&.token,
+          include_repos: true,
+          repo_limit: 5
+        }
+      }
+    end
+
+    # Add relevant documentation
+    if issue_description.include?('API') || issue_description.include?('integration')
+      mcp_fetchers << {
+        key: :document_summary,
+        params: {
+          file_path: Rails.root.join('docs', 'api_integration_guide.md'),
+          max_summary_length: 300,
+          extract_keywords: true
+        }
+      }
+    end
+
+    LLMJob.perform_later(
+      template: support_template,
+      model: 'gpt-4',
+      context: { 
+        user_name: user.name,
+        issue_description: issue_description
+      },
+      user_id: user.id,
+      mcp_fetchers: mcp_fetchers,
+      format: 'markdown'
+    )
+  end
+
+  # Example 3: Product recommendation system
+  def self.product_recommendation_example(user)
+    recommendation_template = <<~TEMPLATE
+      Product Recommendation for {{user_name}}:
+      
+      PURCHASE HISTORY:
+      {{#recent_orders}}
+      - Recent Orders: {{count}} orders
+      - Spending Pattern: ${{summary_average_value}} average order
+      - Preferred Categories: {{summary_statuses}}
+      {{/recent_orders}}
+      
+      TECHNICAL PROFILE:
+      {{#github_profile}}
+      - Programming Languages: {{repositories_summary_languages}}
+      - Project Activity: {{repositories_count}} repositories
+      - Experience Level: {{profile_followers}} GitHub followers
+      {{/github_profile}}
+      
+      Generate personalized product recommendations based on technical interests and purchase history.
+    TEMPLATE
+
+    LLMJob.perform_later(
+      template: recommendation_template,
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
+        {
+          key: :recent_orders,
+          params: {
+            limit: 20,
+            include_details: true,
+            since: 6.months.ago
+          }
+        },
+        {
+          key: :github_info,
+          params: {
+            username: user.github_username,
+            github_token: ENV['GITHUB_TOKEN'],
+            include_repos: true,
+            repo_limit: 10
+          }
+        }
+      ]
+    )
+  end
+
+  # Example 4: Document analysis workflow
+  def self.document_analysis_example(uploaded_file, user)
+    analysis_template = <<~TEMPLATE
+      Document Analysis Report for {{user_name}}:
+      
+      DOCUMENT OVERVIEW:
+      - File: {{file_path}}
+      - Type: {{file_type}}
+      - Size: {{content_length}} characters ({{word_count}} words)
+      - Reading Time: {{metadata_reading_time_minutes}} minutes
+      
+      CONTENT SUMMARY:
+      {{summary}}
+      
+      KEY TOPICS:
+      {{keywords}}
+      
+      LANGUAGE & STRUCTURE:
+      - Language: {{metadata_language}}
+      - Paragraphs: {{metadata_paragraph_count}}
+      - Sentences: {{metadata_sentence_count}}
+      
+      Please provide insights about this document's content, structure, and potential use cases.
+    TEMPLATE
+
+    LLMJob.perform_later(
+      template: analysis_template,
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
+        {
+          key: :document_summary,
+          params: {
+            file_content: uploaded_file.read,
+            file_type: uploaded_file.content_type,
+            max_summary_length: 500,
+            extract_keywords: true,
+            include_metadata: true,
+            chunk_size: 1000
+          }
+        }
+      ]
+    )
+  end
+
+  # Example 5: Code review assistance
+  def self.code_review_example(user, repository_name)
+    code_review_template = <<~TEMPLATE
+      Code Review Analysis for {{user_name}}:
+      
+      REPOSITORY CONTEXT:
+      {{#repositories}}
+      - Repository: {{repositories_repositories_0_name}}
+      - Language: {{repositories_repositories_0_language}}
+      - Stars: {{repositories_repositories_0_stars}}
+      - Last Updated: {{repositories_repositories_0_updated_at}}
+      {{/repositories}}
+      
+      DEVELOPER PROFILE:
+      - GitHub: {{profile_name}}
+      - Total Repositories: {{profile_public_repos}}
+      - Community: {{profile_followers}} followers
+      
+      Please provide a code review focusing on best practices for {{repositories_repositories_0_language}} development.
+    TEMPLATE
+
+    LLMJob.perform_later(
+      template: code_review_template,
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
+        {
+          key: :github_info,
+          params: {
+            username: user.github_username,
+            github_token: ENV['GITHUB_TOKEN'],
+            include_repos: true,
+            repo_limit: 1
+          }
+        }
+      ]
+    )
+  end
+
+  # Example 6: Real-time context with error handling
+  def self.robust_context_example(user)
+    context_template = <<~TEMPLATE
+      Comprehensive User Context for {{user_name}}:
+      
+      {{#count}}
+      RECENT ACTIVITY:
+      Recent Orders: {{count}} orders
+      {{/count}}
+      
+      {{#profile}}
+      DEVELOPER PROFILE:
+      GitHub: {{profile_name}}
+      {{/profile}}
+      
+      {{#error_recent_orders}}
+      Note: Order history temporarily unavailable
+      {{/error_recent_orders}}
+      
+      {{#error_github_info}}
+      Note: GitHub profile temporarily unavailable
+      {{/error_github_info}}
+      
+      Please provide assistance based on available context.
+    TEMPLATE
+
+    LLMJob.perform_later(
+      template: context_template,
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
+        {
+          key: :recent_orders,
+          params: { limit: 5 }
+        },
+        {
+          key: :github_info,
+          params: {
+            username: user.github_username,
+            github_token: ENV['GITHUB_TOKEN']
+          }
+        }
+      ]
+    )
+  end
+
+  # Example 7: Direct MCP Context usage (for more control)
+  def self.direct_mcp_example(user, workspace)
     # Create context with base data
     context = Mcp::Context.new(user: user, workspace: workspace)
     
     # Fetch recent orders for this user
     context.fetch(:recent_orders,
-      model: 'Order',
-      scope: :recent,
-      scope_args: [1.week.ago],
-      limit: 5
+      limit: 5,
+      since: 1.week.ago,
+      include_details: true
     )
     
     # Fetch user's GitHub repositories
-    context.fetch(:github_repos,
-      url: "https://api.github.com/users/#{user.github_username}/repos",
-      cache_key: "github_repos_#{user.id}",
-      cache_ttl: 30.minutes
-    )
+    if user.github_username.present?
+      context.fetch(:github_info,
+        username: user.github_username,
+        github_token: ENV['GITHUB_TOKEN'],
+        include_repos: true,
+        repo_limit: 10
+      )
+    end
     
+    # Check for errors and handle gracefully
+    if context.has_errors?
+      Rails.logger.warn("MCP errors: #{context.error_keys.join(', ')}")
+    end
+
     # Get all context data for prompt
     prompt_data = context.to_h
     
-    # Use in AI prompt
-    prompt = build_prompt(prompt_data)
+    # Use in AI prompt manually
+    template = build_custom_prompt(prompt_data)
     
-    # Return both context and prompt
-    {
+    LLMJob.perform_later(
+      template: template,
+      model: 'gpt-4',
       context: prompt_data,
-      prompt: prompt,
-      errors: context.errors
-    }
+      user_id: user.id
+    )
   end
 
-  # Example 2: Error handling and fallbacks
-  def self.error_handling_example(user)
-    context = Mcp::Context.new(user: user)
-    
-    # This might fail due to API limits
-    context.fetch(:external_api_data,
-      url: 'https://api.external-service.com/data',
-      rate_limit_key: 'external_service',
-      timeout: 5
-    )
-    
-    # Check for errors and handle gracefully
-    if context.error?(:external_api_data)
-      Rails.logger.warn("External API failed: #{context.error_message(:external_api_data)}")
-      
-      # Try alternative data source
-      context.fetch(:cached_data,
-        model: 'CachedApiData',
-        conditions: { user: user },
-        order: 'updated_at DESC',
-        limit: 1
-      )
-    end
-    
-    context.to_h
-  end
-
-  # Example 3: Semantic search for relevant documentation
-  def self.semantic_search_example(user_query)
-    context = Mcp::Context.new(query: user_query)
-    
-    # Find relevant documentation
-    context.fetch(:relevant_docs,
-      query: user_query,
-      threshold: 0.75,
-      limit: 3,
-      namespace: 'documentation',
-      content_types: ['tutorial', 'reference']
-    )
-    
-    # Find similar code examples
-    context.fetch(:code_examples,
-      search_term: extract_keywords(user_query),
-      search_type: :method_content,
-      include_comments: true,
-      max_results: 5
-    )
-    
-    context.to_h
-  end
-
-  # Example 4: File processing and analysis
-  def self.file_analysis_example(uploaded_file, user)
-    context = Mcp::Context.new(user: user, file: uploaded_file)
-    
-    # Parse uploaded document
-    context.fetch(:document_analysis,
-      file_content: uploaded_file.read,
-      file_type: uploaded_file.content_type,
-      chunk_size: 1000,
-      create_embeddings: true,
-      extract_metadata: true
-    )
-    
-    # Find similar existing documents
-    if context.success?(:document_analysis)
-      document_chunks = context[:document_analysis][:chunks]
-      if document_chunks.any?
-        # Use first chunk for similarity search
-        first_chunk_text = document_chunks.first[:text]
-        
-        context.fetch(:similar_documents,
-          query: first_chunk_text,
-          limit: 5,
-          threshold: 0.7,
-          namespace: 'documents'
-        )
-      end
-    end
-    
-    context.to_h
-  end
-
-  # Example 5: Multi-source data enrichment for customer support
-  def self.customer_support_example(customer, issue_description)
-    context = Mcp::Context.new(customer: customer, issue: issue_description)
-    
-    # Get customer's recent activity
-    context.fetch(:customer_activity,
-      model: 'CustomerActivity',
-      conditions: { customer: customer },
-      order: 'created_at DESC',
-      limit: 10
-    )
-    
-    # Get recent support tickets
-    context.fetch(:recent_tickets,
-      model: 'SupportTicket',
-      conditions: { customer: customer, status: ['open', 'in_progress'] },
-      limit: 5
-    )
-    
-    # Search knowledge base for similar issues
-    context.fetch(:knowledge_base,
-      query: issue_description,
-      threshold: 0.8,
-      namespace: 'support_kb',
-      limit: 3
-    )
-    
-    # Get billing information if relevant
-    if issue_description.include?('billing') || issue_description.include?('payment')
-      context.fetch(:billing_info,
-        model: 'BillingAccount',
-        conditions: { customer: customer },
-        limit: 1
-      )
-    end
-    
-    # Generate support prompt
-    support_data = context.to_h
-    prompt = build_support_prompt(support_data)
-    
-    {
-      context: support_data,
-      prompt: prompt,
-      recommendations: generate_recommendations(support_data)
-    }
-  end
-
-  # Example 6: Custom fetcher registration and usage
-  def self.custom_fetcher_example
-    # Define a custom weather fetcher
-    weather_fetcher = Class.new(Mcp::Fetcher::Base) do
-      def self.allowed_params
-        [:location, :units]
-      end
-
-      def self.required_param?(param)
-        param == :location
-      end
-
-      def self.fetch(location:, units: 'metric', **)
-        # Mock weather API call
+  # Example 8: Async processing with callbacks
+  def self.async_processing_example(user, callback_url)
+    job = LLMJob.perform_later(
+      template: "Analyze user {{user_name}} with {{count}} recent orders",
+      model: 'gpt-4',
+      context: { user_name: user.name },
+      user_id: user.id,
+      mcp_fetchers: [
         {
-          location: location,
-          temperature: rand(15..30),
-          condition: ['sunny', 'cloudy', 'rainy'].sample,
-          units: units,
-          fetched_at: Time.current
+          key: :recent_orders,
+          params: { limit: 10 }
         }
-      end
+      ]
+    )
 
-      def self.fallback_data(location: nil, **)
-        {
-          location: location,
-          temperature: nil,
-          condition: 'unknown',
-          error: 'Weather service unavailable'
-        }
-      end
-
-      def self.description
-        "Fetches current weather conditions"
-      end
-    end
-
-    # Register the custom fetcher
-    Mcp::Registry.register(:weather, weather_fetcher)
-
-    # Use the custom fetcher
-    context = Mcp::Context.new
-    context.fetch(:weather, location: 'San Francisco', units: 'imperial')
+    # You could add webhook notification when job completes
+    # WebhookJob.perform_later(callback_url, job.job_id)
     
-    context.to_h
+    job
   end
 
   private
 
-  def self.build_prompt(data)
+  def self.build_custom_prompt(data)
     <<~PROMPT
       Context Data:
       - User: #{data[:user]&.name}
       - Workspace: #{data[:workspace]&.name}
       - Recent Orders: #{data[:recent_orders]&.dig(:count) || 0} orders
-      - GitHub Repos: #{data[:github_repos]&.dig(:data)&.size || 0} repositories
+      - GitHub Repos: #{data[:github_info]&.dig(:repositories, :count) || 0} repositories
       
       Please provide assistance based on this context.
     PROMPT
-  end
-
-  def self.build_support_prompt(data)
-    customer = data[:customer]
-    issue = data[:issue]
-    
-    <<~PROMPT
-      Customer Support Context:
-      
-      Customer: #{customer&.name} (ID: #{customer&.id})
-      Issue: #{issue}
-      
-      Recent Activity: #{data[:customer_activity]&.dig(:count) || 0} activities
-      Open Tickets: #{data[:recent_tickets]&.dig(:count) || 0} tickets
-      KB Articles: #{data[:knowledge_base]&.dig(:results_count) || 0} relevant articles
-      
-      Based on this context, please provide a helpful response to the customer.
-    PROMPT
-  end
-
-  def self.extract_keywords(text)
-    # Simple keyword extraction (in real implementation, use NLP library)
-    text.downcase.scan(/\w+/).select { |word| word.length > 3 }.uniq.first(5).join(' ')
-  end
-
-  def self.generate_recommendations(data)
-    recommendations = []
-    
-    if data[:recent_tickets]&.dig(:count).to_i > 3
-      recommendations << "Customer has multiple open tickets - consider priority escalation"
-    end
-    
-    if data[:knowledge_base]&.dig(:results_count).to_i > 0
-      recommendations << "Relevant knowledge base articles found - consider sharing with customer"
-    end
-    
-    recommendations
   end
 end

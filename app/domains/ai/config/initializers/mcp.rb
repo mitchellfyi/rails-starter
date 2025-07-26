@@ -8,17 +8,19 @@ Rails.application.config.after_initialize do
   
   # Database fetcher for ActiveRecord queries
   Mcp::Registry.register(:database, Mcp::Fetcher::Database)
-  Mcp::Registry.register(:recent_orders, Mcp::Fetcher::Database)
+  Mcp::Registry.register(:recent_orders, Mcp::Fetcher::RecentOrders)
   Mcp::Registry.register(:user_activity, Mcp::Fetcher::Database)
   
   # HTTP fetcher for external APIs
   Mcp::Registry.register(:http, Mcp::Fetcher::Http)
   Mcp::Registry.register(:github_repo, Mcp::Fetcher::Http)
+  Mcp::Registry.register(:github_info, Mcp::Fetcher::GitHubInfo)
   Mcp::Registry.register(:slack_messages, Mcp::Fetcher::Http)
   
   # File fetcher for document parsing
   Mcp::Registry.register(:file, Mcp::Fetcher::File)
   Mcp::Registry.register(:parse_document, Mcp::Fetcher::File)
+  Mcp::Registry.register(:document_summary, Mcp::Fetcher::DocumentSummary)
   Mcp::Registry.register(:extract_text, Mcp::Fetcher::File)
   
   # Semantic memory fetcher for embeddings
