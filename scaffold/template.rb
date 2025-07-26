@@ -47,6 +47,7 @@ after_bundle do
   run 'bin/synth add admin'
   run 'bin/synth add docs'
   run 'bin/synth add testing'
+  run 'bin/synth add theme'
 
   load_template_file 'setup/synth_cli_setup.rb'
   load_template_file 'setup/environment_config.rb'
