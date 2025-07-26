@@ -256,7 +256,12 @@ module Synth
       elsif feature.nil?
         log_operation('test_all', description: 'Running full test suite')
         puts "🧪 Running full test suite..."
-        system('bundle exec rspec') || system('bin/rails test')
+        if system('bundle exec rspec')
+          puts "✅ RSpec tests completed successfully."
+        else
+          puts "⚠️  RSpec tests failed. Attempting to run Rails tests..."
+          system('bin/rails test')
+        end
         log_operation('test_all_complete', description: 'Full test suite completed')
       else
         log_operation('test_module', module: feature, description: "Running tests for #{feature}")
