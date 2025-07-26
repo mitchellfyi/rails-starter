@@ -69,7 +69,7 @@ create_file 'app/controllers/concerns/json_api_responses.rb', <<~RUBY
           status: status.to_s,
           title: 'Validation Error',
           detail: error[:detail] || error,
-          source: error[:source] || { pointer: "/data/attributes/\#{error[:attribute]}" }
+          source: error[:source] || { pointer: "/data/attributes/#{error[:attribute]}" }
         }
       end
 
