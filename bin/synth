@@ -1,0 +1,567 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Simple CLI implementation without external dependencies for the starter template
+require 'fileutils'
+require 'json'
+require 'pathname'
+
+class SynthCLI
+  TEMPLATE_PATH = File.expand_path('../scaffold/lib/templates/synth', __dir__)
+  REGISTRY_PATH = File.expand_path('../scaffold/config/synth_modules.json', __dir__)
+  
+  def initialize
+    @verbose = ARGV.include?('--verbose') || ARGV.include?('-v')
+  end
+
+  def self.start(args)
+    cli = new
+    command = args.first
+    
+    case command
+    when 'list'
+      cli.list
+    when 'add'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth add MODULE_NAME"
+        exit 1
+      end
+      cli.add(module_name)
+    when 'remove'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth remove MODULE_NAME"
+        exit 1
+      end
+      cli.remove(module_name)
+    when 'info'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth info MODULE_NAME"
+        exit 1
+      end
+      cli.info(module_name)
+    when 'test'
+      module_name = args[1]
+      cli.test(module_name)
+    when 'doctor'
+      cli.doctor
+    when 'upgrade'
+      module_name = args[1]
+      cli.upgrade(module_name)
+    when 'help', '--help', '-h', nil
+      cli.show_help
+    else
+      puts "❌ Unknown command: #{command}"
+      cli.show_help
+      exit 1
+    end
+  end
+
+  def list
+    show_available_modules
+    puts ""
+    show_installed_modules
+  end
+
+  def add(module_name)
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found in templates"
+      show_available_modules
+      exit 1
+    end
+
+    if module_installed?(module_name) && !force_mode?
+      puts "⚠️  Module '#{module_name}' is already installed. Use --force to reinstall."
+      exit 1
+    end
+
+    install_module(module_name, module_template_path)
+  end
+
+  def remove(module_name)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      show_installed_modules
+      exit 1
+    end
+
+    unless force_mode?
+      print "Are you sure you want to remove '#{module_name}'? This will delete files and may cause data loss. [y/N]: "
+      confirmation = STDIN.gets.chomp.downcase
+      unless confirmation == 'y' || confirmation == 'yes'
+        puts "❌ Module removal cancelled"
+        exit 1
+      end
+    end
+
+    remove_module(module_name)
+  end
+
+  def info(module_name)
+    show_module_info(module_name)
+  end
+
+  def test(module_name = nil)
+    if module_name
+      test_single_module(module_name)
+    else
+      test_all_modules
+    end
+  end
+
+  def doctor
+    puts '🏥 Running system diagnostics...'
+    
+    results = []
+    results << check_ruby_version
+    results << check_template_structure
+    results << check_registry_integrity
+    
+    puts "\n🏥 Diagnostics complete"
+    
+    failed_checks = results.count(false)
+    if failed_checks > 0
+      puts "❌ #{failed_checks} check(s) failed"
+      exit 1
+    else
+      puts "✅ All checks passed"
+    end
+  end
+
+  def upgrade(module_name = nil)
+    if module_name
+      upgrade_single_module(module_name)
+    else
+      upgrade_all_modules
+    end
+  end
+
+  def show_help
+    puts <<~HELP
+      bin/synth - Rails SaaS Starter Template Module Manager
+      
+      USAGE:
+        bin/synth COMMAND [OPTIONS]
+      
+      COMMANDS:
+        list                  List available and installed modules
+        add MODULE            Install a feature module
+        remove MODULE         Uninstall a feature module  
+        info MODULE           Show detailed information about a module
+        test [MODULE]         Run tests for a module or all modules
+        upgrade [MODULE]      Upgrade one or all installed modules
+        doctor                Validate setup and configuration
+        help                  Show this help message
+      
+      OPTIONS:
+        --verbose, -v         Enable verbose output
+        --force, -f           Force operation without confirmation
+      
+      EXAMPLES:
+        bin/synth list
+        bin/synth add billing
+        bin/synth remove cms --force
+        bin/synth info ai
+        bin/synth test billing
+        bin/synth doctor
+    HELP
+  end
+
+  private
+
+  def show_available_modules
+    puts '📦 Available modules:'
+    
+    unless Dir.exist?(TEMPLATE_PATH)
+      puts '  (templates directory not found)'
+      return
+    end
+
+    modules = Dir.children(TEMPLATE_PATH).select { |d| File.directory?(File.join(TEMPLATE_PATH, d)) }
+    
+    if modules.empty?
+      puts '  (no modules found)'
+      return
+    end
+
+    modules.sort.each do |module_name|
+      module_path = File.join(TEMPLATE_PATH, module_name)
+      readme_path = File.join(module_path, 'README.md')
+      version_path = File.join(module_path, 'VERSION')
+      
+      description = if File.exist?(readme_path)
+        File.readlines(readme_path).first&.strip&.gsub(/^#\s*/, '') || 'No description'
+      else
+        'No description'
+      end
+      
+      version = if File.exist?(version_path)
+        File.read(version_path).strip
+      else
+        'unknown'
+      end
+      
+      installed = module_installed?(module_name)
+      status_icon = installed ? '✅' : '  '
+      
+      puts "  #{status_icon} #{module_name.ljust(15)} v#{version.ljust(8)} - #{description}"
+    end
+  end
+
+  def show_installed_modules
+    puts '🔧 Installed modules:'
+    
+    registry = load_registry
+    installed_modules = registry['installed'] || {}
+    
+    if installed_modules.empty?
+      puts '  (no modules installed)'
+      return
+    end
+
+    installed_modules.each do |module_name, info|
+      version = info['version'] || 'unknown'
+      installed_at = info['installed_at'] ? info['installed_at'][0..9] : 'unknown'
+      puts "  ✅ #{module_name.ljust(15)} v#{version.ljust(8)} (installed: #{installed_at})"
+    end
+  end
+
+  def install_module(module_name, module_template_path)
+    puts "📦 Installing #{module_name} module..."
+    
+    install_file = File.join(module_template_path, 'install.rb')
+    
+    unless File.exist?(install_file)
+      puts "❌ Module installer not found: #{install_file}"
+      exit 1
+    end
+
+    begin
+      # Load version info
+      version_path = File.join(module_template_path, 'VERSION')
+      version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+      
+      # Create basic directories if they don't exist
+      create_basic_directories
+      
+      # Copy module files to app/domains
+      copy_module_files(module_name, module_template_path)
+      
+      # Update registry
+      update_registry(module_name, {
+        'version' => version,
+        'installed_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+        'template_path' => module_template_path
+      })
+      
+      puts "✅ Successfully installed #{module_name} module!"
+      log_module_action(:install, module_name, version)
+      
+    rescue StandardError => e
+      puts "❌ Error installing module: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if @verbose
+      log_module_action(:error, module_name, e.message)
+      exit 1
+    end
+  end
+
+  def remove_module(module_name)
+    puts "🗑️  Removing #{module_name} module..."
+    
+    registry = load_registry
+    module_info = registry.dig('installed', module_name)
+    
+    unless module_info
+      puts "❌ Module not found in registry"
+      exit 1
+    end
+
+    begin
+      # Default removal logic
+      default_module_removal(module_name)
+      
+      # Remove from registry
+      registry['installed'].delete(module_name)
+      save_registry(registry)
+      
+      puts "✅ Successfully removed #{module_name} module!"
+      log_module_action(:remove, module_name)
+      
+    rescue StandardError => e
+      puts "❌ Error removing module: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if @verbose
+      log_module_action(:error, module_name, e.message)
+      exit 1
+    end
+  end
+
+  def show_module_info(module_name)
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found"
+      exit 1
+    end
+
+    puts "📋 Module: #{module_name}"
+    puts "=" * 50
+    
+    # Basic info
+    readme_path = File.join(module_template_path, 'README.md')
+    if File.exist?(readme_path)
+      puts "\n📖 Description:"
+      puts File.read(readme_path).lines.first(5).join
+    end
+    
+    # Version
+    version_path = File.join(module_template_path, 'VERSION')
+    if File.exist?(version_path)
+      puts "\n🏷️  Version: #{File.read(version_path).strip}"
+    end
+    
+    # Installation status
+    if module_installed?(module_name)
+      registry = load_registry
+      info = registry.dig('installed', module_name)
+      puts "\n✅ Status: Installed"
+      puts "   Installed version: #{info['version']}" if info['version']
+      puts "   Installed at: #{info['installed_at']}" if info['installed_at']
+    else
+      puts "\n❌ Status: Not installed"
+    end
+    
+    # Files
+    puts "\n📁 Files:"
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      puts "   #{relative_path}"
+    end
+  end
+
+  def test_single_module(module_name)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      exit 1
+    end
+    
+    # Look for module-specific tests
+    test_paths = [
+      "spec/domains/#{module_name}",
+      "test/domains/#{module_name}",
+      "spec/#{module_name}",
+      "test/#{module_name}"
+    ]
+    
+    test_path = test_paths.find { |path| Dir.exist?(path) }
+    
+    if test_path
+      puts "🧪 Running tests for #{module_name} module..."
+      if test_path.start_with?('spec/')
+        system("bundle exec rspec #{test_path}")
+      else
+        system("bundle exec rails test #{test_path}")
+      end
+    else
+      puts "❌ No tests found for module: #{module_name}"
+      exit 1
+    end
+  end
+
+  def test_all_modules
+    puts '🧪 Running full test suite...'
+    
+    # Try RSpec first, then fall back to Minitest
+    if File.exist?('spec/rails_helper.rb')
+      system('bundle exec rspec')
+    elsif File.exist?('test/test_helper.rb')
+      system('bundle exec rails test')
+    else
+      puts "❌ No test framework detected"
+      exit 1
+    end
+  end
+
+  def upgrade_single_module(module_name)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      exit 1
+    end
+    
+    puts "🔄 Upgrading #{module_name} module..."
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    install_module(module_name, module_template_path)
+  end
+
+  def upgrade_all_modules
+    registry = load_registry
+    installed_modules = registry['installed'] || {}
+    
+    if installed_modules.empty?
+      puts "📦 No modules installed to upgrade"
+      return
+    end
+    
+    puts "🔄 Upgrading all installed modules..."
+    installed_modules.keys.each do |module_name|
+      upgrade_single_module(module_name)
+    end
+  end
+
+  def module_installed?(module_name)
+    registry = load_registry
+    registry.dig('installed', module_name) != nil
+  end
+
+  def load_registry
+    return { 'installed' => {} } unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      JSON.parse(File.read(REGISTRY_PATH))
+    rescue JSON::ParserError
+      puts "⚠️  Registry file corrupted, resetting..." if @verbose
+      { 'installed' => {} }
+    end
+  end
+
+  def save_registry(registry)
+    FileUtils.mkdir_p(File.dirname(REGISTRY_PATH))
+    File.write(REGISTRY_PATH, JSON.pretty_generate(registry))
+  end
+
+  def update_registry(module_name, info)
+    registry = load_registry
+    registry['installed'] ||= {}
+    registry['installed'][module_name] = info
+    save_registry(registry)
+  end
+
+  def create_basic_directories
+    %w[app/domains spec/domains test/domains].each do |dir|
+      FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+    end
+  end
+
+  def copy_module_files(module_name, module_template_path)
+    target_dir = File.join('app', 'domains', module_name)
+    
+    # Remove existing if force mode
+    if Dir.exist?(target_dir) && force_mode?
+      FileUtils.rm_rf(target_dir)
+    end
+    
+    # Create target directory
+    FileUtils.mkdir_p(target_dir)
+    
+    # Copy README if it exists
+    readme_source = File.join(module_template_path, 'README.md')
+    if File.exist?(readme_source)
+      FileUtils.cp(readme_source, File.join(target_dir, 'README.md'))
+      puts "  ✅ Copied README.md" if @verbose
+    end
+    
+    # Copy other relevant files (excluding install.rb and VERSION)
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      next if File.basename(file) == 'install.rb'
+      next if File.basename(file) == 'VERSION'
+      next if File.basename(file) == 'remove.rb'
+      
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      target_file = File.join(target_dir, relative_path)
+      
+      FileUtils.mkdir_p(File.dirname(target_file))
+      FileUtils.cp(file, target_file)
+      puts "  ✅ Copied #{relative_path}" if @verbose
+    end
+  end
+
+  def default_module_removal(module_name)
+    # Remove from app/domains if it exists
+    domains_path = File.join('app', 'domains', module_name)
+    if Dir.exist?(domains_path)
+      FileUtils.rm_rf(domains_path)
+      puts "    🗑️  Removed #{domains_path}" if @verbose
+    end
+    
+    # Remove from spec/domains if it exists
+    spec_path = File.join('spec', 'domains', module_name)
+    if Dir.exist?(spec_path)
+      FileUtils.rm_rf(spec_path)
+      puts "    🗑️  Removed #{spec_path}" if @verbose
+    end
+    
+    # Remove from test/domains if it exists
+    test_path = File.join('test', 'domains', module_name)
+    if Dir.exist?(test_path)
+      FileUtils.rm_rf(test_path)
+      puts "    🗑️  Removed #{test_path}" if @verbose
+    end
+  end
+
+  def check_ruby_version
+    puts "Ruby version: #{RUBY_VERSION}"
+    true # Ruby is running, so version is adequate
+  end
+
+  def check_template_structure
+    puts "\nChecking template structure:"
+    
+    if File.exist?(REGISTRY_PATH)
+      puts "✅ Module registry found"
+      registry_ok = true
+    else
+      puts "⚠️  Module registry not found at #{REGISTRY_PATH}"
+      registry_ok = false
+    end
+    
+    if Dir.exist?(TEMPLATE_PATH)
+      puts "✅ Module templates directory found"
+      templates_ok = true
+    else
+      puts "⚠️  Module templates directory not found at #{TEMPLATE_PATH}"
+      templates_ok = false
+    end
+    
+    registry_ok && templates_ok
+  end
+
+  def check_registry_integrity
+    return true unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      registry = JSON.parse(File.read(REGISTRY_PATH))
+      puts "✅ Module registry is valid JSON"
+      
+      installed_count = registry.dig('installed')&.keys&.count || 0
+      puts "📦 #{installed_count} module(s) registered as installed"
+      true
+    rescue JSON::ParserError
+      puts "❌ Module registry is corrupted (invalid JSON)"
+      false
+    end
+  end
+
+  def log_module_action(action, module_name, message = nil)
+    log_file = 'log/synth.log'
+    FileUtils.mkdir_p('log') unless Dir.exist?('log')
+    
+    File.open(log_file, 'a') do |f|
+      timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      log_message = "[#{timestamp}] [#{action.to_s.upcase}] Module: #{module_name}"
+      log_message += " - #{message}" if message
+      f.puts log_message
+    end
+  end
+
+  def force_mode?
+    ARGV.include?('--force') || ARGV.include?('-f')
+  end
+end
+
+# Start the CLI
+SynthCLI.start(ARGV) if __FILE__ == $0

@@ -1,8 +1,9 @@
 {
   "installed": {
-    "ai": {
+    "auth": {
       "version": "1.0.0",
-      "installed_at": "2025-07-26T08:51:26+00:00"
+      "installed_at": "2025-07-26T18:18:57+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/auth"
     }
   }
 }

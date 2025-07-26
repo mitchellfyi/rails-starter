@@ -1,0 +1,111 @@
+# frozen_string_literal: true
+
+require 'minitest/autorun'
+require 'open3'
+
+class SynthCLIIntegrationTest < Minitest::Test
+  def setup
+    @synth_path = File.expand_path('../bin/synth', __dir__)
+    @project_root = File.expand_path('..', __dir__)
+  end
+
+  def test_help_command
+    output, status = run_synth(['help'])
+    
+    assert status.success?
+    assert_includes output, 'bin/synth - Rails SaaS Starter Template Module Manager'
+    assert_includes output, 'USAGE:'
+    assert_includes output, 'list'
+    assert_includes output, 'add MODULE'
+    assert_includes output, 'remove MODULE'
+  end
+
+  def test_list_command
+    output, status = run_synth(['list'])
+    
+    assert status.success?
+    assert_includes output, '📦 Available modules:'
+    assert_includes output, '🔧 Installed modules:'
+    # Should show available modules from scaffold/lib/templates/synth
+    assert_includes output, 'billing'
+    assert_includes output, 'ai'
+  end
+
+  def test_doctor_command
+    output, status = run_synth(['doctor'])
+    
+    assert status.success?
+    assert_includes output, '🏥 Running system diagnostics...'
+    assert_includes output, 'Ruby version:'
+    assert_includes output, '✅ Module registry found'
+    assert_includes output, '✅ Module templates directory found'
+  end
+
+  def test_info_command_for_existing_module
+    output, status = run_synth(['info', 'billing'])
+    
+    assert status.success?
+    assert_includes output, '📋 Module: billing'
+    assert_includes output, '📖 Description:'
+    assert_includes output, 'Billing Module'
+    assert_includes output, '🏷️  Version:'
+  end
+
+  def test_info_command_for_nonexistent_module
+    output, status = run_synth(['info', 'nonexistent_module'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module 'nonexistent_module' not found"
+  end
+
+  def test_add_nonexistent_module
+    output, status = run_synth(['add', 'nonexistent_module'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module 'nonexistent_module' not found in templates"
+  end
+
+  def test_remove_uninstalled_module
+    output, status = run_synth(['remove', 'some_module'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module 'some_module' is not installed"
+  end
+
+  def test_invalid_command
+    output, status = run_synth(['invalid_command'])
+    
+    refute status.success?
+    assert_includes output, "❌ Unknown command: invalid_command"
+  end
+
+  def test_missing_module_argument_for_add
+    output, status = run_synth(['add'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module name required. Usage: bin/synth add MODULE_NAME"
+  end
+
+  def test_missing_module_argument_for_remove
+    output, status = run_synth(['remove'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module name required. Usage: bin/synth remove MODULE_NAME"
+  end
+
+  def test_missing_module_argument_for_info
+    output, status = run_synth(['info'])
+    
+    refute status.success?
+    assert_includes output, "❌ Module name required. Usage: bin/synth info MODULE_NAME"
+  end
+
+  private
+
+  def run_synth(args)
+    Dir.chdir(@project_root) do
+      output, status = Open3.capture2e(@synth_path, *args)
+      [output, status]
+    end
+  end
+end
