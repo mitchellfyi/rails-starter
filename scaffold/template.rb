@@ -226,7 +226,7 @@ after_bundle do
 
         desc 'scaffold agent NAME', 'Scaffold a new AI agent'
         def scaffold(name)
-          puts "[stub] Scaffold agent: \#{name}"
+          puts "[stub] Scaffold agent: #{name}"
         end
       end
     end
