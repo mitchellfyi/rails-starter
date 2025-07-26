@@ -78,7 +78,9 @@ initializer_content = <<~RUBY
     def extract_locale_from_accept_language_header
       return nil unless request.env['HTTP_ACCEPT_LANGUAGE']
 
-      request.env['HTTP_ACCEPT_LANGUAGE'].scan(/^[a-z]{2}/).find do |locale|
+      request.env['HTTP_ACCEPT_LANGUAGE'].to_s.split(',').map do |lang|
+        lang.split(';').first.split('-').first
+      end.find do |locale|
         I18n.available_locales.include?(locale.to_sym)
       end&.to_sym
     end
