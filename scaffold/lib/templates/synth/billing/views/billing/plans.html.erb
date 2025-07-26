@@ -32,9 +32,9 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <% @plans.each_with_index do |plan, index| %>
       <div class="bg-white border border-gray-200 rounded-lg overflow-hidden 
-                  <%= index == 1 ? 'border-blue-500 shadow-lg transform scale-105' : '' %>">
+                  <%= plan.highlighted? || index == 1 ? 'border-blue-500 shadow-lg transform scale-105' : '' %>">
         
-        <% if index == 1 %>
+        <% if plan.highlighted? || index == 1 %>
           <div class="bg-blue-500 text-white text-center py-2 text-sm font-medium">
             Most Popular
           </div>

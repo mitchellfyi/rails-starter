@@ -1,0 +1,126 @@
+<div class="max-w-7xl mx-auto p-6">
+  <header class="mb-6 flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Plan Management</h1>
+      <p class="mt-2 text-gray-600">Manage subscription plans and pricing</p>
+    </div>
+    <%= link_to new_admin_plan_path, class: 'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm' do %>
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+      </svg>
+      New Plan
+    <% end %>
+  </header>
+
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Plan
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Price
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Type
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Subscribers
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @plans.each do |plan| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div>
+                  <div class="text-sm font-medium text-gray-900 flex items-center">
+                    <%= plan.name %>
+                    <% if plan.highlighted? %>
+                      <span class="ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                        Featured
+                      </span>
+                    <% end %>
+                  </div>
+                  <div class="text-sm text-gray-500"><%= plan.description %></div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm text-gray-900">$<%= plan.price_in_dollars %></div>
+              <div class="text-sm text-gray-500">per <%= plan.interval %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                         <%= plan.usage_type == 'metered' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800' %>">
+                <%= plan.usage_type.titleize %>
+              </span>
+              <% if plan.has_trial? %>
+                <span class="ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
+                  <%= plan.trial_period_days %>d trial
+                </span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= plan.subscriptions.active_or_trialing.count %> active
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                         <%= plan.active? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                <%= plan.active? ? 'Active' : 'Inactive' %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+              <%= link_to admin_plan_path(plan), class: 'text-blue-600 hover:text-blue-900' do %>
+                View
+              <% end %>
+              <%= link_to edit_admin_plan_path(plan), class: 'text-indigo-600 hover:text-indigo-900' do %>
+                Edit
+              <% end %>
+              <% if plan.active? %>
+                <%= link_to deactivate_admin_plan_path(plan), method: :patch, 
+                          data: { confirm: 'Are you sure?' },
+                          class: 'text-orange-600 hover:text-orange-900' do %>
+                  Deactivate
+                <% end %>
+              <% else %>
+                <%= link_to activate_admin_plan_path(plan), method: :patch,
+                          class: 'text-green-600 hover:text-green-900' do %>
+                  Activate
+                <% end %>
+              <% end %>
+              <% unless plan.subscriptions.active_or_trialing.exists? %>
+                <%= link_to admin_plan_path(plan), method: :delete,
+                          data: { confirm: 'Are you sure? This cannot be undone.' },
+                          class: 'text-red-600 hover:text-red-900' do %>
+                  Delete
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @plans.empty? %>
+    <div class="text-center py-12">
+      <svg class="mx-auto w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+      </svg>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No plans created yet</h3>
+      <p class="text-gray-500 mb-4">Get started by creating your first subscription plan.</p>
+      <%= link_to new_admin_plan_path, class: 'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700' do %>
+        Create Plan
+      <% end %>
+    </div>
+  <% end %>
+</div>
