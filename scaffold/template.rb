@@ -49,6 +49,7 @@ gem_group :development, :test do
   gem 'factory_bot_rails', '~> 6.2'
   gem 'faker', '~> 3.3'
   gem 'rspec-rails', '~> 8.0'
+  gem 'database_cleaner-active_record', '~> 2.1'
   gem 'shoulda-matchers', '~> 6.5'
   gem 'capybara', '~> 3.40'
   gem 'selenium-webdriver', '~> 4.27'
@@ -1026,6 +1027,97 @@ after_bundle do
 
     It will add the necessary models, migrations, routes, controllers, and tests.
   MD
+
+  # Create GitHub Actions workflow template for CI with API schema validation
+  run 'mkdir -p .github/workflows'
+  create_file '.github/workflows/test.yml', <<~YAML
+    name: Test Suite
+
+    on:
+      push:
+        branches: [ main, develop ]
+      pull_request:
+        branches: [ main, develop ]
+
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+
+        services:
+          postgres:
+            image: postgres:15
+            env:
+              POSTGRES_PASSWORD: postgres
+            options: >-
+              --health-cmd pg_isready
+              --health-interval 10s
+              --health-timeout 5s
+              --health-retries 5
+            ports:
+              - 5432:5432
+
+          redis:
+            image: redis:7
+            options: >-
+              --health-cmd "redis-cli ping"
+              --health-interval 10s
+              --health-timeout 5s
+              --health-retries 5
+            ports:
+              - 6379:6379
+
+        steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up Ruby
+          uses: ruby/setup-ruby@v1
+          with:
+            ruby-version: '3.2'
+            bundler-cache: true
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+            cache: 'yarn'
+
+        - name: Install dependencies
+          run: |
+            bundle install
+            yarn install
+
+        - name: Set up database
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            bundle exec rails db:setup
+
+        - name: Run tests
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            bundle exec rspec
+
+        - name: Validate API schema
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            if [ -f lib/tasks/api.rake ]; then
+              bundle exec rake api:validate_schema
+            else
+              echo "API module not installed, skipping schema validation"
+            fi
+
+        - name: Upload API schema
+          if: github.ref == 'refs/heads/main'
+          uses: actions/upload-artifact@v4
+          with:
+            name: api-schema
+            path: swagger/
+  YAML
   
   # Run database setup
   say "🗃️  Setting up database..."
