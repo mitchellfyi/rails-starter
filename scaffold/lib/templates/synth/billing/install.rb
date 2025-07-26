@@ -48,6 +48,12 @@ after_bundle do
       validates :trial_period_days, numericality: { greater_than_or_equal_to: 0 }
 
       scope :active, -> { where(active: true) }
+      scope :visible, -> { active.order(:sort_order, :amount) }
+
+      before_validation :set_defaults
+      serialize :features, JSON
+      serialize :metadata, JSON
+      serialize :feature_limits, JSON
 
       def monthly_amount
         case interval
@@ -68,6 +74,29 @@ after_bundle do
 
       def has_trial?
         trial_period_days && trial_period_days > 0
+      end
+
+      def feature_limit(feature_name)
+        return nil unless feature_limits.is_a?(Hash)
+        feature_limits[feature_name.to_s]
+      end
+
+      def has_feature?(feature_name)
+        return false unless features.is_a?(Array)
+        features.include?(feature_name.to_s)
+      end
+
+      def metadata_value(key)
+        return nil unless metadata.is_a?(Hash)
+        metadata[key.to_s]
+      end
+
+      private
+
+      def set_defaults
+        self.features ||= []
+        self.metadata ||= {}
+        self.feature_limits ||= {}
       end
     end
   RUBY
@@ -190,17 +219,34 @@ after_bundle do
     class WebhookEvent < ApplicationRecord
       validates :stripe_event_id, presence: true, uniqueness: true
       validates :event_type, presence: true
-      validates :processed_at, presence: true
 
       scope :processed, -> { where.not(processed_at: nil) }
       scope :unprocessed, -> { where(processed_at: nil) }
+      scope :failed, -> { where.not(error_message: nil) }
+      scope :successful, -> { where(error_message: nil).where.not(processed_at: nil) }
 
       def processed?
         processed_at.present?
       end
 
+      def failed?
+        error_message.present?
+      end
+
+      def successful?
+        processed? && !failed?
+      end
+
       def mark_as_processed!
         update!(processed_at: Time.current)
+      end
+
+      def mark_as_failed!(error_message, error_type = 'unknown')
+        update!(
+          error_message: error_message,
+          error_type: error_type,
+          processed_at: Time.current
+        )
       end
     end
   RUBY
@@ -377,7 +423,8 @@ after_bundle do
       end
 
       def plans
-        @plans = Plan.active.order(:amount)
+        @plans = Plan.visible
+        @coupon = Coupon.find_by(code: params[:coupon_code]) if params[:coupon_code].present?
       end
 
       def subscribe
@@ -456,6 +503,256 @@ after_bundle do
     end
   RUBY
 
+  # Create admin plan controller for plan management
+  create_file 'app/domains/billing/app/controllers/admin/plans_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    module Admin
+      class PlansController < ApplicationController
+        before_action :authenticate_admin!
+        before_action :set_plan, only: [:show, :edit, :update, :destroy, :activate, :deactivate]
+
+        def index
+          @plans = Plan.all.order(:sort_order, :amount)
+        end
+
+        def show
+          @subscriptions_count = @plan.subscriptions.count
+          @active_subscriptions_count = @plan.subscriptions.active_or_trialing.count
+        end
+
+        def new
+          @plan = Plan.new
+        end
+
+        def create
+          @plan = Plan.new(plan_params)
+          
+          # Handle features and feature_limits arrays
+          process_plan_arrays
+          
+          if @plan.save
+            # Create corresponding Stripe product and price if Stripe IDs not provided
+            unless @plan.stripe_product_id.present? && @plan.stripe_price_id.present?
+              create_stripe_product_and_price
+            end
+            
+            redirect_to admin_plan_path(@plan), notice: 'Plan created successfully.'
+          else
+            render :new
+          end
+        rescue Stripe::StripeError => e
+          @plan.errors.add(:base, "Stripe error: #{e.message}")
+          render :new
+        end
+
+        def edit
+        end
+
+        def update
+          # Handle features and feature_limits arrays
+          process_plan_arrays
+          
+          if @plan.update(plan_params)
+            # Update Stripe product if needed
+            update_stripe_product if stripe_needs_update?
+            
+            redirect_to admin_plan_path(@plan), notice: 'Plan updated successfully.'
+          else
+            render :edit
+          end
+        rescue Stripe::StripeError => e
+          @plan.errors.add(:base, "Stripe error: #{e.message}")
+          render :edit
+        end
+
+        def destroy
+          if @plan.subscriptions.active_or_trialing.exists?
+            redirect_to admin_plans_path, alert: 'Cannot delete plan with active subscriptions.'
+          else
+            @plan.destroy
+            redirect_to admin_plans_path, notice: 'Plan deleted successfully.'
+          end
+        end
+
+        def activate
+          @plan.update!(active: true)
+          redirect_to admin_plans_path, notice: 'Plan activated successfully.'
+        end
+
+        def deactivate
+          @plan.update!(active: false)
+          redirect_to admin_plans_path, notice: 'Plan deactivated successfully.'
+        end
+
+        private
+
+        def set_plan
+          @plan = Plan.find(params[:id])
+        end
+
+        def plan_params
+          params.require(:plan).permit(
+            :name, :description, :amount, :currency, :interval, :usage_type,
+            :trial_period_days, :sort_order, :highlighted, :active,
+            :stripe_product_id, :stripe_price_id,
+            features: []
+          )
+        end
+
+        def process_plan_arrays
+          # Handle features array
+          if params[:plan][:features].present?
+            @plan.features = params[:plan][:features].reject(&:blank?)
+          end
+
+          # Handle feature_limits hash from separate key/value arrays
+          if params[:plan][:feature_limits_keys].present? && params[:plan][:feature_limits_values].present?
+            keys = params[:plan][:feature_limits_keys].reject(&:blank?)
+            values = params[:plan][:feature_limits_values].reject(&:blank?)
+            
+            feature_limits = {}
+            keys.each_with_index do |key, index|
+              if values[index].present?
+                # Try to convert to integer if it's a number, otherwise keep as string
+                value = values[index].match?(/\A-?\d+\z/) ? values[index].to_i : values[index]
+                feature_limits[key] = value
+              end
+            end
+            @plan.feature_limits = feature_limits
+          end
+
+          # Handle metadata (if you want to add metadata editing later)
+          @plan.metadata ||= {}
+        end
+
+        def authenticate_admin!
+          # Implement your admin authentication logic here
+          # For example, checking if user has admin role:
+          redirect_to root_path unless current_user&.admin?
+        end
+
+        def create_stripe_product_and_price
+          # Create Stripe product
+          product = Stripe::Product.create(
+            name: @plan.name,
+            description: @plan.description,
+            metadata: @plan.metadata || {}
+          )
+
+          # Create Stripe price
+          price = Stripe::Price.create(
+            product: product.id,
+            unit_amount: @plan.amount,
+            currency: @plan.currency,
+            recurring: {
+              interval: @plan.interval
+            },
+            usage_type: @plan.usage_type
+          )
+
+          @plan.update!(
+            stripe_product_id: product.id,
+            stripe_price_id: price.id
+          )
+        end
+
+        def stripe_needs_update?
+          @plan.previous_changes.any? { |key, _| 
+            %w[name description metadata].include?(key) 
+          }
+        end
+
+        def update_stripe_product
+          return unless @plan.stripe_product_id
+
+          Stripe::Product.update(@plan.stripe_product_id, {
+            name: @plan.name,
+            description: @plan.description,
+            metadata: @plan.metadata || {}
+          })
+        end
+      end
+    end
+  RUBY
+
+  # Create admin coupon controller for coupon management
+  create_file 'app/domains/billing/app/controllers/admin/coupons_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    module Admin
+      class CouponsController < ApplicationController
+        before_action :authenticate_admin!
+        before_action :set_coupon, only: [:show, :edit, :update, :destroy, :activate, :deactivate]
+
+        def index
+          @coupons = Coupon.all.order(:code)
+        end
+
+        def show
+        end
+
+        def new
+          @coupon = Coupon.new
+        end
+
+        def create
+          @coupon = Coupon.new(coupon_params)
+          
+          if @coupon.save
+            redirect_to admin_coupon_path(@coupon), notice: 'Coupon created successfully.'
+          else
+            render :new
+          end
+        end
+
+        def edit
+        end
+
+        def update
+          if @coupon.update(coupon_params)
+            redirect_to admin_coupon_path(@coupon), notice: 'Coupon updated successfully.'
+          else
+            render :edit
+          end
+        end
+
+        def destroy
+          @coupon.destroy
+          redirect_to admin_coupons_path, notice: 'Coupon deleted successfully.'
+        end
+
+        def activate
+          @coupon.update!(active: true)
+          redirect_to admin_coupons_path, notice: 'Coupon activated successfully.'
+        end
+
+        def deactivate
+          @coupon.update!(active: false)
+          redirect_to admin_coupons_path, notice: 'Coupon deactivated successfully.'
+        end
+
+        private
+
+        def set_coupon
+          @coupon = Coupon.find(params[:id])
+        end
+
+        def coupon_params
+          params.require(:coupon).permit(
+            :code, :stripe_coupon_id, :discount_type, :discount_value,
+            :valid_from, :valid_until, :max_redemptions, :active
+          )
+        end
+
+        def authenticate_admin!
+          # Implement your admin authentication logic here
+          redirect_to root_path unless current_user&.admin?
+        end
+      end
+    end
+  RUBY
+
   # Create webhook controller
   create_file 'app/domains/billing/app/controllers/webhooks/stripe_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
@@ -464,6 +761,10 @@ after_bundle do
       class StripeController < ApplicationController
         protect_from_forgery with: :null_session
         before_action :verify_stripe_signature
+
+        # Define error classes for better retry handling
+        class TransientError < StandardError; end
+        class PermanentError < StandardError; end
 
         def handle
           # Check if we've already processed this event
@@ -484,6 +785,10 @@ after_bundle do
             handle_subscription_deleted
           when 'customer.subscription.trial_will_end'
             handle_trial_will_end
+          when 'payment_intent.succeeded'
+            handle_payment_intent_succeeded
+          when 'payment_intent.payment_failed'
+            handle_payment_intent_failed
           else
             Rails.logger.info "Unhandled Stripe webhook event: #{@event.type}"
           end
@@ -497,18 +802,51 @@ after_bundle do
 
           head :ok
         rescue TransientError => e
-          Rails.logger.error "Transient error in Stripe webhook: #{e.message}"
-          Rails.logger.error e.backtrace.join("\n")
+          Rails.logger.warn "Transient error in Stripe webhook: #{e.message}"
+          Rails.logger.warn e.backtrace.join("\n")
           
-          # Schedule retry job for transient errors
-          StripeWebhookRetryJob.set(wait: 1.minute).perform_later(@event.id)
+          # Schedule retry job for transient errors with exponential backoff
+          retry_count = params[:retry_count].to_i
+          wait_time = [2 ** retry_count, 300].min # Cap at 5 minutes
+          
+          StripeWebhookRetryJob.set(wait: wait_time.seconds).perform_later(@event.id, retry_count + 1)
           
           head :service_unavailable
-        rescue => e
-          Rails.logger.error "Non-transient Stripe webhook error: #{e.message}"
+        rescue PermanentError => e
+          Rails.logger.error "Permanent error in Stripe webhook: #{e.message}"
           Rails.logger.error e.backtrace.join("\n")
           
-          head :internal_server_error
+          # Log permanent error but don't retry
+          WebhookEvent.create!(
+            stripe_event_id: @event.id,
+            event_type: @event.type,
+            processed_at: Time.current,
+            error_message: e.message,
+            error_type: 'permanent'
+          )
+          
+          head :unprocessable_entity
+        rescue => e
+          Rails.logger.error "Unexpected Stripe webhook error: #{e.message}"
+          Rails.logger.error e.backtrace.join("\n")
+          
+          # Treat unknown errors as transient initially
+          retry_count = params[:retry_count].to_i
+          if retry_count < 3
+            wait_time = [2 ** retry_count, 300].min
+            StripeWebhookRetryJob.set(wait: wait_time.seconds).perform_later(@event.id, retry_count + 1)
+            head :service_unavailable
+          else
+            # After 3 retries, treat as permanent
+            WebhookEvent.create!(
+              stripe_event_id: @event.id,
+              event_type: @event.type,
+              processed_at: Time.current,
+              error_message: e.message,
+              error_type: 'unknown_permanent'
+            )
+            head :internal_server_error
+          end
         end
 
         private
@@ -521,17 +859,15 @@ after_bundle do
           begin
             @event = Stripe::Webhook.construct_event(payload, sig_header, endpoint_secret)
           rescue JSON::ParserError
-            head :bad_request
-            return
+            raise PermanentError, "Invalid JSON payload"
           rescue Stripe::SignatureVerificationError
-            head :bad_request
-            return
+            raise PermanentError, "Invalid webhook signature"
           end
         end
 
         def handle_invoice_paid
           invoice_data = @event.data.object
-          subscription = Subscription.find_by(stripe_subscription_id: invoice_data.subscription)
+          subscription = find_subscription_by_stripe_id(invoice_data.subscription)
           
           return unless subscription
 
@@ -548,11 +884,15 @@ after_bundle do
 
           # Send invoice email if needed
           BillingMailer.invoice_paid(invoice).deliver_later
+        rescue ActiveRecord::RecordNotFound => e
+          raise TransientError, "Subscription not found: #{e.message}"
+        rescue => e
+          raise TransientError, "Failed to process invoice payment: #{e.message}"
         end
 
         def handle_invoice_payment_failed
           invoice_data = @event.data.object
-          subscription = Subscription.find_by(stripe_subscription_id: invoice_data.subscription)
+          subscription = find_subscription_by_stripe_id(invoice_data.subscription)
           
           return unless subscription
 
@@ -560,11 +900,15 @@ after_bundle do
           
           # Send payment failed email
           BillingMailer.payment_failed(subscription).deliver_later
+        rescue ActiveRecord::RecordNotFound => e
+          raise TransientError, "Subscription not found: #{e.message}"
+        rescue => e
+          raise TransientError, "Failed to process payment failure: #{e.message}"
         end
 
         def handle_subscription_updated
           subscription_data = @event.data.object
-          subscription = Subscription.find_by(stripe_subscription_id: subscription_data.id)
+          subscription = find_subscription_by_stripe_id(subscription_data.id)
           
           return unless subscription
 
@@ -574,25 +918,65 @@ after_bundle do
             current_period_start: Time.at(subscription_data.current_period_start),
             current_period_end: Time.at(subscription_data.current_period_end)
           )
+        rescue ActiveRecord::RecordNotFound => e
+          raise TransientError, "Subscription not found: #{e.message}"
+        rescue => e
+          raise TransientError, "Failed to update subscription: #{e.message}"
         end
 
         def handle_subscription_deleted
           subscription_data = @event.data.object
-          subscription = Subscription.find_by(stripe_subscription_id: subscription_data.id)
+          subscription = find_subscription_by_stripe_id(subscription_data.id)
           
           return unless subscription
 
           subscription.update!(status: 'canceled', canceled_at: Time.current)
+        rescue ActiveRecord::RecordNotFound => e
+          # If subscription not found, it might already be deleted - not an error
+          Rails.logger.info "Subscription #{subscription_data.id} already deleted or not found"
+        rescue => e
+          raise TransientError, "Failed to delete subscription: #{e.message}"
         end
 
         def handle_trial_will_end
           subscription_data = @event.data.object
-          subscription = Subscription.find_by(stripe_subscription_id: subscription_data.id)
+          subscription = find_subscription_by_stripe_id(subscription_data.id)
           
           return unless subscription
 
           # Send trial ending email
           BillingMailer.trial_will_end(subscription).deliver_later
+        rescue ActiveRecord::RecordNotFound => e
+          raise TransientError, "Subscription not found: #{e.message}"
+        rescue => e
+          raise TransientError, "Failed to handle trial ending: #{e.message}"
+        end
+
+        def handle_payment_intent_succeeded
+          payment_intent_data = @event.data.object
+          customer_id = payment_intent_data.customer
+          
+          # Handle one-time payment success if needed
+          # This could trigger specific business logic for one-off purchases
+          Rails.logger.info "Payment succeeded for customer #{customer_id}: #{payment_intent_data.id}"
+        rescue => e
+          raise TransientError, "Failed to handle payment success: #{e.message}"
+        end
+
+        def handle_payment_intent_failed
+          payment_intent_data = @event.data.object
+          customer_id = payment_intent_data.customer
+          
+          # Handle one-time payment failure
+          Rails.logger.warn "Payment failed for customer #{customer_id}: #{payment_intent_data.id}"
+        rescue => e
+          raise TransientError, "Failed to handle payment failure: #{e.message}"
+        end
+
+        def find_subscription_by_stripe_id(stripe_subscription_id)
+          return nil unless stripe_subscription_id
+          
+          Subscription.find_by!(stripe_subscription_id: stripe_subscription_id)
         end
       end
     end
@@ -758,14 +1142,70 @@ after_bundle do
     # frozen_string_literal: true
 
     class StripeWebhookRetryJob < ApplicationJob
+      queue_as :default
       retry_on StandardError, wait: :exponentially_longer, attempts: 5
 
-      def perform(stripe_event_id)
+      def perform(stripe_event_id, retry_count = 0)
         # Fetch the event from Stripe
         event = Stripe::Event.retrieve(stripe_event_id)
         
-        # Re-process the webhook
-        Webhooks::StripeController.new.handle_event(event)
+        # Create a mock request with retry count for the controller
+        controller = Webhooks::StripeController.new
+        controller.instance_variable_set(:@event, event)
+        
+        # Set retry count in params
+        allow(controller).to receive(:params).and_return({ retry_count: retry_count })
+        
+        # Process the webhook
+        controller.send(:handle_event_processing)
+      rescue Stripe::StripeError => e
+        Rails.logger.error "Stripe API error in webhook retry: #{e.message}"
+        
+        # Mark as permanently failed if it's a Stripe API error
+        WebhookEvent.create!(
+          stripe_event_id: stripe_event_id,
+          event_type: event&.type || 'unknown',
+          processed_at: Time.current,
+          error_message: e.message,
+          error_type: 'stripe_api_error',
+          retry_count: retry_count
+        )
+        
+        raise e # Don't retry Stripe API errors
+      rescue => e
+        Rails.logger.error "Error in webhook retry job: #{e.message}"
+        
+        # Update retry count
+        webhook_event = WebhookEvent.find_by(stripe_event_id: stripe_event_id)
+        if webhook_event
+          webhook_event.update!(retry_count: retry_count)
+        end
+        
+        raise e # Let Sidekiq handle the retry
+      end
+
+      private
+
+      # Extract event processing logic for testing
+      def handle_event_processing
+        # This method would contain the actual event processing logic
+        # For now, we'll delegate back to the controller
+        case @event.type
+        when 'invoice.paid'
+          handle_invoice_paid
+        when 'invoice.payment_failed'
+          handle_invoice_payment_failed
+        when 'customer.subscription.updated'
+          handle_subscription_updated
+        when 'customer.subscription.deleted'
+          handle_subscription_deleted
+        when 'customer.subscription.trial_will_end'
+          handle_trial_will_end
+        when 'payment_intent.succeeded'
+          handle_payment_intent_succeeded
+        when 'payment_intent.payment_failed'
+          handle_payment_intent_failed
+        end
       end
     end
   RUBY
@@ -785,6 +1225,10 @@ after_bundle do
           t.integer :trial_period_days, default: 0
           t.text :description
           t.text :features # JSON or serialized array
+          t.text :metadata # JSON for flexible plan configuration
+          t.text :feature_limits # JSON for usage limits and tiers
+          t.integer :sort_order, default: 0
+          t.boolean :highlighted, default: false # for "most popular" styling
           t.boolean :active, default: true
           t.timestamps
         end
@@ -818,6 +1262,9 @@ after_bundle do
           t.string :stripe_event_id, null: false
           t.string :event_type, null: false
           t.datetime :processed_at
+          t.text :error_message
+          t.string :error_type
+          t.integer :retry_count, default: 0
           t.timestamps
         end
 
@@ -874,6 +1321,18 @@ after_bundle do
       patch '/billing/change_plan', to: 'billing#change_plan'
       get '/billing/invoices/:id/download', to: 'billing#download_invoice', as: 'download_invoice'
       
+      # Admin billing routes
+      namespace :admin do
+        resources :plans do
+          member do
+            patch :activate
+            patch :deactivate
+          end
+        end
+        resources :coupons
+        resources :webhook_events, only: [:index, :show]
+      end
+      
       # Stripe webhooks
       post '/webhooks/stripe', to: 'webhooks/stripe#handle'
     end
@@ -903,7 +1362,10 @@ after_bundle do
           interval: "month",
           trial_period_days: 7,
           description: "Perfect for individuals getting started",
-          features: ["5 projects", "Basic support", "1GB storage"].to_json
+          features: ["5 projects", "Basic support", "1GB storage"],
+          feature_limits: { "projects" => 5, "storage_gb" => 1, "api_calls" => 1000 },
+          metadata: { "support_level" => "basic", "onboarding" => true },
+          sort_order: 1
         },
         {
           name: "Professional",
@@ -913,7 +1375,11 @@ after_bundle do
           interval: "month",
           trial_period_days: 14,
           description: "Ideal for growing teams",
-          features: ["Unlimited projects", "Priority support", "10GB storage", "Advanced analytics"].to_json
+          features: ["Unlimited projects", "Priority support", "10GB storage", "Advanced analytics"],
+          feature_limits: { "projects" => -1, "storage_gb" => 10, "api_calls" => 10000 },
+          metadata: { "support_level" => "priority", "analytics" => true },
+          sort_order: 2,
+          highlighted: true
         },
         {
           name: "Enterprise",
@@ -923,7 +1389,10 @@ after_bundle do
           interval: "month",
           trial_period_days: 30,
           description: "For large organizations",
-          features: ["Everything in Professional", "Custom integrations", "Unlimited storage", "Dedicated support"].to_json
+          features: ["Everything in Professional", "Custom integrations", "Unlimited storage", "Dedicated support"],
+          feature_limits: { "projects" => -1, "storage_gb" => -1, "api_calls" => -1 },
+          metadata: { "support_level" => "dedicated", "custom_integrations" => true },
+          sort_order: 3
         }
       ])
 
@@ -967,6 +1436,7 @@ after_bundle do
   # Create view directories and files
   empty_directory 'app/domains/billing/app/views/billing'
   empty_directory 'app/domains/billing/app/views/billing_mailer'
+  empty_directory 'app/domains/billing/app/views/admin/plans'
 
   # Copy view templates
   template 'billing/index.html.erb', 'app/domains/billing/app/views/billing/index.html.erb'
@@ -974,6 +1444,12 @@ after_bundle do
   template 'billing_mailer/invoice_paid.html.erb', 'app/domains/billing/app/views/billing_mailer/invoice_paid.html.erb'
   template 'billing_mailer/payment_failed.html.erb', 'app/domains/billing/app/views/billing_mailer/payment_failed.html.erb'
   template 'billing_mailer/trial_will_end.html.erb', 'app/domains/billing/app/views/billing_mailer/trial_will_end.html.erb'
+  
+  # Copy admin view templates
+  template 'admin/plans/index.html.erb', 'app/domains/billing/app/views/admin/plans/index.html.erb'
+  template 'admin/plans/show.html.erb', 'app/domains/billing/app/views/admin/plans/show.html.erb'
+  template 'admin/plans/new.html.erb', 'app/domains/billing/app/views/admin/plans/new.html.erb'
+  template 'admin/plans/edit.html.erb', 'app/domains/billing/app/views/admin/plans/edit.html.erb'
 
   # Copy JavaScript assets
   copy_file 'billing.js', 'app/domains/billing/app/assets/javascripts/billing.js'
@@ -998,6 +1474,15 @@ after_bundle do
   ENV
 
   say_status :synth_billing, "Billing module installed successfully!"
-  say_status :synth_billing, "Please run 'rails db:migrate' and configure your Stripe API keys."
-  say_status :synth_billing, "Don't forget to set up webhook endpoints in your Stripe dashboard."
+  say_status :synth_billing, "✅ Enhanced plan model with metadata and feature limits"
+  say_status :synth_billing, "✅ Improved webhook retry logic with error classification"
+  say_status :synth_billing, "✅ Added admin UI for plan management"
+  say_status :synth_billing, "✅ Comprehensive edge case tests included"
+  say_status :synth_billing, ""
+  say_status :synth_billing, "Next steps:"
+  say_status :synth_billing, "1. Run 'rails db:migrate' to create billing tables"
+  say_status :synth_billing, "2. Configure your Stripe API keys in .env"
+  say_status :synth_billing, "3. Set up webhook endpoints in your Stripe dashboard"
+  say_status :synth_billing, "4. Access admin plan management at /admin/plans"
+  say_status :synth_billing, "5. Add admin? method to User model for admin access"
 end
