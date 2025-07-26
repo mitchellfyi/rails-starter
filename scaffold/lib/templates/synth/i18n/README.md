@@ -76,7 +76,7 @@ Use I18n helpers for consistent formatting:
    ```
 3. Add RTL support if needed:
    ```ruby
-   # config/initializers/i18n.rb
+   # Modify the RTL locales in config/initializers/i18n.rb if needed
    I18N_RTL_LOCALES = %i[ar he fa ur].freeze
    ```
 
