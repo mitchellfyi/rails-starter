@@ -31,9 +31,6 @@ gem 'jsonapi-serializer', '~> 3.2'
 
 gem 'rswag', '~> 2.14'
 
-
-
-
 gem_group :development, :test do
   gem 'dotenv-rails', '~> 3.1'
   gem 'factory_bot_rails', '~> 6.2'
