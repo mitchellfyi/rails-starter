@@ -6,7 +6,8 @@
 say 'Installing Notifications module...'
 
 # Create domain-specific directories
-run 'mkdir -p app/domains/notifications/app/{controllers,models,mailers,jobs,views/notifications,views/notification_mailer,views/notification_preferences}'
+run 'mkdir -p app/domains/notifications/app/{controllers,mailers,jobs,views/notifications,views/notification_mailer,views/notification_preferences}'
+run 'mkdir -p app/models' # Ensure models directory exists
 run 'mkdir -p app/domains/notifications/app/javascript/controllers'
 run 'mkdir -p spec/domains/notifications/{models,controllers,jobs,mailers,integration,fixtures}'
 
@@ -26,7 +27,7 @@ unless gems_to_add.empty?
 end
 
 # Generate models (skip if they already exist)
-if File.exist?('app/models/notification.rb') || File.exist?('app/domains/notifications/app/models/notification.rb')
+if File.exist?('app/models/notification.rb')
   say 'Notification model already exists, skipping generation...'
 else
   generate :model, 'Notification', 
@@ -36,19 +37,17 @@ else
     'message:text', 
     'data:json', 
     'read_at:datetime', 
-    'dismissed_at:datetime',
-    dir: 'app/domains/notifications/app/models'
+    'dismissed_at:datetime'
 end
 
-if File.exist?('app/models/notification_preference.rb') || File.exist?('app/domains/notifications/app/models/notification_preference.rb')
+if File.exist?('app/models/notification_preference.rb')
   say 'NotificationPreference model already exists, skipping generation...'
 else
   generate :model, 'NotificationPreference',
     'user:references',
     'email_notifications:boolean',
     'in_app_notifications:boolean', 
-    'notification_types:json',
-    dir: 'app/domains/notifications/app/models'
+    'notification_types:json'
 end
 
 # Generate controllers
@@ -88,8 +87,8 @@ end
 say 'Copying enhanced model files...'
 template_dir = File.expand_path('lib/templates/synth/notifications', Rails.root)
 
-copy_file File.join(template_dir, 'app/models/notification.rb'), 'app/domains/notifications/app/models/notification.rb', force: true
-copy_file File.join(template_dir, 'app/models/notification_preference.rb'), 'app/domains/notifications/app/models/notification_preference.rb', force: true
+copy_file File.join(template_dir, 'app/models/notification.rb'), 'app/models/notification.rb', force: true
+copy_file File.join(template_dir, 'app/models/notification_preference.rb'), 'app/models/notification_preference.rb', force: true
 
 # Copy controllers
 copy_file File.join(template_dir, 'app/controllers/notifications_controller.rb'), 'app/domains/notifications/app/controllers/notifications_controller.rb', force: true

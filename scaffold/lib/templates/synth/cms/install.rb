@@ -483,7 +483,7 @@ after_bundle do
   # Create model concerns and update models
   run 'mkdir -p app/models/concerns'
   
-  create_file 'app/domains/cms/app/models/concerns/seo_meta.rb', <<~'RUBY'
+  create_file 'app/models/concerns/seo_meta.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module SeoMeta
@@ -504,7 +504,7 @@ after_bundle do
   RUBY
 
   # Update generated models
-  gsub_file 'app/domains/cms/app/models/cms/category.rb', /class Cms::Category.*/, <<~'RUBY'
+  gsub_file 'app/models/cms/category.rb', /class Cms::Category.*/, <<~'RUBY'
     class Cms::Category < ApplicationRecord
       include SeoMeta
       
@@ -532,7 +532,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/domains/cms/app/models/cms/tag.rb', /class Cms::Tag.*/, <<~'RUBY'
+  gsub_file 'app/models/cms/tag.rb', /class Cms::Tag.*/, <<~'RUBY'
     class Cms::Tag < ApplicationRecord
       extend FriendlyId
       friendly_id :name, use: :slugged
@@ -554,7 +554,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/domains/cms/app/models/cms/post.rb', /class Cms::Post.*/, <<~'RUBY'
+  gsub_file 'app/models/cms/post.rb', /class Cms::Post.*/, <<~'RUBY'
     class Cms::Post < ApplicationRecord
       include SeoMeta
       
@@ -602,7 +602,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/domains/cms/app/models/cms/page.rb', /class Cms::Page.*/, <<~'RUBY'
+  gsub_file 'app/models/cms/page.rb', /class Cms::Page.*/, <<~'RUBY'
     class Cms::Page < ApplicationRecord
       include SeoMeta
       
