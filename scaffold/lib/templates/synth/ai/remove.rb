@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # AI module removal script
-puts 'Removing AI module...'
+say 'Removing AI module...'
 
 # In a real implementation, this would:
 # - Remove AI-related models and migrations
