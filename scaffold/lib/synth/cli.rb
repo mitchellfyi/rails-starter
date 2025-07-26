@@ -4,7 +4,6 @@
 require 'thor'
 require 'fileutils'
 require 'logger'
-require 'json'
 require 'time'
 
 module Synth
