@@ -1,0 +1,127 @@
+<div class="max-w-6xl mx-auto p-6">
+  <h1 class="text-3xl font-bold mb-6">Choose Your Plan</h1>
+
+  <% if current_user.subscribed? %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <p class="text-blue-700">You currently have the <strong><%= current_user.active_subscription.plan.name %></strong> plan.</p>
+    </div>
+  <% end %>
+
+  <!-- Coupon Code Input -->
+  <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+    <h2 class="text-lg font-semibold mb-4">Have a coupon code?</h2>
+    <form action="" method="get" class="flex space-x-2">
+      <input type="text" name="coupon_code" placeholder="Enter coupon code" 
+             value="<%= params[:coupon_code] %>"
+             class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+      <button type="submit" class="btn btn-secondary">Apply</button>
+    </form>
+    
+    <% if params[:coupon_code].present? && @coupon %>
+      <div class="mt-2 text-green-600">
+        ✓ Coupon "<%= @coupon.code %>" applied: <%= @coupon.discount_description %>
+      </div>
+    <% elsif params[:coupon_code].present? %>
+      <div class="mt-2 text-red-600">
+        ✗ Invalid or expired coupon code
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Plans Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <% @plans.each_with_index do |plan, index| %>
+      <div class="bg-white border border-gray-200 rounded-lg overflow-hidden 
+                  <%= index == 1 ? 'border-blue-500 shadow-lg transform scale-105' : '' %>">
+        
+        <% if index == 1 %>
+          <div class="bg-blue-500 text-white text-center py-2 text-sm font-medium">
+            Most Popular
+          </div>
+        <% end %>
+        
+        <div class="p-6">
+          <h3 class="text-xl font-bold mb-2"><%= plan.name %></h3>
+          
+          <div class="mb-4">
+            <span class="text-3xl font-bold">$<%= plan.price_in_dollars %></span>
+            <span class="text-gray-500">/ <%= plan.interval %></span>
+          </div>
+          
+          <% if plan.has_trial? %>
+            <div class="bg-green-50 border border-green-200 rounded p-2 mb-4">
+              <p class="text-green-700 text-sm font-medium">
+                <%= plan.trial_period_days %> day free trial
+              </p>
+            </div>
+          <% end %>
+          
+          <p class="text-gray-600 mb-4"><%= plan.description %></p>
+          
+          <!-- Features List -->
+          <% if plan.features.present? %>
+            <ul class="space-y-2 mb-6">
+              <% JSON.parse(plan.features).each do |feature| %>
+                <li class="flex items-center text-sm">
+                  <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                  </svg>
+                  <%= feature %>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+          
+          <!-- Action Button -->
+          <% if current_user.subscribed? %>
+            <% if current_user.active_subscription.plan == plan %>
+              <button disabled class="w-full btn btn-disabled">Current Plan</button>
+            <% else %>
+              <%= form_with url: billing_change_plan_path, method: :patch, local: true do |form| %>
+                <%= form.hidden_field :plan_id, value: plan.id %>
+                <%= form.hidden_field :coupon_code, value: params[:coupon_code] %>
+                <%= form.submit current_user.active_subscription.plan.amount > plan.amount ? 'Downgrade' : 'Upgrade',
+                                class: 'w-full btn btn-primary' %>
+              <% end %>
+            <% end %>
+          <% else %>
+            <%= form_with url: billing_subscribe_path, method: :post, local: true do |form| %>
+              <%= form.hidden_field :plan_id, value: plan.id %>
+              <%= form.hidden_field :coupon_code, value: params[:coupon_code] %>
+              <%= form.submit plan.has_trial? ? 'Start Free Trial' : 'Subscribe Now',
+                              class: "w-full btn #{index == 1 ? 'btn-primary' : 'btn-secondary'}" %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Additional Info -->
+  <div class="mt-8 text-center text-gray-600">
+    <p class="mb-2">All plans include our core features and 24/7 support.</p>
+    <p>Cancel anytime. No hidden fees.</p>
+  </div>
+</div>
+
+<style>
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+  
+  .btn-disabled {
+    @apply bg-gray-100 text-gray-400 cursor-not-allowed;
+  }
+  
+  .btn-outline-danger {
+    @apply border border-red-500 text-red-500 hover:bg-red-50;
+  }
+</style>

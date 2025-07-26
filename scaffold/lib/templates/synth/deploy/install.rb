@@ -1,83 +1,70 @@
 # frozen_string_literal: true
 
-# Deploy module installer
-say 'Installing Deploy module...'
+# Deploy module installation script
+# This script sets up deployment configurations for Fly.io, Render, and Kamal
 
-# Create deployment directory structure
-empty_directory 'config/deploy'
-empty_directory '.github/workflows'
+say_status :synth_deploy, "Installing deploy module..."
 
-# Create Fly.io configuration
-create_file 'fly.toml', <<~TOML
-  app = "my-rails-app"
-  primary_region = "iad"
+# Template directory path
+template_dir = File.dirname(__FILE__)
 
-  [build]
+# Copy Fly.io configuration
+template File.join(template_dir, 'fly.toml.tt'), 'fly.toml'
 
-  [http_service]
-    internal_port = 3000
-    force_https = true
-    auto_stop_machines = "suspend"
-    auto_start_machines = true
-    min_machines_running = 0
-    processes = ["app"]
+# Copy Render configuration  
+template File.join(template_dir, 'render.yaml.tt'), 'render.yaml'
 
-  [[vm]]
-    memory = "1gb"
-    cpu_kind = "shared"
-    cpus = 1
+# Copy Kamal configuration
+template File.join(template_dir, 'config/deploy.yml.tt'), 'config/deploy.yml'
+copy_file File.join(template_dir, 'config/postgres/init.sql'), 'config/postgres/init.sql'
 
-  [env]
-    PORT = "3000"
-    RAILS_ENV = "production"
-TOML
+# Copy container files
+copy_file File.join(template_dir, 'Dockerfile'), 'Dockerfile'
+copy_file File.join(template_dir, '.dockerignore'), '.dockerignore'
 
-# Create GitHub Actions workflow
-create_file '.github/workflows/deploy.yml', <<~YAML
-  name: Deploy to Production
-  on:
-    push:
-      branches: [main]
-  
-  jobs:
-    deploy:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Setup Ruby
-          uses: ruby/setup-ruby@v1
-          with:
-            bundler-cache: true
-        - name: Run tests
-          run: bundle exec rspec
-        - name: Deploy to Fly.io
-          uses: superfly/flyctl-actions@v1
-          with:
-            args: "deploy"
-          env:
-            FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-YAML
+# Copy environment template
+copy_file File.join(template_dir, '.env.production.example'), '.env.production.example'
 
-# Create production environment template
-create_file '.env.production.example', <<~ENV
-  # Production environment variables
-  RAILS_MASTER_KEY=
-  DATABASE_URL=
-  REDIS_URL=
-  
-  # AI Providers
-  OPENAI_API_KEY=
-  ANTHROPIC_API_KEY=
-  
-  # Stripe
-  STRIPE_PUBLISHABLE_KEY=
-  STRIPE_SECRET_KEY=
-  STRIPE_WEBHOOK_SECRET=
-  
-  # Email
-  SMTP_HOST=
-  SMTP_USERNAME=
-  SMTP_PASSWORD=
-ENV
+# Copy GitHub Actions workflows
+copy_file File.join(template_dir, '.github/workflows/fly-deploy.yml'), '.github/workflows/fly-deploy.yml'
+copy_file File.join(template_dir, '.github/workflows/kamal-deploy.yml'), '.github/workflows/kamal-deploy.yml'
 
-say 'Deploy module installed! Configure fly.toml and environment variables for deployment'
+# Create health check endpoint
+route "get '/health', to: 'health#show'"
+
+# Create health controller
+create_file 'app/controllers/health_controller.rb', <<~RUBY
+  # frozen_string_literal: true
+
+  class HealthController < ApplicationController
+    def show
+      render json: { 
+        status: 'ok', 
+        timestamp: Time.current,
+        version: Rails.application.config.version || '1.0.0'
+      }
+    end
+  end
+RUBY
+
+# Add deployment-related gems
+gem 'kamal', group: :development
+
+say_status :synth_deploy, "✅ Deploy module installed!"
+say ""
+say "Next steps:"
+say "1. Review and customize deployment configurations:"
+say "   - fly.toml (Fly.io)"
+say "   - render.yaml (Render)"
+say "   - config/deploy.yml (Kamal)"
+say ""
+say "2. Set up your environment variables:"
+say "   - Copy .env.production.example to .env.production"
+say "   - Fill in your secrets and configuration"
+say ""
+say "3. Deploy to your chosen platform:"
+say "   - Fly.io: flyctl launch"
+say "   - Render: Connect your GitHub repo"
+say "   - Kamal: kamal setup"
+say ""
+say "See the deploy module README for detailed instructions."

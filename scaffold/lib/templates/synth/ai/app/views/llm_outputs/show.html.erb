@@ -1,0 +1,150 @@
+<div class="max-w-4xl mx-auto p-6">
+  <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <!-- Header -->
+    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-900"><%= @llm_output.template_name %></h1>
+          <div class="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+            <span class="flex items-center">
+              <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <%= @llm_output.model_name %>
+            </span>
+            <span><%= @llm_output.format.upcase %></span>
+            <span><%= @llm_output.created_at.strftime("%B %d, %Y at %I:%M %p") %></span>
+          </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                       <%= @llm_output.success? ? 'bg-green-100 text-green-800' : 
+                           @llm_output.failed? ? 'bg-red-100 text-red-800' : 
+                           @llm_output.processing? ? 'bg-yellow-100 text-yellow-800' : 
+                           'bg-gray-100 text-gray-800' %>">
+            <%= @llm_output.status.humanize %>
+          </span>
+          
+          <% if current_user == @llm_output.user %>
+            <div class="flex space-x-2">
+              <% if @llm_output.success? %>
+                <%= button_to "Re-run", re_run_llm_output_path(@llm_output), 
+                    method: :post, 
+                    class: "bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm",
+                    confirm: "Re-run this job with the same parameters?" %>
+                
+                <%= button_to "Regenerate", regenerate_llm_output_path(@llm_output), 
+                    method: :post, 
+                    class: "bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-sm",
+                    confirm: "Generate new output with the same parameters?" %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context Information -->
+    <% if @llm_output.context.present? && @llm_output.context.any? %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-900 mb-2">Context Variables</h3>
+        <div class="bg-gray-50 rounded p-3">
+          <% @llm_output.context.each do |key, value| %>
+            <div class="flex text-sm">
+              <span class="font-medium text-gray-700 w-24 flex-shrink-0"><%= key %>:</span>
+              <span class="text-gray-600"><%= value %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Prompt -->
+    <% if @llm_output.prompt.present? %>
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-sm font-medium text-gray-900 mb-2">Generated Prompt</h3>
+        <div class="bg-blue-50 rounded p-3">
+          <pre class="text-sm text-gray-700 whitespace-pre-wrap"><%= @llm_output.prompt %></pre>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Output -->
+    <div class="px-6 py-4">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm font-medium text-gray-900">AI Response</h3>
+        <% if current_user == @llm_output.user %>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-gray-500">Was this helpful?</span>
+            
+            <%= form_with url: feedback_llm_output_path(@llm_output), method: :post, local: false, class: "flex space-x-1" do |f| %>
+              <%= button_to feedback_llm_output_path(@llm_output), 
+                  params: { feedback_type: 'thumbs_up' }, 
+                  method: :post,
+                  remote: true,
+                  class: "p-1 rounded hover:bg-gray-100 #{'bg-green-100' if @llm_output.thumbs_up?}" do %>
+                <span class="text-lg">👍</span>
+              <% end %>
+              
+              <%= button_to feedback_llm_output_path(@llm_output), 
+                  params: { feedback_type: 'thumbs_down' }, 
+                  method: :post,
+                  remote: true,
+                  class: "p-1 rounded hover:bg-gray-100 #{'bg-red-100' if @llm_output.thumbs_down?}" do %>
+                <span class="text-lg">👎</span>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @llm_output.success? %>
+        <div class="prose max-w-none">
+          <% case @llm_output.format %>
+          <% when 'markdown' %>
+            <%= simple_format(@llm_output.formatted_output) %>
+          <% when 'html' %>
+            <%= raw(@llm_output.formatted_output) %>
+          <% when 'json' %>
+            <pre class="bg-gray-100 rounded p-4 text-sm overflow-x-auto"><%= @llm_output.formatted_output %></pre>
+          <% else %>
+            <div class="whitespace-pre-wrap text-gray-700"><%= @llm_output.formatted_output %></div>
+          <% end %>
+        </div>
+      <% elsif @llm_output.failed? %>
+        <div class="bg-red-50 border border-red-200 rounded p-4">
+          <h4 class="text-red-800 font-medium">Job Failed</h4>
+          <p class="text-red-700 text-sm mt-1"><%= @llm_output.raw_response %></p>
+        </div>
+      <% elsif @llm_output.pending? %>
+        <div class="bg-yellow-50 border border-yellow-200 rounded p-4">
+          <h4 class="text-yellow-800 font-medium">Job Pending</h4>
+          <p class="text-yellow-700 text-sm mt-1">This job is waiting to be processed...</p>
+        </div>
+      <% elsif @llm_output.processing? %>
+        <div class="bg-blue-50 border border-blue-200 rounded p-4">
+          <h4 class="text-blue-800 font-medium">Job Processing</h4>
+          <p class="text-blue-700 text-sm mt-1">This job is currently being processed...</p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Metadata Footer -->
+    <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+      <div class="flex justify-between items-center">
+        <div>Job ID: <%= @llm_output.job_id %></div>
+        <div class="flex space-x-4">
+          <span>Estimated tokens: <%= @llm_output.estimated_token_count %></span>
+          <% if @llm_output.feedback_at %>
+            <span>Feedback: <%= time_ago_in_words(@llm_output.feedback_at) %> ago</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6">
+    <%= link_to "← Back to outputs", llm_outputs_path, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+</div>

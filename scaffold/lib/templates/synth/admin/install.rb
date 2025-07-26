@@ -1,24 +1,957 @@
 # frozen_string_literal: true
 
-# Admin module installer
-say 'Installing Admin module...'
+# Synth Admin module installer for the Rails SaaS starter template.
+# This install script sets up a comprehensive admin panel with impersonation,
+# audit logs, Sidekiq UI, and feature flag management.
 
-# Add admin field to users if it doesn't exist
-unless ActiveRecord::Base.connection.column_exists?(:users, :admin)
-  generate :migration, 'AddAdminToUsers', 'admin:boolean'
+say_status :synth_admin, "Installing Admin Panel module"
+
+# Add admin-specific gems to the application's Gemfile
+gem 'flipper', '~> 1.3'
+gem 'flipper-ui', '~> 1.3' 
+gem 'flipper-active_record', '~> 1.3'
+gem 'paper_trail', '~> 15.0'
+gem 'pundit', '~> 2.4'
+
+# Run bundle install and set up admin configuration after gems are installed
+after_bundle do
+  
+  # ==========================================
+  # CONFIGURATION AND INITIALIZERS
+  # ==========================================
+  
+  # Create admin configuration initializer
+  initializer 'admin.rb', <<~'RUBY'
+    # Admin panel configuration
+    Rails.application.config.admin = ActiveSupport::OrderedOptions.new
+    
+    # Session timeout for impersonation (in minutes)
+    Rails.application.config.admin.impersonation_timeout = 60
+    
+    # Enable/disable audit logging
+    Rails.application.config.admin.audit_enabled = true
+    
+    # Models to audit (add more as needed)
+    Rails.application.config.admin.audited_models = %w[User]
+  RUBY
+
+  # Create Flipper configuration
+  initializer 'flipper.rb', <<~'RUBY'
+    # Flipper feature flag configuration
+    require 'flipper'
+    require 'flipper/adapters/active_record'
+    
+    Flipper.configure do |config|
+      config.adapter { Flipper::Adapters::ActiveRecord.new }
+    end
+    
+    # Default feature flags
+    Rails.application.config.after_initialize do
+      Flipper.enable_percentage_of_time(:new_ui, 0)
+      Flipper.enable_percentage_of_time(:beta_features, 0)
+    end
+  RUBY
+
+  # Configure PaperTrail for audit logging
+  initializer 'paper_trail.rb', <<~'RUBY'
+    # PaperTrail configuration for audit logging
+    PaperTrail.config.enabled = Rails.application.config.admin.audit_enabled
+    
+    # Track additional metadata
+    PaperTrail.serializer = PaperTrail::Serializers::JSON
+  RUBY
+
+  # ==========================================
+  # GENERATORS AND MIGRATIONS  
+  # ==========================================
+
+  # Generate PaperTrail configuration
+  generate 'paper_trail:install'
+  
+  # Generate Pundit configuration
+  generate 'pundit:install'
+
+  # Generate Flipper migrations
+  generate 'flipper:active_record'
+
+  # ==========================================
+  # MODELS
+  # ==========================================
+
+  # Create Admin User concern
+  create_file 'app/models/concerns/admin_user.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    module AdminUser
+      extend ActiveSupport::Concern
+
+      included do
+        # Add admin field to users
+        # Migration should add: add_column :users, :admin, :boolean, default: false
+      end
+
+      def admin?
+        admin == true
+      end
+
+      def can_impersonate?
+        admin? && !being_impersonated?
+      end
+
+      def being_impersonated?
+        false # Override in impersonation implementation
+      end
+    end
+  RUBY
+
+  # Create Auditable concern for models
+  create_file 'app/models/concerns/auditable.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    module Auditable
+      extend ActiveSupport::Concern
+
+      included do
+        has_paper_trail(
+          meta: {
+            ip: :current_ip,
+            user_agent: :current_user_agent,
+            admin_user_id: :current_admin_user_id
+          }
+        )
+      end
+
+      private
+
+      def current_ip
+        RequestStore.store[:current_ip]
+      end
+
+      def current_user_agent
+        RequestStore.store[:current_user_agent]
+      end
+
+      def current_admin_user_id
+        RequestStore.store[:current_admin_user_id]
+      end
+    end
+  RUBY
+
+  # Create AuditLog model for easier querying
+  create_file 'app/models/audit_log.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class AuditLog < ApplicationRecord
+      self.table_name = 'versions'
+
+      belongs_to :item, polymorphic: true, optional: true
+      belongs_to :admin_user, class_name: 'User', foreign_key: 'whodunnit', optional: true
+
+      scope :recent, -> { order(created_at: :desc) }
+      scope :for_item_type, ->(type) { where(item_type: type) }
+      scope :for_admin, ->(admin_id) { where(whodunnit: admin_id) }
+      scope :created_between, ->(start_date, end_date) { where(created_at: start_date..end_date) }
+
+      def item_display_name
+        return 'Deleted Item' if item.nil?
+        
+        item.try(:name) || item.try(:title) || item.try(:email) || "#{item_type} ##{item_id}"
+      end
+
+      def action_display
+        event.humanize
+      end
+
+      def changes_summary
+        return 'Item created' if event == 'create'
+        return 'Item deleted' if event == 'destroy'
+        
+        if object_changes.present?
+          changed_fields = JSON.parse(object_changes).keys
+          "Changed: #{changed_fields.join(', ')}"
+        else
+          'Updated'
+        end
+      end
+    end
+  RUBY
+
+  # ==========================================
+  # CONTROLLERS
+  # ==========================================
+
+  # Create base admin controller
+  create_file 'app/controllers/admin/base_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::BaseController < ApplicationController
+      include Pundit::Authorization
+      
+      before_action :authenticate_user!
+      before_action :ensure_admin!
+      before_action :set_paper_trail_whodunnit
+      before_action :store_request_metadata
+
+      layout 'admin'
+
+      private
+
+      def ensure_admin!
+        redirect_to root_path, alert: 'Access denied.' unless current_user&.admin?
+      end
+
+      def set_paper_trail_whodunnit
+        set_paper_trail_whodunnit(current_user)
+      end
+
+      def store_request_metadata
+        RequestStore.store[:current_ip] = request.remote_ip
+        RequestStore.store[:current_user_agent] = request.user_agent
+        RequestStore.store[:current_admin_user_id] = current_user&.id
+      end
+    end
+  RUBY
+
+  # Create admin dashboard controller
+  create_file 'app/controllers/admin/dashboard_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::DashboardController < Admin::BaseController
+      def index
+        @user_count = User.count
+        @recent_audit_logs = AuditLog.recent.limit(10)
+        @active_feature_flags = Flipper.features.select(&:enabled?)
+      end
+    end
+  RUBY
+
+  # Create users management controller
+  create_file 'app/controllers/admin/users_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::UsersController < Admin::BaseController
+      before_action :set_user, only: [:show, :edit, :update, :destroy, :impersonate]
+
+      def index
+        @users = User.all.order(:email)
+        @users = @users.where('email ILIKE ?', "%#{params[:search]}%") if params[:search].present?
+        @users = @users.page(params[:page])
+      end
+
+      def show
+        @audit_logs = AuditLog.for_item_type('User').where(item_id: @user.id).recent.limit(20)
+      end
+
+      def edit
+      end
+
+      def update
+        if @user.update(user_params)
+          redirect_to admin_user_path(@user), notice: 'User updated successfully.'
+        else
+          render :edit
+        end
+      end
+
+      def destroy
+        @user.destroy
+        redirect_to admin_users_path, notice: 'User deleted successfully.'
+      end
+
+      def impersonate
+        if current_user.can_impersonate?
+          session[:impersonated_user_id] = @user.id
+          session[:admin_user_id] = current_user.id
+          session[:impersonation_started_at] = Time.current
+          
+          redirect_to root_path, notice: "Now impersonating #{@user.email}"
+        else
+          redirect_to admin_users_path, alert: 'Cannot impersonate user.'
+        end
+      end
+
+      def stop_impersonation
+        if session[:impersonated_user_id]
+          session.delete(:impersonated_user_id)
+          session.delete(:admin_user_id)
+          session.delete(:impersonation_started_at)
+          
+          redirect_to admin_dashboard_path, notice: 'Stopped impersonating user.'
+        else
+          redirect_to admin_dashboard_path, alert: 'Not currently impersonating.'
+        end
+      end
+
+      private
+
+      def set_user
+        @user = User.find(params[:id])
+      end
+
+      def user_params
+        params.require(:user).permit(:email, :admin)
+      end
+    end
+  RUBY
+
+  # Create audit logs controller
+  create_file 'app/controllers/admin/audit_logs_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::AuditLogsController < Admin::BaseController
+      def index
+        @audit_logs = AuditLog.recent
+        
+        # Apply filters
+        @audit_logs = @audit_logs.for_item_type(params[:item_type]) if params[:item_type].present?
+        @audit_logs = @audit_logs.for_admin(params[:admin_id]) if params[:admin_id].present?
+        
+        if params[:start_date].present? && params[:end_date].present?
+          @audit_logs = @audit_logs.created_between(
+            Date.parse(params[:start_date]),
+            Date.parse(params[:end_date])
+          )
+        end
+        
+        @audit_logs = @audit_logs.page(params[:page])
+        
+        # For filter dropdowns
+        @item_types = AuditLog.distinct.pluck(:item_type).compact
+        @admin_users = User.where(admin: true)
+      end
+
+      def show
+        @audit_log = AuditLog.find(params[:id])
+      end
+    end
+  RUBY
+
+  # Create feature flags controller
+  create_file 'app/controllers/admin/feature_flags_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::FeatureFlagsController < Admin::BaseController
+      def index
+        @feature_flags = Flipper.features.to_a
+      end
+
+      def show
+        @feature_flag = Flipper[params[:id]]
+      end
+
+      def toggle
+        feature_flag = Flipper[params[:id]]
+        
+        if feature_flag.enabled?
+          feature_flag.disable
+          message = "Feature '#{params[:id]}' disabled"
+        else
+          feature_flag.enable
+          message = "Feature '#{params[:id]}' enabled"
+        end
+        
+        redirect_to admin_feature_flags_path, notice: message
+      end
+
+      def update_percentage
+        feature_flag = Flipper[params[:id]]
+        percentage = params[:percentage].to_i
+        
+        feature_flag.enable_percentage_of_time(percentage)
+        
+        redirect_to admin_feature_flag_path(params[:id]), 
+                    notice: "Feature '#{params[:id]}' set to #{percentage}% of time"
+      end
+    end
+  RUBY
+
+  # Create Sidekiq controller for authentication
+  create_file 'app/controllers/admin/sidekiq_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::SidekiqController < Admin::BaseController
+      def index
+        redirect_to '/admin/sidekiq'
+      end
+    end
+  RUBY
+
+  # ==========================================
+  # VIEWS
+  # ==========================================
+
+  # Create admin layout
+  create_file 'app/views/layouts/admin.html.erb', <<~'ERB'
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Admin Panel - <%= Rails.application.class.module_parent_name %></title>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <%= csrf_meta_tags %>
+        <%= csp_meta_tag %>
+        
+        <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+        <%= javascript_importmap_tags %>
+      </head>
+
+      <body class="admin-panel">
+        <!-- Impersonation Banner -->
+        <% if session[:impersonated_user_id] %>
+          <div class="bg-red-600 text-white p-3 text-center">
+            <strong>⚠️ You are impersonating: <%= User.find(session[:impersonated_user_id]).email %></strong>
+            <%= link_to "Stop Impersonating", admin_stop_impersonation_path, 
+                        method: :delete, 
+                        class: "ml-4 underline hover:no-underline",
+                        data: { confirm: "Stop impersonating this user?" } %>
+          </div>
+        <% end %>
+
+        <!-- Admin Navigation -->
+        <nav class="bg-gray-800 text-white p-4">
+          <div class="container mx-auto flex justify-between items-center">
+            <div class="flex space-x-6">
+              <%= link_to "Dashboard", admin_dashboard_path, class: "hover:text-gray-300" %>
+              <%= link_to "Users", admin_users_path, class: "hover:text-gray-300" %>
+              <%= link_to "Audit Logs", admin_audit_logs_path, class: "hover:text-gray-300" %>
+              <%= link_to "Feature Flags", admin_feature_flags_path, class: "hover:text-gray-300" %>
+              <%= link_to "Sidekiq", "/admin/sidekiq", class: "hover:text-gray-300", target: "_blank" %>
+            </div>
+            <div class="flex items-center space-x-4">
+              <span class="text-sm">Admin: <%= current_user.email %></span>
+              <%= link_to "← Back to Site", root_path, class: "hover:text-gray-300" %>
+              <%= link_to "Logout", destroy_user_session_path, method: :delete, class: "hover:text-gray-300" %>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Flash Messages -->
+        <% if notice %>
+          <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 mx-4 mt-4 rounded">
+            <%= notice %>
+          </div>
+        <% end %>
+
+        <% if alert %>
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mx-4 mt-4 rounded">
+            <%= alert %>
+          </div>
+        <% end %>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+          <%= yield %>
+        </main>
+      </body>
+    </html>
+  ERB
+
+  # Create dashboard view
+  create_file 'app/views/admin/dashboard/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+      <p class="text-gray-600">Manage users, monitor system activity, and control feature flags.</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="text-2xl font-bold text-blue-600"><%= @user_count %></div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-gray-500">Total Users</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="text-2xl font-bold text-green-600"><%= @active_feature_flags.count %></div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-gray-500">Active Feature Flags</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+          <div class="text-2xl font-bold text-purple-600"><%= @recent_audit_logs.count %></div>
+          <div class="ml-3">
+            <p class="text-sm font-medium text-gray-500">Recent Actions</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Recent Audit Logs -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Recent Activity</h3>
+        </div>
+        <div class="p-6">
+          <% if @recent_audit_logs.any? %>
+            <div class="space-y-3">
+              <% @recent_audit_logs.each do |log| %>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+                  <div>
+                    <p class="text-sm font-medium"><%= log.action_display %> <%= log.item_display_name %></p>
+                    <p class="text-xs text-gray-500"><%= time_ago_in_words(log.created_at) %> ago</p>
+                  </div>
+                  <%= link_to "View", admin_audit_log_path(log), class: "text-blue-600 hover:text-blue-800 text-sm" %>
+                </div>
+              <% end %>
+            </div>
+            <div class="mt-4">
+              <%= link_to "View All Logs →", admin_audit_logs_path, class: "text-blue-600 hover:text-blue-800 text-sm" %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm">No recent activity</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
+        </div>
+        <div class="p-6">
+          <div class="space-y-3">
+            <%= link_to admin_users_path, class: "block p-3 border border-gray-200 rounded hover:bg-gray-50" do %>
+              <p class="font-medium">Manage Users</p>
+              <p class="text-sm text-gray-600">View, edit, and impersonate users</p>
+            <% end %>
+            
+            <%= link_to admin_feature_flags_path, class: "block p-3 border border-gray-200 rounded hover:bg-gray-50" do %>
+              <p class="font-medium">Feature Flags</p>
+              <p class="text-sm text-gray-600">Toggle experimental features</p>
+            <% end %>
+            
+            <%= link_to "/admin/sidekiq", target: "_blank", class: "block p-3 border border-gray-200 rounded hover:bg-gray-50" do %>
+              <p class="font-medium">Sidekiq Dashboard</p>
+              <p class="text-sm text-gray-600">Monitor background jobs</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  ERB
+
+  # Create users management views
+  create_file 'app/views/admin/users/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
+        <%= form_with url: admin_users_path, method: :get, local: true, class: "flex" do |f| %>
+          <%= f.text_field :search, placeholder: "Search by email...", value: params[:search], 
+                          class: "border border-gray-300 rounded-l px-4 py-2" %>
+          <%= f.submit "Search", class: "bg-blue-600 text-white px-4 py-2 rounded-r hover:bg-blue-700" %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% @users.each do |user| %>
+          <li>
+            <div class="px-4 py-4 flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                    <%= user.email.first.upcase %>
+                  </div>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900"><%= user.email %></div>
+                  <div class="text-sm text-gray-500">
+                    <% if user.admin? %>
+                      <span class="bg-red-100 text-red-800 px-2 py-1 text-xs rounded">Admin</span>
+                    <% end %>
+                    Joined <%= time_ago_in_words(user.created_at) %> ago
+                  </div>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <%= link_to "View", admin_user_path(user), class: "text-blue-600 hover:text-blue-800" %>
+                <%= link_to "Edit", edit_admin_user_path(user), class: "text-green-600 hover:text-green-800" %>
+                <% if current_user.can_impersonate? && user != current_user %>
+                  <%= link_to "Impersonate", admin_user_impersonate_path(user), method: :post,
+                             class: "text-purple-600 hover:text-purple-800",
+                             data: { confirm: "Impersonate #{user.email}?" } %>
+                <% end %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  ERB
+
+  # Create user show view  
+  create_file 'app/views/admin/users/show.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">User Details</h1>
+        <div class="space-x-2">
+          <%= link_to "Edit User", edit_admin_user_path(@user), class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+          <% if current_user.can_impersonate? && @user != current_user %>
+            <%= link_to "Impersonate", admin_user_impersonate_path(@user), method: :post,
+                       class: "bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700",
+                       data: { confirm: "Impersonate #{@user.email}?" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- User Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">User Information</h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Email</dt>
+            <dd class="text-sm text-gray-900"><%= @user.email %></dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Admin Status</dt>
+            <dd class="text-sm text-gray-900">
+              <% if @user.admin? %>
+                <span class="bg-red-100 text-red-800 px-2 py-1 text-xs rounded">Admin</span>
+              <% else %>
+                <span class="bg-gray-100 text-gray-800 px-2 py-1 text-xs rounded">Regular User</span>
+              <% end %>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Created</dt>
+            <dd class="text-sm text-gray-900"><%= @user.created_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+            <dd class="text-sm text-gray-900"><%= @user.updated_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+        <% if @audit_logs.any? %>
+          <div class="space-y-3">
+            <% @audit_logs.each do |log| %>
+              <div class="border-b border-gray-200 pb-2 last:border-0">
+                <p class="text-sm font-medium"><%= log.action_display %></p>
+                <p class="text-xs text-gray-500"><%= time_ago_in_words(log.created_at) %> ago</p>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm">No recent activity</p>
+        <% end %>
+      </div>
+    </div>
+  ERB
+
+  # Create audit logs index view
+  create_file 'app/views/admin/audit_logs/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">Audit Logs</h1>
+      
+      <!-- Filters -->
+      <%= form_with url: admin_audit_logs_path, method: :get, local: true, class: "bg-white p-4 rounded-lg shadow mb-6" do |f| %>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <%= f.label :item_type, "Resource Type", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :item_type, options_for_select([['All Types', '']] + @item_types.map { |t| [t, t] }, params[:item_type]),
+                        {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+          </div>
+          <div>
+            <%= f.label :admin_id, "Admin User", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :admin_id, options_for_select([['All Admins', '']] + @admin_users.map { |u| [u.email, u.id] }, params[:admin_id]),
+                        {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+          </div>
+          <div>
+            <%= f.label :start_date, "Start Date", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.date_field :start_date, value: params[:start_date], class: "mt-1 block w-full border-gray-300 rounded" %>
+          </div>
+          <div>
+            <%= f.label :end_date, "End Date", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.date_field :end_date, value: params[:end_date], class: "mt-1 block w-full border-gray-300 rounded" %>
+          </div>
+        </div>
+        <div class="mt-4">
+          <%= f.submit "Filter", class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+          <%= link_to "Clear", admin_audit_logs_path, class: "ml-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @audit_logs.each do |log| %>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                           <%= log.event == 'create' ? 'bg-green-100 text-green-800' : 
+                               log.event == 'destroy' ? 'bg-red-100 text-red-800' : 
+                               'bg-yellow-100 text-yellow-800' %>">
+                  <%= log.action_display %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= log.item_display_name %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= log.admin_user&.email || 'System' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= time_ago_in_words(log.created_at) %> ago
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <%= link_to "View Details", admin_audit_log_path(log), class: "text-blue-600 hover:text-blue-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  ERB
+
+  # Create feature flags index view
+  create_file 'app/views/admin/feature_flags/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Feature Flags</h1>
+      <p class="text-gray-600">Control experimental features and rollout new functionality.</p>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% @feature_flags.each do |flag| %>
+          <li>
+            <div class="px-4 py-4 flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <% if flag.enabled? %>
+                    <div class="h-3 w-3 bg-green-500 rounded-full"></div>
+                  <% else %>
+                    <div class="h-3 w-3 bg-gray-300 rounded-full"></div>
+                  <% end %>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900"><%= flag.name %></div>
+                  <div class="text-sm text-gray-500">
+                    Status: 
+                    <% if flag.enabled? %>
+                      <span class="text-green-600 font-medium">Enabled</span>
+                    <% else %>
+                      <span class="text-gray-600">Disabled</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <%= link_to "Details", admin_feature_flag_path(flag.name), class: "text-blue-600 hover:text-blue-800" %>
+                <%= link_to flag.enabled? ? "Disable" : "Enable", 
+                           admin_feature_flag_toggle_path(flag.name), 
+                           method: :patch,
+                           class: flag.enabled? ? "text-red-600 hover:text-red-800" : "text-green-600 hover:text-green-800",
+                           data: { confirm: "#{flag.enabled? ? 'Disable' : 'Enable'} feature '#{flag.name}'?" } %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <% if @feature_flags.empty? %>
+      <div class="text-center py-12">
+        <p class="text-gray-500">No feature flags configured yet.</p>
+      </div>
+    <% end %>
+  ERB
+
+  # Create user edit view
+  create_file 'app/views/admin/users/edit.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Edit User</h1>
+        <%= link_to "← Back to User", admin_user_path(@user), class: "text-blue-600 hover:text-blue-800" %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-6 max-w-2xl">
+      <%= form_with model: [:admin, @user], local: true, class: "space-y-6" do |f| %>
+        <% if @user.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded p-4">
+            <h3 class="text-red-800 font-medium">Please fix the following errors:</h3>
+            <ul class="mt-2 text-red-700 text-sm">
+              <% @user.errors.full_messages.each do |message| %>
+                <li>• <%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :email, class: "block text-sm font-medium text-gray-700" %>
+          <%= f.email_field :email, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" %>
+        </div>
+
+        <div>
+          <%= f.label :admin, class: "flex items-center" %>
+          <%= f.check_box :admin, class: "mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500" %>
+          <span class="text-sm text-gray-700">Grant admin privileges</span>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <%= link_to "Cancel", admin_user_path(@user), class: "bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" %>
+          <%= f.submit "Update User", class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+        </div>
+      <% end %>
+    </div>
+  ERB
+
+  # ==========================================
+  # ROUTES
+  # ==========================================
+
+  # Add admin routes
+  route <<~'RUBY'
+    namespace :admin do
+      root 'dashboard#index'
+      get 'dashboard', to: 'dashboard#index'
+      
+      resources :users do
+        member do
+          post :impersonate
+        end
+      end
+      
+      delete 'stop_impersonation', to: 'users#stop_impersonation'
+      
+      resources :audit_logs, only: [:index, :show]
+      
+      resources :feature_flags, only: [:index, :show] do
+        member do
+          patch :toggle
+          patch :update_percentage
+        end
+      end
+    end
+  RUBY
+
+  # Mount Sidekiq Web UI for admins
+  route <<~'RUBY'
+    require 'sidekiq/web'
+    
+    # Secure Sidekiq Web UI
+    Sidekiq::Web.use(Rack::Auth::Basic) do |user, password|
+      # In production, use environment variables for credentials
+      [user, password] == ['admin', Rails.application.credentials.dig(:sidekiq, :password) || 'changeme']
+    end
+    
+    mount Sidekiq::Web => '/admin/sidekiq'
+  RUBY
+
+  # Mount Flipper UI for feature flag management
+  route <<~'RUBY'
+    require 'flipper/ui'
+    
+    # Secure Flipper UI (only accessible to admins)
+    flipper_app = Rack::Builder.new do
+      use Rack::Auth::Basic do |user, password|
+        [user, password] == ['admin', Rails.application.credentials.dig(:flipper, :password) || 'changeme']
+      end
+      run Flipper::UI.app
+    end
+    
+    mount flipper_app => '/admin/flipper'
+  RUBY
+
+  # ==========================================
+  # MIGRATIONS
+  # ==========================================
+
+  # Create admin migration for users
+  generate :migration, 'add_admin_to_users', <<~RUBY
+    class AddAdminToUsers < ActiveRecord::Migration[#{ActiveRecord::Migration.current_version}]
+      def change
+        add_column :users, :admin, :boolean, default: false, null: false
+        add_index :users, :admin
+      end
+    end
+  RUBY
+
+  # ==========================================
+  # TESTS
+  # ==========================================
+
+  # Create admin controller tests
+  create_file 'test/controllers/admin/dashboard_controller_test.rb', <<~'RUBY'
+    require 'test_helper'
+
+    class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
+      def setup
+        @admin_user = users(:admin_user)
+        @regular_user = users(:regular_user)
+      end
+
+      test 'admin can access dashboard' do
+        sign_in @admin_user
+        get admin_dashboard_path
+        assert_response :success
+      end
+
+      test 'regular user cannot access dashboard' do
+        sign_in @regular_user
+        get admin_dashboard_path
+        assert_redirected_to root_path
+      end
+
+      test 'guest cannot access dashboard' do
+        get admin_dashboard_path
+        assert_redirected_to new_user_session_path
+      end
+    end
+  RUBY
+
+  # Create fixtures for testing
+  create_file 'test/fixtures/users.yml', <<~'YAML'
+    admin_user:
+      email: admin@example.com
+      admin: true
+      
+    regular_user:
+      email: user@example.com
+      admin: false
+  YAML
+
+  # ==========================================
+  # FINAL SETUP
+  # ==========================================
+
+  # Add RequestStore gem for tracking request metadata
+  gem 'request_store'
+
+  # Add kaminari for pagination
+  gem 'kaminari'
+
+  say_status :synth_admin, "Admin panel installed successfully!"
+  say_status :synth_admin, "Next steps:"
+  say_status :synth_admin, "1. Run: rails db:migrate"
+  say_status :synth_admin, "2. Create an admin user: User.create!(email: 'admin@example.com', password: 'password', admin: true)"
+  say_status :synth_admin, "3. Visit /admin to access the admin panel"
+  say_status :synth_admin, "4. Configure Sidekiq and Flipper credentials in Rails credentials"
 end
-
-# Create admin models
-generate :model, 'AuditLog', 'user:references', 'action:string', 'resource_type:string', 'resource_id:integer', 'changes:text'
-generate :model, 'FeatureFlag', 'name:string', 'enabled:boolean', 'description:text'
-
-# Create admin controllers
-generate :controller, 'Admin::Dashboard', 'index'
-generate :controller, 'Admin::Users', 'index', 'show', 'edit', 'update'
-generate :controller, 'Admin::AuditLogs', 'index', 'show'
-generate :controller, 'Admin::FeatureFlags', 'index', 'update'
-
-# Add admin routes with authentication check
-route "namespace :admin do\n  authenticate :user, lambda { |u| u.admin? } do\n    root 'dashboard#index'\n    resources :users, except: [:new, :create, :destroy]\n    resources :audit_logs, only: [:index, :show]\n    resources :feature_flags, only: [:index, :update]\n  end\nend"
-
-say 'Admin module installed! Users with admin=true can access /admin'
