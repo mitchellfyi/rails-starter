@@ -10,6 +10,7 @@ say_status :synth_cms, "Installing CMS module with ActionText and SEO optimizati
 # Add CMS specific gems to the application's Gemfile
 gem 'friendly_id', '~> 5.5'
 gem 'image_processing', '~> 1.13' if !File.read('Gemfile').include?('image_processing')
+gem 'kaminari', '~> 1.2'
 
 # Run bundle install and set up CMS configuration after gems are installed
 after_bundle do
@@ -376,6 +377,11 @@ after_bundle do
     # Load CMS seeds
     load Rails.root.join('db', 'seeds', 'cms_seeds.rb')
   RUBY
+
+  # Update User model to include CMS associations
+  inject_into_class "app/models/user.rb", "User" do
+    "  include CmsAuthor\n"
+  end if File.exist?("app/models/user.rb")
 
   # Add environment variables to .env.example
   append_to_file '.env.example', <<~'ENV'

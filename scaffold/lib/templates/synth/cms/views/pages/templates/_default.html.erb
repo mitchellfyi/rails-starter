@@ -1,0 +1,17 @@
+<article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <header class="mb-8 text-center">
+    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+      <%= @page.title %>
+    </h1>
+    
+    <% if @page.excerpt.present? %>
+      <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+        <%= @page.excerpt %>
+      </p>
+    <% end %>
+  </header>
+
+  <div class="prose prose-lg prose-blue max-w-none">
+    <%= @page.content %>
+  </div>
+</article>

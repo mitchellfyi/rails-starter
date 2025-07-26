@@ -1,0 +1,170 @@
+<% content_for :title, @post.seo_metadata&.meta_title || @post.title %>
+<% content_for :description, @post.seo_metadata&.meta_description || @post.excerpt_or_content %>
+
+<%= seo_meta_tags(@post) %>
+<%= structured_data_for(@post) %>
+
+<article class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Breadcrumbs -->
+  <%= breadcrumbs([
+    { name: 'Blog', path: blog_path },
+    (@post.category ? { name: @post.category.name, path: blog_category_path(@post.category.slug) } : nil),
+    { name: @post.title }
+  ].compact) %>
+
+  <!-- Article Header -->
+  <header class="mb-8">
+    <div class="text-center">
+      <!-- Meta Information -->
+      <div class="flex items-center justify-center space-x-4 text-sm text-gray-500 mb-4">
+        <%= format_post_date(@post) %>
+        <span>•</span>
+        <%= reading_time(@post) %>
+        <% if @post.category.present? %>
+          <span>•</span>
+          <%= category_link(@post.category, class: "text-sm") %>
+        <% end %>
+      </div>
+
+      <!-- Title -->
+      <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+        <%= @post.title %>
+      </h1>
+
+      <!-- Excerpt -->
+      <% if @post.excerpt.present? %>
+        <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <%= @post.excerpt %>
+        </p>
+      <% end %>
+
+      <!-- Author and Tags -->
+      <div class="flex items-center justify-center space-x-6 mb-8">
+        <div class="text-sm text-gray-600">
+          By <span class="font-medium"><%= @post.author.display_name %></span>
+        </div>
+        
+        <% if @post.tags.any? %>
+          <div>
+            <%= tag_links(@post.tags, class: "text-sm") %>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Social Share Buttons -->
+      <div class="flex items-center justify-center space-x-4 mb-8">
+        <%= share_buttons(@post) %>
+      </div>
+    </div>
+  </header>
+
+  <!-- Article Content -->
+  <div class="prose prose-lg prose-blue max-w-none mb-12">
+    <%= @post.content %>
+  </div>
+
+  <!-- Article Footer -->
+  <footer class="border-t border-gray-200 pt-8">
+    <!-- Tags -->
+    <% if @post.tags.any? %>
+      <div class="mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Tags</h3>
+        <div class="flex flex-wrap gap-2">
+          <% @post.tags.each do |tag| %>
+            <%= link_to blog_tag_path(tag.slug), 
+                class: "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium",
+                style: "background-color: #{tag.color}20; color: #{tag.color};" do %>
+              #<%= tag.name %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Navigation -->
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex-1">
+        <% if @post.previous_post %>
+          <%= link_to blog_post_path(@post.previous_post.slug), 
+              class: "group flex items-center text-left" do %>
+            <div class="flex items-center">
+              <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+              <div>
+                <div class="text-sm text-gray-500">Previous post</div>
+                <div class="text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <%= truncate(@post.previous_post.title, length: 50) %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <div class="flex-1 text-right">
+        <% if @post.next_post %>
+          <%= link_to blog_post_path(@post.next_post.slug), 
+              class: "group flex items-center justify-end text-right" do %>
+            <div>
+              <div class="text-sm text-gray-500">Next post</div>
+              <div class="text-base font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                <%= truncate(@post.next_post.title, length: 50) %>
+              </div>
+            </div>
+            <svg class="ml-3 h-5 w-5 text-gray-400 group-hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+            </svg>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Back to Blog -->
+    <div class="text-center">
+      <%= link_to blog_path, 
+          class: "inline-flex items-center px-6 py-3 border border-gray-300 rounded-md text-base font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors" do %>
+        <svg class="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+        </svg>
+        Back to Blog
+      <% end %>
+    </div>
+  </footer>
+</article>
+
+<!-- Related Posts -->
+<% if @related_posts&.any? %>
+  <section class="bg-gray-50 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Related Posts</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <% @related_posts.each do |post| %>
+          <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <div class="p-6">
+              <div class="flex items-center text-sm text-gray-500 mb-3">
+                <%= format_post_date(post) %>
+                <span class="mx-2">•</span>
+                <%= reading_time(post) %>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                <%= link_to post.title, blog_post_path(post.slug), 
+                    class: "hover:text-blue-600 transition-colors" %>
+              </h3>
+              <p class="text-gray-600 mb-4">
+                <%= truncate_html(post.excerpt_or_content, length: 120) %>
+              </p>
+              <div class="flex items-center justify-between">
+                <% if post.category.present? %>
+                  <%= category_link(post.category, class: "text-sm") %>
+                <% end %>
+                <%= link_to "Read more", blog_post_path(post.slug),
+                    class: "text-blue-600 hover:text-blue-800 font-medium text-sm" %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    </div>
+  </section>
+<% end %>
