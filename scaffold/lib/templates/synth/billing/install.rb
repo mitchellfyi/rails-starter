@@ -490,12 +490,17 @@ after_bundle do
           )
 
           head :ok
-        rescue => e
-          Rails.logger.error "Stripe webhook error: #{e.message}"
+        rescue TransientError => e
+          Rails.logger.error "Transient error in Stripe webhook: #{e.message}"
           Rails.logger.error e.backtrace.join("\n")
           
-          # Schedule retry job
+          # Schedule retry job for transient errors
           StripeWebhookRetryJob.set(wait: 1.minute).perform_later(@event.id)
+          
+          head :service_unavailable
+        rescue => e
+          Rails.logger.error "Non-transient Stripe webhook error: #{e.message}"
+          Rails.logger.error e.backtrace.join("\n")
           
           head :internal_server_error
         end
