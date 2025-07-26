@@ -131,7 +131,7 @@ after_bundle do
     <<~RUBY
       rolify
       devise :two_factor_authenticatable,
-             :otp_secret_encryption_key => Rails.application.credentials.secret_key_base
+             :otp_secret_encryption_key => Rails.application.credentials.dig(:otp, :encryption_key)
       
       has_many :memberships, dependent: :destroy
       has_many :workspaces, through: :memberships
