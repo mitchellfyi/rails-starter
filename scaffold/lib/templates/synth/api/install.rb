@@ -106,7 +106,7 @@ create_file 'app/controllers/concerns/error_handling.rb', <<~RUBY
         {
           attribute: error.attribute,
           detail: error.full_message,
-          source: { pointer: "/data/attributes/\#{error.attribute}" }
+          source: { pointer: "/data/attributes/#{error.attribute}" }
         }
       end
       
