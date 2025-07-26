@@ -1,0 +1,68 @@
+<div class="card">
+  <h1 style="margin-bottom: 1rem; color: #1f2937;">Admin Dashboard</h1>
+  <p style="color: #6b7280;">Manage feature flags and monitor system activity.</p>
+</div>
+
+<!-- Stats Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #3b82f6;">Total Users</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @user_count || 0 %></p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #10b981;">Active Flags</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @active_feature_flags || 0 %></p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #8b5cf6;">Recent Events</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @recent_audit_logs&.count || 0 %></p>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+  <!-- Recent Activity -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Recent Activity</h3>
+    <% if @recent_audit_logs&.any? %>
+      <% @recent_audit_logs.each do |log| %>
+        <div style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+          <p style="margin: 0; font-weight: 500;"><%= log.description %></p>
+          <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">
+            <%= log.time_ago %> ago
+            <% if log.user %>
+              by <%= log.user.email %>
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+      <div style="margin-top: 1rem;">
+        <%= link_to "View All Logs →", admin_audit_path, class: "btn btn-primary" %>
+      </div>
+    <% else %>
+      <p style="color: #6b7280;">No recent activity</p>
+    <% end %>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Quick Actions</h3>
+    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <%= link_to admin_feature_flags_path, class: "btn btn-primary" do %>
+        Manage Feature Flags
+      <% end %>
+      
+      <%= link_to admin_audit_path, class: "btn btn-secondary" do %>
+        View Audit Logs
+      <% end %>
+      
+      <% if defined?(User) %>
+        <%= link_to admin_audit_path(resource_type: 'User'), class: "btn btn-secondary" do %>
+          User Activity
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

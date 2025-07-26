@@ -1,0 +1,87 @@
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1 style="margin: 0; color: #1f2937;">Audit Log Details</h1>
+    <%= link_to "← Back to Audit Logs", admin_audit_path, class: "btn btn-secondary" %>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+    <div>
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Action</h3>
+      <span style="background: 
+        <%= case @audit_log.action
+            when 'login' then '#10b981'
+            when /impersonation/ then '#f59e0b'
+            when 'ai_output_review' then '#8b5cf6'
+            when 'create' then '#3b82f6'
+            when 'update', 'toggle' then '#6b7280'
+            when 'delete' then '#ef4444'
+            else '#6b7280'
+            end %>; 
+        color: white; padding: 0.5rem 1rem; border-radius: 0.25rem; font-weight: 500;">
+        <%= @audit_log.action.humanize %>
+      </span>
+    </div>
+    
+    <div>
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">User</h3>
+      <p style="margin: 0;"><%= @audit_log.user&.email || 'System' %></p>
+    </div>
+    
+    <div>
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Resource</h3>
+      <p style="margin: 0;">
+        <% if @audit_log.resource_type %>
+          <%= @audit_log.resource_type %>
+          <% if @audit_log.resource_id %>
+            #<%= @audit_log.resource_id %>
+          <% end %>
+        <% else %>
+          System Event
+        <% end %>
+      </p>
+    </div>
+    
+    <div>
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Timestamp</h3>
+      <p style="margin: 0;"><%= @audit_log.created_at.strftime('%B %d, %Y at %I:%M %p') %></p>
+    </div>
+  </div>
+  
+  <div style="margin-top: 2rem;">
+    <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Description</h3>
+    <p style="margin: 0; padding: 1rem; background: #f9fafb; border-radius: 0.25rem;"><%= @audit_log.description %></p>
+  </div>
+  
+  <% if @audit_log.metadata.present? && @audit_log.metadata.any? %>
+    <div style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Additional Details</h3>
+      <div style="background: #f9fafb; padding: 1rem; border-radius: 0.25rem;">
+        <% @audit_log.metadata.each do |key, value| %>
+          <div style="margin-bottom: 0.5rem;">
+            <strong><%= key.humanize %>:</strong> <%= value %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  
+  <% if @audit_log.ip_address || @audit_log.user_agent %>
+    <div style="margin-top: 2rem;">
+      <h3 style="margin: 0 0 0.5rem 0; color: #1f2937;">Technical Details</h3>
+      <div style="background: #f9fafb; padding: 1rem; border-radius: 0.25rem; font-size: 0.875rem; color: #6b7280;">
+        <% if @audit_log.ip_address %>
+          <div style="margin-bottom: 0.5rem;">
+            <strong>IP Address:</strong> <%= @audit_log.ip_address %>
+          </div>
+        <% end %>
+        <% if @audit_log.user_agent %>
+          <div>
+            <strong>User Agent:</strong> <%= @audit_log.user_agent %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
