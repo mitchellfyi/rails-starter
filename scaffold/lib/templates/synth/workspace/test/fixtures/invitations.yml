@@ -1,0 +1,26 @@
+# Test fixtures for invitations
+
+pending_invitation:
+  workspace: one
+  email: "invited@example.com"
+  role: "member"
+  token: "secure-token-123"
+  invited_by: one
+  expires_at: <%= 6.days.from_now %>
+
+expired_invitation:
+  workspace: one
+  email: "expired@example.com"
+  role: "member"
+  token: "expired-token-456"
+  invited_by: one
+  expires_at: <%= 1.day.ago %>
+
+accepted_invitation:
+  workspace: two
+  email: "accepted@example.com"
+  role: "admin"
+  token: "accepted-token-789"
+  invited_by: two
+  accepted_at: <%= 1.week.ago %>
+  expires_at: <%= 5.days.from_now %>

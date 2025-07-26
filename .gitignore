@@ -67,3 +67,12 @@ yarn-debug.log*
 /storage/*
 !/storage/.keep
 /public/uploads
+
+# Deployment and production files
+.env.production
+fly.toml
+render.yaml
+config/deploy.yml
+
+# Kamal deployment files
+.kamal/
