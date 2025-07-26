@@ -205,7 +205,7 @@ after_bundle do
 
         desc 'remove MODULE', 'Remove a module'
         def remove(module_name)
-          puts "[stub] Remove module: \#{module_name}"
+          puts "[stub] Remove module: #{module_name}"
         end
         
 
