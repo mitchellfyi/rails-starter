@@ -9,6 +9,16 @@
       "version": "1.0.0",
       "installed_at": "2025-07-26T18:29:39+0000",
       "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/admin"
+    },
+    "ai": {
+      "version": "1.0.0",
+      "installed_at": "2025-07-26T20:14:45+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/ai"
+    },
+    "mcp": {
+      "version": "1.0.0",
+      "installed_at": "2025-07-26T20:15:01+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/mcp"
     }
   }
 }
