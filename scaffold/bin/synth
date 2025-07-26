@@ -2,6 +2,6 @@
 # frozen_string_literal: true
 
 require 'thor'
-require_relative '../../lib/synth/cli'
+require_relative '../lib/synth/cli'
 
 Synth::CLI.start(ARGV)
