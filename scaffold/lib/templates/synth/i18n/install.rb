@@ -18,7 +18,7 @@ migration_content = <<~RUBY
   end
 RUBY
 
-create_file "db/migrate/#{Time.now.utc.strftime('%Y%m%d%H%M%S')}_add_locale_to_users.rb", migration_content
+migration_template "add_locale_to_users.rb", "db/migrate/add_locale_to_users.rb", migration_version: "8.0"
 
 # Create I18n configuration
 initializer_content = <<~RUBY
