@@ -1,0 +1,22 @@
+# Test fixtures for memberships
+
+one_admin:
+  workspace: one
+  user: one
+  role: "admin"
+  joined_at: <%= 1.month.ago %>
+  invited_by: one
+
+two_member:
+  workspace: one
+  user: two
+  role: "member"
+  joined_at: <%= 2.weeks.ago %>
+  invited_by: one
+
+three_guest:
+  workspace: two
+  user: one
+  role: "guest"
+  joined_at: <%= 1.week.ago %>
+  invited_by: two

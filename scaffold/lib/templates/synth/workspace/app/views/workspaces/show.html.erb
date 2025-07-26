@@ -1,0 +1,87 @@
+<% content_for :title, @workspace.name %>
+
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h1 class="text-3xl font-bold text-gray-900"><%= @workspace.name %></h1>
+    <% if @workspace.description.present? %>
+      <p class="mt-2 text-lg text-gray-600"><%= @workspace.description %></p>
+    <% end %>
+  </div>
+  <div class="flex space-x-3">
+    <% if policy(@workspace).update? %>
+      <%= link_to "Settings", edit_workspace_path(@workspace), class: "bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" %>
+    <% end %>
+    <%= link_to "Members", workspace_memberships_path(@workspace), class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Main Content -->
+  <div class="lg:col-span-2">
+    <div class="bg-white shadow rounded-lg p-6">
+      <h2 class="text-xl font-semibold mb-4">Welcome to <%= @workspace.name %></h2>
+      <p class="text-gray-600">
+        You are a <span class="font-medium capitalize"><%= @membership&.role %></span> of this workspace.
+      </p>
+      
+      <!-- Add workspace-specific content here -->
+      <div class="mt-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-3">Recent Activity</h3>
+        <p class="text-gray-500">No recent activity.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="space-y-6">
+    <!-- Members Summary -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Team Members</h3>
+      <div class="space-y-3">
+        <% @members.limit(5).each do |membership| %>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="flex-shrink-0">
+                <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                  <span class="text-sm font-medium text-gray-700">
+                    <%= membership.user.email.first.upcase %>
+                  </span>
+                </div>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900">
+                  <%= membership.user.email %>
+                </p>
+              </div>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 capitalize">
+              <%= membership.role %>
+            </span>
+          </div>
+        <% end %>
+        
+        <% if @members.count > 5 %>
+          <div class="text-center pt-2">
+            <%= link_to "View all #{@members.count} members", workspace_memberships_path(@workspace), class: "text-blue-600 hover:text-blue-900 text-sm" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Pending Invitations -->
+    <% if policy(@workspace).manage_members? && @pending_invitations.any? %>
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Pending Invitations</h3>
+        <div class="space-y-2">
+          <% @pending_invitations.each do |invitation| %>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-900"><%= invitation.email %></span>
+              <span class="text-gray-500 capitalize"><%= invitation.role %></span>
+            </div>
+          <% end %>
+        </div>
+        <%= link_to "Manage invitations", workspace_memberships_path(@workspace), class: "text-blue-600 hover:text-blue-900 text-sm block mt-3" %>
+      </div>
+    <% end %>
+  </div>
+</div>
