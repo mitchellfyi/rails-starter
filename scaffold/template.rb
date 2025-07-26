@@ -38,6 +38,10 @@ gem_group :development, :test do
   gem 'factory_bot_rails', '~> 6.2'
   gem 'faker', '~> 3.3'
   gem 'rspec-rails', '~> 8.0'
+  gem 'database_cleaner-active_record', '~> 2.1'
+  gem 'webmock', '~> 3.18'
+  gem 'capybara', '~> 3.39'
+  gem 'selenium-webdriver', '~> 4.10'
 end
 
 after_bundle do
@@ -160,6 +164,10 @@ after_bundle do
 
     It will add the necessary models, migrations, routes, controllers, and tests.
   MD
+
+  # Install testing module by default
+  say 'Installing testing module...'
+  apply 'lib/templates/synth/testing/install.rb'
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
