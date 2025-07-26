@@ -1,167 +1,116 @@
 # API Module
 
-This module provides JSON:API compliant REST endpoints with OpenAPI documentation, versioning, and authentication via API tokens.
+Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.
 
 ## Features
 
-- **JSON:API Compliance**: Standardized API responses with proper serialization
-- **API Versioning**: Header-based versioning with backward compatibility
-- **OpenAPI Documentation**: Automatic documentation generation with Swagger UI
-- **Authentication**: Token-based authentication with API keys
-- **CORS Support**: Configurable cross-origin resource sharing
-- **Error Handling**: Standardized error responses
+- **JSON:API Compliance**: All API endpoints follow the [JSON:API specification](https://jsonapi.org/)
+- **OpenAPI Documentation**: Automatic generation of OpenAPI 3.0 schemas using [rswag](https://github.com/rswag/rswag)
+- **Base API Controllers**: Pre-configured controllers with error handling and authentication
+- **Serializers**: JSON:API serializers using [jsonapi-serializer](https://github.com/jsonapi-serializer/jsonapi-serializer)
+- **CI Integration**: Automatic schema validation in continuous integration
+- **Comprehensive Testing**: Full test suite with request specs that generate documentation
 
 ## Installation
 
-```bash
+Install this module via:
+
+```sh
 bin/synth add api
 ```
 
-This installs:
-- JSON:API serialization with jsonapi-serializer
-- API versioning with versionist
-- OpenAPI documentation with rswag
-- CORS configuration
-- Token-based authentication system
+This will add the necessary controllers, serializers, specs, policies, routes, and configuration files.
 
-## Post-Installation
+## Architecture
 
-1. **Run migrations:**
-   ```bash
-   rails db:migrate
-   ```
+### Base Controller
 
-2. **Add API routes:**
-   ```ruby
-   # config/routes.rb
-   namespace :api do
-     api_version(module: 'V1', header: { name: 'X-API-Version', value: 'v1' }) do
-       resources :users
-       resources :posts, only: [:index, :show]
-     end
-   end
+The `Api::BaseController` provides:
+- JSON:API response helpers
+- Authentication enforcement
+- Error handling with proper JSON:API error responses
+- Content type enforcement
 
-   # Mount Swagger UI
-   mount Rswag::Ui::Engine => '/api-docs'
-   mount Rswag::Api::Engine => '/api-docs'
-   ```
+### Response Helpers
 
-3. **Configure CORS for production:**
-   ```ruby
-   # config/initializers/cors.rb
-   # Update origins to match your domain
-   origins ['https://yourdomain.com']
-   ```
+- `render_jsonapi_resource(resource, serializer_class, options)` - Render single resources
+- `render_jsonapi_collection(resources, serializer_class, options)` - Render collections
+- `render_jsonapi_error(status:, title:, detail:)` - Render single errors
+- `render_jsonapi_errors(errors, status:)` - Render multiple errors
 
-4. **Generate API documentation:**
-   ```bash
-   bundle exec rswag:specs:swaggerize
-   ```
+### Serializers
+
+All serializers inherit from `ApplicationSerializer` which includes `JSONAPI::Serializer` with common configuration:
+- Underscore key transformation
+- Relationship handling
+- Meta data support
+
+### Error Handling
+
+Automatic error handling for:
+- `ActiveRecord::RecordNotFound` → 404 Not Found
+- `ActiveRecord::RecordInvalid` → 422 Unprocessable Entity
+- `Pundit::NotAuthorizedError` → 403 Forbidden
 
 ## Usage
 
-### API Token Authentication
-
-Generate API tokens for users:
+### Creating API Controllers
 
 ```ruby
-# Create API token
-token = ApiToken.create!(
-  user: current_user,
-  name: "Mobile App",
-  token: SecureRandom.hex(32),
-  active: true
-)
+module Api
+  module V1
+    class PostsController < Api::BaseController
+      def index
+        posts = policy_scope(Post)
+        render_jsonapi_collection(posts, PostSerializer)
+      end
 
-# Use in API requests
-headers = { 'Authorization' => "Bearer #{token.token}" }
-```
+      def show
+        post = Post.find(params[:id])
+        authorize post
+        render_jsonapi_resource(post, PostSerializer)
+      end
 
-### Making API Requests
+      def create
+        post = Post.new(post_params)
+        authorize post
 
-```bash
-# Get users with pagination
-curl -H "Authorization: Bearer your_token" \
-     -H "X-API-Version: v1" \
-     "https://yourapp.com/api/v1/users?page=1&per_page=10"
+        if post.save
+          render_jsonapi_resource(post, PostSerializer, status: :created)
+        else
+          render_jsonapi_errors(post.errors.full_messages)
+        end
+      end
 
-# Create a user
-curl -X POST \
-     -H "Authorization: Bearer your_token" \
-     -H "X-API-Version: v1" \
-     -H "Content-Type: application/json" \
-     -d '{"user": {"email": "test@example.com", "first_name": "Test"}}' \
-     "https://yourapp.com/api/v1/users"
+      private
+
+      def post_params
+        params.require(:data).require(:attributes).permit(:title, :content)
+      end
+    end
+  end
+end
 ```
 
 ### Creating Serializers
 
 ```ruby
-class PostSerializer
-  include JSONAPI::Serializer
-  
+class PostSerializer < ApplicationSerializer
   attributes :title, :content, :published_at
-  
+
   belongs_to :author, serializer: UserSerializer
   has_many :comments, serializer: CommentSerializer
-  
-  attribute :excerpt do |post|
-    post.content.truncate(200)
-  end
 end
 ```
 
-### API Controllers
+### API Documentation
+
+API endpoints are documented using rswag specs in `spec/requests/api/`:
 
 ```ruby
-class Api::V1::PostsController < Api::BaseController
-  api :v1
-  
-  def index
-    posts = Post.published.page(params[:page])
-    authorize posts
-    
-    render json: PostSerializer.new(
-      posts, 
-      include: [:author],
-      meta: pagination_meta(posts)
-    )
-  end
-end
-```
-
-### Error Handling
-
-The module provides standardized error responses:
-
-```json
-{
-  "errors": [
-    {
-      "status": "422",
-      "title": "Validation Error",
-      "detail": "Email can't be blank",
-      "source": { "pointer": "/data/attributes/email" }
-    }
-  ]
-}
-```
-
-## API Documentation
-
-Access interactive API documentation at `/api-docs` after running:
-
-```bash
-bundle exec rswag:specs:swaggerize
-```
-
-### Writing API Tests
-
-```ruby
-# spec/requests/api/v1/posts_spec.rb
 require 'swagger_helper'
 
-RSpec.describe 'api/v1/posts' do
+RSpec.describe 'api/v1/posts', type: :request do
   path '/api/v1/posts' do
     get('list posts') do
       tags 'Posts'
@@ -169,9 +118,12 @@ RSpec.describe 'api/v1/posts' do
       
       response(200, 'successful') do
         schema type: :object,
-          properties: {
-            data: { type: :array, items: { '$ref' => '#/components/schemas/post' } }
-          }
+               properties: {
+                 data: {
+                   type: :array,
+                   items: { '$ref' => '#/components/schemas/Post' }
+                 }
+               }
         
         run_test!
       end
@@ -180,45 +132,154 @@ RSpec.describe 'api/v1/posts' do
 end
 ```
 
-## Versioning
+## OpenAPI Schema Generation
 
-API versions are managed via headers:
+### Generate Documentation
 
-```ruby
-# V2 controller
-class Api::V2::UsersController < Api::BaseController
-  api :v2
-  
-  # V2-specific logic
-end
+```sh
+# Generate OpenAPI schema from specs
+rake api:generate_schema
+
+# Validate schema is up to date (useful for CI)
+rake api:validate_schema
 ```
 
-Clients specify version with:
-```
-X-API-Version: v2
+### Access Documentation
+
+Visit the interactive API documentation at:
+- Development: `http://localhost:3000/api-docs`
+- Production: `https://yourdomain.com/api-docs`
+
+## JSON:API Compliance
+
+### Request Format
+
+```json
+{
+  "data": {
+    "type": "workspace",
+    "attributes": {
+      "name": "My Workspace",
+      "slug": "my-workspace"
+    }
+  }
+}
 ```
 
-## Security
+### Response Format
 
-- Token-based authentication
-- Rate limiting (implement with rack-attack)
-- CORS configuration
-- Input validation and sanitization
-- Authorization with Pundit
+```json
+{
+  "data": {
+    "id": "1",
+    "type": "workspace",
+    "attributes": {
+      "name": "My Workspace",
+      "slug": "my-workspace",
+      "created_at": "2023-01-01T00:00:00Z",
+      "updated_at": "2023-01-01T00:00:00Z"
+    },
+    "relationships": {
+      "memberships": {
+        "data": [
+          { "id": "1", "type": "membership" }
+        ]
+      }
+    }
+  },
+  "included": [
+    {
+      "id": "1",
+      "type": "membership",
+      "attributes": {
+        "role": "admin"
+      }
+    }
+  ]
+}
+```
+
+### Error Format
+
+```json
+{
+  "errors": [
+    {
+      "status": "422",
+      "title": "Validation Error",
+      "detail": "Name can't be blank",
+      "source": {
+        "pointer": "/data/attributes/name"
+      }
+    }
+  ]
+}
+```
+
+## Continuous Integration
+
+Add to your CI workflow to ensure schema stays updated:
+
+```yaml
+# .github/workflows/test.yml
+- name: Validate API Schema
+  run: bundle exec rake api:validate_schema
+```
 
 ## Testing
 
-```bash
-bin/synth test api
+The module includes comprehensive test coverage:
+
+```sh
+# Run all API tests
+bundle exec rspec spec/requests/api/
+
+# Run specific endpoint tests
+bundle exec rspec spec/requests/api/v1/workspaces_spec.rb
+
+# Generate and test documentation
+bundle exec rake api:generate_schema
 ```
 
-## Performance
+## Configuration
 
-- Pagination for large datasets
-- JSON response caching
-- Database query optimization
-- API rate limiting
+### Security
 
-## Version
+API endpoints require authentication by default. Override in specific controllers if needed:
 
-Current version: 1.0.0
+```ruby
+class PublicController < Api::BaseController
+  skip_before_action :authenticate_user!
+end
+```
+
+### Serializer Configuration
+
+Customize global serializer behavior in `app/serializers/application_serializer.rb`:
+
+```ruby
+class ApplicationSerializer
+  include JSONAPI::Serializer
+  
+  # Global configuration
+  set_key_transform :camel_lower  # Use camelCase keys
+  set_id :uuid                    # Use UUID as ID
+end
+```
+
+### OpenAPI Configuration
+
+Customize OpenAPI settings in `spec/swagger_helper.rb`:
+
+```ruby
+config.swagger_docs = {
+  'v1/swagger.yaml' => {
+    openapi: '3.0.1',
+    info: {
+      title: 'Your API',
+      version: 'v1',
+      description: 'Your API description'
+    }
+  }
+}
+```

@@ -1,271 +1,108 @@
-# Admin Module
+# Admin Panel Module
 
-This module provides a comprehensive admin panel with user management, impersonation, audit logging, and feature flag management.
+This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for user management, system monitoring, and feature control.
 
 ## Features
 
-- **Admin Dashboard**: Overview statistics and recent activity
-- **User Management**: View, edit, and manage user accounts
-- **Impersonation**: Safely impersonate users for support purposes
-- **Audit Logging**: Track all model changes and user actions
-- **Feature Flags**: Toggle features on/off without deployments
-- **Authorization**: Pundit-based authorization system
+### 🎭 User Impersonation
+- **Safe impersonation:** Admins can impersonate users for support and testing
+- **Session management:** Clear sign-out and revert-to-admin safeguards
+- **Audit trail:** All impersonation activities are logged
+
+### 📊 Audit Logs
+- **Comprehensive tracking:** Records changes to critical resources (users, billing, content, prompts)
+- **Searchable interface:** Filter and search logs by actor, resource, timestamp
+- **Detailed metadata:** Captures before/after states, IP addresses, user agents
+
+### 🔧 Sidekiq Management
+- **Integrated UI:** Sidekiq Web UI mounted within the admin panel
+- **Secure access:** Authentication and authorization tied to admin roles
+- **Job monitoring:** Real-time queue monitoring and job management
+
+### 🚩 Feature Flag Management
+- **Flipper integration:** Simple interface for toggling experimental features
+- **Environment controls:** Manage feature flags per environment
+- **User targeting:** Enable features for specific users or groups
 
 ## Installation
+
+Run the following command from your application root to install the admin module:
 
 ```bash
 bin/synth add admin
 ```
 
-This installs:
-- Pundit for authorization
-- Audited for audit logging
-- Flipper for feature flags
-- Kaminari for pagination
-- Admin controllers and views
+This command will:
+- Add necessary gems to your Gemfile
+- Generate admin controllers and views
+- Create audit log models and migrations
+- Set up authentication and authorization
+- Configure Sidekiq UI mounting
+- Install Flipper for feature flag management
+- Add comprehensive test coverage
 
-## Post-Installation
+## Configuration
 
-1. **Run migrations:**
-   ```bash
-   rails db:migrate
-   ```
+After installation, configure admin access by:
 
-2. **Add admin routes:**
-   ```ruby
-   namespace :admin do
-     root 'dashboard#index'
-     resources :users do
-       member do
-         post :impersonate
-         delete :stop_impersonating
-       end
-     end
-     resources :audit_logs, only: [:index, :show]
-     resources :feature_flags, only: [:index] do
-       member do
-         patch :update
-       end
-     end
-   end
-   
-   # Mount Flipper UI (optional)
-   mount Flipper::UI.app(Flipper) => '/admin/flipper'
-   ```
-
-3. **Add admin field to User model:**
-   ```bash
-   rails generate migration AddAdminToUsers admin:boolean
-   ```
-
-4. **Include concerns in User model:**
-   ```ruby
-   class User < ApplicationRecord
-     include Impersonatable
-     audited except: :password_digest
-   end
-   ```
+1. **Setting admin roles:** Update your User model to include admin privileges
+2. **Configuring feature flags:** Set up initial feature flags in the Flipper dashboard
+3. **Customizing audit rules:** Define which models and actions should be audited
 
 ## Usage
 
-### Admin Access Control
-```ruby
-# Make a user an admin
-user.update!(admin: true)
+### Accessing the Admin Panel
 
-# Check admin status
-current_user.admin?
-```
+Navigate to `/admin` to access the admin dashboard. Only users with admin privileges can access this area.
 
-### User Impersonation
-```ruby
-# In controller
-def impersonate
-  impersonate_user(user)
-  redirect_to root_path
-end
+### Impersonating Users
 
-def stop_impersonating
-  stop_impersonating_user
-  redirect_to admin_users_path
-end
+1. Go to the Users section in the admin panel
+2. Click "Impersonate" next to any user
+3. A banner will appear showing you're impersonating
+4. Click "Stop Impersonating" to return to your admin session
 
-# In views
-<% if current_user.impersonating? %>
-  <div class="impersonation-banner">
-    You are impersonating <%= current_user.full_name %>
-    <%= link_to "Stop Impersonating", stop_impersonating_path %>
-  </div>
-<% end %>
-```
+### Managing Feature Flags
 
-### Audit Logging
-```ruby
-# Models are automatically audited
-user.update!(name: "New Name")
+1. Visit the Feature Flags section
+2. Toggle features on/off for different environments
+3. Set up user-specific feature access
 
-# View audit trail
-user.audits.each do |audit|
-  puts "#{audit.action}: #{audit.audited_changes}"
-end
+### Viewing Audit Logs
 
-# Custom audit comments
-user.update!(name: "Admin Update", audit_comment: "Updated by admin")
-```
-
-### Feature Flags
-```ruby
-# Define features
-Flipper[:new_dashboard].enable
-Flipper[:beta_features].enable_percentage_of_users(25)
-Flipper[:admin_panel].enable_group(:admins)
-
-# Check features in code
-if Flipper[:new_dashboard].enabled?(current_user)
-  render 'new_dashboard'
-else
-  render 'old_dashboard'
-end
-
-# In views
-<% if Flipper[:beta_features].enabled?(current_user) %>
-  <%= render 'beta_feature' %>
-<% end %>
-```
-
-### Authorization Policies
-```ruby
-# Create custom policies
-class PostPolicy < ApplicationPolicy
-  def index?
-    true
-  end
-  
-  def show?
-    true
-  end
-  
-  def create?
-    user.present?
-  end
-  
-  def update?
-    user.admin? || record.author == user
-  end
-  
-  def destroy?
-    user.admin? || record.author == user
-  end
-end
-
-# Use in controllers
-def update
-  @post = Post.find(params[:id])
-  authorize @post
-  
-  if @post.update(post_params)
-    redirect_to @post
-  else
-    render :edit
-  end
-end
-```
-
-### Dashboard Customization
-```ruby
-# Add custom stats to dashboard
-class Admin::DashboardController < Admin::BaseController
-  def index
-    @stats = {
-      total_users: User.count,
-      active_subscriptions: Subscription.active.count,
-      revenue_this_month: calculate_monthly_revenue,
-      support_tickets: Ticket.open.count
-    }
-  end
-  
-  private
-  
-  def calculate_monthly_revenue
-    Invoice.where(created_at: Time.current.beginning_of_month..Time.current)
-           .sum(:amount_cents) / 100.0
-  end
-end
-```
-
-## Admin Dashboard Features
-
-### User Management
-- View all users with search and pagination
-- Edit user profiles and permissions
-- View user audit trails
-- Impersonate users for support
-
-### Audit Logging
-- Track all model changes
-- View detailed change history
-- Filter by model type and action
-- Search audit logs
-
-### Feature Flags
-- Toggle features on/off instantly
-- Percentage-based rollouts
-- Group-based access
-- User-specific flags
+1. Access the Audit Logs section
+2. Use filters to search by user, resource type, or date range
+3. View detailed information about each logged action
 
 ## Security
 
-- Admin-only access to all admin features
-- Impersonation logging and audit trails
-- Authorization checks on all actions
-- CSRF protection on all forms
-
-## Customization
-
-### Custom Admin Controllers
-```ruby
-class Admin::PostsController < Admin::BaseController
-  def index
-    @posts = Post.page(params[:page])
-    authorize @posts
-  end
-  
-  def feature
-    @post = Post.find(params[:id])
-    authorize @post
-    
-    @post.update!(featured: !@post.featured?)
-    redirect_to admin_posts_path
-  end
-end
-```
-
-### Custom Audit Tracking
-```ruby
-class Post < ApplicationRecord
-  audited associated_with: :author
-  
-  # Custom audit behavior
-  def audit_create_comment
-    "Post created: #{title}"
-  end
-end
-```
+- **Role-based access:** Only authorized admin users can access the panel
+- **Session management:** Secure impersonation with automatic timeouts
+- **Audit trail:** All admin actions are logged for accountability
+- **CSRF protection:** All forms include CSRF tokens
 
 ## Testing
+
+Run the admin module tests:
 
 ```bash
 bin/synth test admin
 ```
 
-## Best Practices
+## Customization
 
-- Always use authorization policies
-- Log sensitive administrative actions
-- Use feature flags for gradual rollouts
-- Monitor admin panel usage
-- Regular audit log reviews
+The admin panel is designed for extension. You can:
+- Add new admin controllers by inheriting from `Admin::BaseController`
+- Customize audit rules by updating the `Auditable` concern
+- Add new feature flag categories in the Flipper dashboard
+- Extend the impersonation system with additional safeguards
 
-## Version
+## Dependencies
 
-Current version: 1.0.0
+This module adds the following gems:
+- `flipper` - Feature flag management
+- `flipper-ui` - Web interface for feature flags
+- `paper_trail` - Model versioning and audit trails
+- `pundit` - Authorization framework
+
+All dependencies are automatically added during installation.

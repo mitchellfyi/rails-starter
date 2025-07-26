@@ -1,121 +1,93 @@
 # Billing Module
 
-This module provides comprehensive billing and subscription management using Stripe, including subscription plans, payment processing, invoicing, and webhook handling.
-
-## Features
-
-- **Stripe Integration**: Complete Stripe API integration for payments and subscriptions
-- **Subscription Management**: Plan-based subscriptions with trial periods
-- **Invoice Generation**: PDF invoice generation and management
-- **Payment Methods**: Secure payment method storage and management
-- **Webhook Handling**: Real-time webhook processing for payment events
-- **Multi-Currency Support**: Support for multiple currencies via Money gem
+This module adds comprehensive Stripe billing integration to your Rails app. It includes support for trials, subscriptions, one-off payments, metered billing, coupons, and PDF invoices.
 
 ## Installation
 
-```bash
+Run the following command from your application root to install the billing module via the Synth CLI:
+
+```
 bin/synth add billing
 ```
 
-This installs:
-- Stripe gem and configuration
-- Money-rails for currency handling
-- Prawn for PDF generation
-- Billing models (Plan, Subscription, Invoice, PaymentMethod)
-- Billing service and webhook handlers
+This command will add the necessary gems, copy configuration files, run migrations, and set up initial billing models and controllers.
 
-## Post-Installation
+## Features
 
-1. **Run migrations:**
-   ```bash
-   rails db:migrate
-   ```
+- **Subscription Plans**: Configurable products and subscription plans for recurring billing
+- **Free Trials**: Support for trial periods with automatic conversion to paid plans
+- **Payment Types**: One-off payments, recurring subscriptions, and usage-based metered billing
+- **Coupons**: Discount code handling with percentage and fixed amount discounts
+- **PDF Invoices**: Automatic generation of PDF invoices for paid plans
+- **Webhooks**: Stripe webhook handling with retry logic and exponential backoff
+- **Plan Management**: Upgrading and downgrading between subscription plans
+- **Security**: Secure API key handling and sandbox testing support
 
-2. **Configure Stripe credentials:**
-   ```bash
-   rails credentials:edit
-   ```
-   Add:
-   ```yaml
-   stripe:
-     publishable_key: pk_test_...
-     secret_key: sk_test_...
-     webhook_secret: whsec_...
-   ```
+## Configuration
 
-3. **Add routes:**
-   ```ruby
-   resources :subscriptions, only: [:index, :show, :create, :update] do
-     member do
-       patch :cancel
-     end
-   end
-   resources :billing, only: [:index]
-   post '/webhooks/stripe', to: 'webhooks#stripe'
-   ```
+After installation, configure your Stripe API keys in your environment:
 
-4. **Add Stripe customer ID to User model:**
-   ```bash
-   rails generate migration AddStripeCustomerIdToUsers stripe_customer_id:string
-   ```
+```bash
+# .env
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+## Models
+
+The billing module creates the following models:
+
+- `Plan`: Represents subscription plans with pricing and features
+- `Subscription`: User subscriptions with trial and billing status
+- `Invoice`: Generated invoices with PDF support
+- `WebhookEvent`: Stripe webhook event processing with idempotency
 
 ## Usage
 
 ### Creating Plans
+
 ```ruby
-plan = Plan.create!(
+Plan.create!(
   name: "Pro Plan",
-  stripe_price_id: "price_1234567890",
-  amount_cents: 2000,
-  currency: "usd",
+  stripe_product_id: "prod_...",
+  stripe_price_id: "price_...",
+  amount: 2999, # $29.99 in cents
   interval: "month",
-  trial_period_days: 14,
-  features: ["Feature 1", "Feature 2"],
-  active: true
+  trial_period_days: 14
 )
 ```
 
 ### Managing Subscriptions
+
 ```ruby
-# Create subscription
-billing_service = BillingService.new(current_user)
-subscription = billing_service.create_subscription(plan, payment_method_id)
+# Start a subscription
+subscription = current_user.subscribe_to_plan(plan)
+
+# Upgrade/downgrade
+subscription.change_plan(new_plan)
 
 # Cancel subscription
-billing_service.cancel_subscription(subscription)
-
-# Update payment method
-billing_service.update_payment_method(new_payment_method_id)
+subscription.cancel!
 ```
-
-### Generating Invoices
-```ruby
-pdf_content = BillingService.new(user).generate_invoice_pdf(invoice)
-send_data pdf_content, filename: "invoice_#{invoice.id}.pdf", type: "application/pdf"
-```
-
-## Webhook Events
-
-The module handles these Stripe webhook events:
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-
-## Security
-
-- Webhook signature verification
-- CSRF protection bypass for webhooks only
-- Secure payment method tokenization via Stripe
 
 ## Testing
 
-```bash
+Run the billing module tests:
+
+```
 bin/synth test billing
 ```
 
-Use Stripe's test mode and webhook CLI for local development.
+All external Stripe API calls are mocked in tests to ensure deterministic results.
 
-## Version
+## Next Steps
 
-Current version: 1.0.0
+After installation:
+
+1. Configure your Stripe webhook endpoint in the Stripe dashboard
+2. Set up your products and prices in Stripe
+3. Create initial plans in your application
+4. Test the integration in Stripe's test mode
+
+Contributions and improvements are welcome. Keep this README up to date as the module evolves.

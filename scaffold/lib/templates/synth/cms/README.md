@@ -1,175 +1,102 @@
-# CMS Module
+# CMS/Blog Engine Module
 
-This module provides a complete content management system with blog functionality, SEO optimization, and content publishing features using ActionText.
+This module adds a complete content management and blog engine to your Rails app with ActionText, WYSIWYG editing, SEO optimization, and sitemap generation.
 
 ## Features
 
-- **ActionText Integration**: Rich text editing with file attachments
-- **SEO Optimization**: Meta tags, structured data, sitemaps
-- **Content Publishing**: Draft/publish workflow with scheduling
-- **Categorization**: Categories and tags for content organization
-- **Featured Content**: Featured posts and images
-- **RSS Feeds**: Automatic RSS feed generation
-- **Friendly URLs**: SEO-friendly slugs with FriendlyId
+- **Rich Content Creation**: ActionText integration with WYSIWYG editor for posts and pages
+- **Image & File Support**: Upload and embed images, documents, and other attachments
+- **SEO Optimization**: Meta titles, descriptions, keywords, and automatic sitemap.xml generation
+- **Admin Interface**: Comprehensive admin UI for managing content, categories, and tags
+- **Friendly URLs**: SEO-friendly slugged URLs for all content
+- **Performance**: Built-in caching and indexing for optimal performance
+- **Accessibility**: WCAG-compliant interface with proper semantic markup
+
+## Models
+
+- **Post**: Blog posts with rich content, categories, tags, and SEO metadata
+- **Page**: Static pages (About, Terms, etc.) with rich content and SEO
+- **Category**: Organize posts into hierarchical categories
+- **Tag**: Tag posts for better discovery and organization
 
 ## Installation
+
+Run the following command from your application root to install the CMS module:
 
 ```bash
 bin/synth add cms
 ```
 
-This installs:
-- ActionText for rich content editing
-- Post and Category models with associations
-- SEO helpers and meta-tags integration
-- Sitemap and RSS feed generators
-- Admin controllers for content management
-
-## Post-Installation
-
-1. **Run migrations:**
-   ```bash
-   rails db:migrate
-   ```
-
-2. **Add routes:**
-   ```ruby
-   resources :posts, only: [:index, :show] do
-     collection do
-       get :feed, defaults: { format: :rss }
-     end
-   end
-   resources :categories, only: [:index, :show]
-   
-   namespace :admin do
-     resources :posts
-     resources :categories
-   end
-   ```
-
-3. **Include concerns in models:**
-   ```ruby
-   # app/models/post.rb
-   class Post < ApplicationRecord
-     include PostPublishing
-   end
-   ```
-
-4. **Set up meta-tags in layout:**
-   ```erb
-   <!-- app/views/layouts/application.html.erb -->
-   <%= display_meta_tags %>
-   ```
+This will:
+- Add necessary gems (image_processing, friendly_id, meta-tags)
+- Generate models, controllers, and views
+- Run database migrations
+- Set up routes and admin interface
+- Configure ActionText and file storage
 
 ## Usage
 
-### Creating Posts
-```ruby
-post = Post.create!(
-  title: "Getting Started with AI",
-  content: "Rich text content with ActionText...",
-  excerpt: "Learn the basics of AI integration",
-  author: current_user,
-  published: true,
-  published_at: Time.current,
-  tag_list: ["ai", "tutorial", "rails"]
-)
+After installation:
 
-# Add featured image
-post.featured_image.attach(params[:featured_image])
-```
-
-### SEO Configuration
-```erb
-<!-- In your view -->
-<% set_meta_tags(
-  title: @post.seo_title,
-  description: @post.seo_description,
-  keywords: page_keywords(@post.tag_list),
-  image_src: @post.featured_image_url(:large)
-) %>
-
-<!-- Structured data -->
-<script type="application/ld+json">
-  <%= structured_data_for_post(@post).html_safe %>
-</script>
-```
-
-### Content Queries
-```ruby
-# Published posts
-Post.published.recent.limit(10)
-
-# Posts by category
-Post.by_category('tutorials').published
-
-# Featured posts
-Post.featured.published.limit(3)
-
-# Posts by tag
-Post.by_tag('rails').published
-```
-
-### Generating Sitemaps
-```ruby
-# In a rake task or job
-SitemapGenerator.generate
-
-# Schedule with cron or Sidekiq
-class SitemapGeneratorJob < ApplicationJob
-  def perform
-    SitemapGenerator.generate
-  end
-end
-```
-
-### RSS Feeds
-The module automatically provides RSS feeds at `/posts/feed.rss`
+1. **Configure storage**: Set up Active Storage for file uploads
+2. **Admin access**: Visit `/admin/cms` to manage content
+3. **Create content**: Use the WYSIWYG editor to create posts and pages
+4. **SEO setup**: Configure meta tags and sitemap settings
+5. **Customize**: Modify views and styles to match your brand
 
 ## Admin Interface
 
-Admin controllers are provided for managing:
-- Posts (create, edit, publish, feature)
-- Categories (organize content)
-- Tags (through acts_as_taggable_on)
+The admin interface provides:
+- Posts management with draft/published states
+- Pages management for static content
+- Categories and tags organization
+- SEO metadata editing
+- Preview functionality
+- Bulk operations
 
-## Customization
+## Public Interface
 
-### Custom Post Types
-Extend the Post model or create new content types:
+The public interface includes:
+- Blog listing with pagination
+- Individual post pages
+- Category and tag pages
+- Static pages
+- RSS feeds
+- Sitemap.xml
+
+## Configuration
+
+Configure the CMS in `config/initializers/cms.rb`:
 
 ```ruby
-class Page < ApplicationRecord
-  include PostPublishing
-  # Custom page-specific logic
-end
+Rails.application.config.cms.per_page = 10
+Rails.application.config.cms.cache_expires_in = 1.hour
+Rails.application.config.cms.sitemap_enabled = true
 ```
-
-### SEO Customization
-Override SEO helpers for custom meta tag handling:
-
-```ruby
-module CustomSeoHelper
-  include SeoHelper
-  
-  def custom_meta_tags_for(content)
-    # Your custom logic
-  end
-end
-```
-
-## Security
-
-- User authentication required for admin actions
-- File upload validation for featured images
-- XSS protection via ActionText sanitization
 
 ## Testing
+
+Run CMS-specific tests:
 
 ```bash
 bin/synth test cms
 ```
 
-## Version
+## Customization
 
-Current version: 1.0.0
+The module is designed for easy customization:
+- Override views in `app/views/cms/`
+- Extend models with additional fields
+- Customize the admin interface
+- Add custom content types
+
+## SEO Features
+
+- Meta titles and descriptions
+- Open Graph tags
+- Schema.org markup
+- Automatic sitemap.xml generation
+- Friendly URLs with redirects
+- Canonical URLs
+
+Contributions and improvements are welcome!

@@ -1,14 +1,10 @@
 # Deploy Module
 
-This module provides deployment configurations and scripts for multiple platforms including Fly.io, Render, and Kamal (Docker-based deployment).
+This module provides deployment configurations and CI/CD setups for three popular platforms:
 
-## Features
-
-- **Multi-Platform Support**: Fly.io, Render, and Kamal configurations
-- **Docker Integration**: Production-ready Dockerfile and build scripts
-- **CI/CD Workflows**: GitHub Actions for automated deployments
-- **Environment Management**: Secure secrets and environment variable handling
-- **Database Setup**: PostgreSQL and Redis configuration for production
+- **Fly.io** - Simple container deployment with global edge locations
+- **Render** - Managed platform with automatic scaling and zero-config databases
+- **Kamal** - Self-hosted deployment to your own servers
 
 ## Installation
 
@@ -16,286 +12,269 @@ This module provides deployment configurations and scripts for multiple platform
 bin/synth add deploy
 ```
 
-This installs:
-- Kamal for Docker-based deployments
-- Dockerfile and production build scripts
-- Platform-specific configuration files
-- GitHub Actions deployment workflows
-- Deployment helper scripts
+This will create:
+- `fly.toml` - Fly.io configuration
+- `render.yaml` - Render deployment specification  
+- `config/deploy.yml` - Kamal deployment configuration
+- `Dockerfile` - Multi-stage container build
+- `.dockerignore` - Container build exclusions
+- `.env.production.example` - Production environment template
+- `.github/workflows/` - Deployment workflows
 
-## Deployment Options
+## Platform Setup
 
-### 1. Fly.io (Recommended for Rails)
+### Fly.io
+
+Fly.io provides simple container deployment with excellent global performance.
 
 **Setup:**
-```bash
-# Install Fly CLI
-curl -L https://fly.io/install.sh | sh
-
-# Initialize app
-fly launch --no-deploy
-
-# Update fly.toml with your app name
-# Deploy
-bin/deploy-fly
-```
+1. Install the Fly CLI: `curl -L https://fly.io/install.sh | sh`
+2. Create a Fly account: `flyctl auth signup`
+3. Launch your app: `flyctl launch`
+4. Set secrets: `flyctl secrets set SECRET_KEY_BASE=xxx`
 
 **Configuration:**
-- Edit `fly.toml` with your app name and region
-- Set secrets: `fly secrets set RAILS_MASTER_KEY=your_key`
-- Configure database: `fly postgres create`
+- Edit `fly.toml` to customize your deployment
+- Set `app` name to match your Fly app
+- Configure regions, scaling, and resources
+- Add secrets via `flyctl secrets set KEY=value`
 
-### 2. Render
+**Deploy:**
+```bash
+flyctl deploy
+```
+
+**Services configured:**
+- Web server on port 3000
+- Sidekiq worker process
+- PostgreSQL database with pgvector
+- Redis for caching and jobs
+
+### Render
+
+Render provides a managed platform with zero-config databases and automatic scaling.
 
 **Setup:**
-- Connect your GitHub repository to Render
-- Use the provided `render.yaml` configuration
-- Set environment variables in Render dashboard
+1. Connect your GitHub repository to Render
+2. Create a new Blueprint
+3. Use `render.yaml` for configuration
+4. Set environment variables in dashboard
 
 **Configuration:**
-```bash
-# Deploy automatically on git push to main
-git push origin main
+- Edit `render.yaml` to customize services
+- Set app name throughout the file
+- Configure regions and instance types
+- Add secrets via Render dashboard
 
-# Or use manual deploy script
-bin/deploy-render
-```
+**Deploy:**
+Automatic deployment on git push to main branch.
 
-### 3. Kamal (Self-hosted)
+**Services configured:**
+- Web service with health checks
+- Background worker for Sidekiq
+- PostgreSQL database with pgvector
+- Redis for caching and jobs
+
+### Kamal
+
+Kamal deploys your app to your own servers using Docker containers.
 
 **Setup:**
+1. Install Kamal: `gem install kamal`
+2. Set up your servers with Docker
+3. Configure SSH access to servers
+4. Edit `config/deploy.yml` with your details
+
+**Configuration:**
+- Add your server IPs to `config/deploy.yml`
+- Configure registry credentials
+- Set up domain and SSL certificates
+- Add secrets via `kamal env push`
+
+**Deploy:**
 ```bash
-# Install Kamal
-gem install kamal
-
-# Configure your servers in config/deploy.yml
-# Setup infrastructure
-bin/deploy-kamal setup
-
-# Deploy application
-bin/deploy-kamal
+kamal setup    # First time only
+kamal deploy   # Subsequent deployments
 ```
 
-## Configuration Files
-
-### Fly.io (`fly.toml`)
-```toml
-app = "your-app-name"
-primary_region = "iad"
-
-[http_service]
-  internal_port = 3000
-  force_https = true
-
-[env]
-  RAILS_ENV = "production"
-```
-
-### Render (`render.yaml`)
-```yaml
-services:
-  - type: web
-    name: your-app-name
-    env: ruby
-    buildCommand: "./bin/render-build.sh"
-    startCommand: "bundle exec puma -C config/puma.rb"
-```
-
-### Kamal (`config/deploy.yml`)
-```yaml
-service: your-app-name
-image: your-registry/your-app-name
-
-servers:
-  web:
-    hosts:
-      - your-server-ip
-
-accessories:
-  db:
-    image: postgres:15
-  redis:
-    image: redis:7
-```
+**Services configured:**
+- Web application with Traefik load balancer
+- Sidekiq workers on dedicated servers
+- PostgreSQL and Redis as accessories
 
 ## Environment Variables
 
-### Required Secrets
+Copy `.env.production.example` to `.env.production` and configure:
+
+### Required Variables
+
 ```bash
-# All platforms need these
+# Database
+DATABASE_URL=postgres://user:password@host:5432/database
+
+# Redis  
+REDIS_URL=redis://host:6379/0
+
+# Rails
+SECRET_KEY_BASE=your_secret_key_base
 RAILS_MASTER_KEY=your_master_key
-DATABASE_URL=postgresql://...
-REDIS_URL=redis://...
-
-# Stripe (if using billing module)
-STRIPE_PUBLISHABLE_KEY=pk_...
-STRIPE_SECRET_KEY=sk_...
-
-# OpenAI (if using AI module)
-OPENAI_API_KEY=sk-...
 ```
 
-### Platform-Specific Setup
+### Optional Variables
 
-**Fly.io:**
 ```bash
-fly secrets set RAILS_MASTER_KEY=your_key
-fly secrets set DATABASE_URL=postgresql://...
+# Email (choose one provider)
+SMTP_SERVER=smtp.gmail.com
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+
+# OAuth providers
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Stripe billing
+STRIPE_SECRET_KEY=sk_live_your_stripe_key
+STRIPE_PUBLIC_KEY=pk_live_your_stripe_key
+
+# AI providers  
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
 ```
 
-**Render:**
-Set in Render dashboard under Environment Variables
+## Continuous Integration
 
-**Kamal:**
-Set in `.env` file (not committed to git):
-```bash
-KAMAL_REGISTRY_PASSWORD=your_password
-RAILS_MASTER_KEY=your_key
+The module includes GitHub Actions workflows for:
+
+### Main CI Pipeline (`.github/workflows/ci.yml`)
+- Matrix testing across Ruby versions and OSs
+- PostgreSQL and Redis services
+- Template installation validation
+- Configuration syntax validation
+- Container image building and publishing
+
+### Platform Deployments
+- `fly-deploy.yml` - Deploys to Fly.io on push
+- `kamal-deploy.yml` - Deploys with Kamal on push
+- Render deploys automatically via Blueprint
+
+## Container Image Publishing
+
+When you create a release (git tag), the CI pipeline:
+1. Builds a multi-arch Docker image
+2. Publishes to GitHub Container Registry
+3. Tags with semantic version numbers
+
+Images are available at:
+```
+ghcr.io/your-username/your-app:latest
+ghcr.io/your-username/your-app:v1.0.0
 ```
 
-## Database Setup
+## Health Checks
+
+All platforms are configured with health checks at `/health`. 
+
+Add this route to your Rails app:
+```ruby
+# config/routes.rb
+get '/health', to: 'health#show'
+```
+
+```ruby
+# app/controllers/health_controller.rb
+class HealthController < ApplicationController
+  def show
+    render json: { status: 'ok', timestamp: Time.current }
+  end
+end
+```
+
+## SSL/TLS
+
+All platforms are configured for HTTPS:
+- **Fly.io**: Automatic SSL with Let's Encrypt
+- **Render**: Automatic SSL included
+- **Kamal**: Traefik with Let's Encrypt
+
+## Monitoring
+
+Consider adding these services:
+- **Error tracking**: Sentry, Rollbar, Bugsnag
+- **Performance**: New Relic, Scout, Skylight  
+- **Uptime**: Pingdom, UptimeRobot
+- **Logs**: Papertrail, Logtail
+
+## Secrets Management
 
 ### Fly.io
 ```bash
-# Create PostgreSQL database
-fly postgres create --name your-app-db
-
-# Connect to your app
-fly postgres attach your-app-db
+flyctl secrets set SECRET_KEY_BASE=xxx
+flyctl secrets list
 ```
 
 ### Render
-PostgreSQL is configured automatically via `render.yaml`
+Set via dashboard under Environment > Environment Variables
 
-### Kamal
-Database runs as Docker container on your server
-
-## CI/CD Integration
-
-### GitHub Actions
-The module includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) that:
-- Runs tests on every push
-- Deploys to production on pushes to main branch
-- Supports multiple deployment platforms
-
-### Required Secrets
-Add these to your GitHub repository secrets:
-```
-FLY_API_TOKEN          # For Fly.io deployments
-KAMAL_REGISTRY_PASSWORD # For Kamal deployments
-RAILS_MASTER_KEY       # For all deployments
-```
-
-## Deployment Scripts
-
-### Quick Deploy Commands
+### Kamal  
 ```bash
-# Deploy to Fly.io
-bin/deploy-fly
-
-# Deploy to Render (via git push)
-bin/deploy-render
-
-# Deploy with Kamal
-bin/deploy-kamal
-
-# First-time Kamal setup
-bin/deploy-kamal setup
-```
-
-### Manual Deployment Steps
-
-1. **Build and test locally:**
-   ```bash
-   bundle install
-   bundle exec rails test
-   bundle exec rails assets:precompile
-   ```
-
-2. **Deploy to chosen platform:**
-   ```bash
-   # Choose one:
-   bin/deploy-fly
-   bin/deploy-render
-   bin/deploy-kamal
-   ```
-
-3. **Run post-deployment tasks:**
-   ```bash
-   # Migrate database (platform-specific)
-   fly ssh console -C "rails db:migrate"
-   ```
-
-## Production Optimizations
-
-### Dockerfile
-- Multi-stage build for smaller images
-- Non-root user for security
-- Asset precompilation
-- Bootsnap for faster boot times
-
-### Performance
-- Puma web server configuration
-- Redis for caching and background jobs
-- PostgreSQL with proper indexing
-- CDN for asset delivery
-
-### Security
-- Secrets management
-- Environment isolation
-- SSL/TLS termination
-- Database encryption
-
-## Monitoring and Logging
-
-### Fly.io
-```bash
-# View logs
-fly logs
-
-# Monitor metrics
-fly dashboard
-```
-
-### Render
-- Built-in monitoring dashboard
-- Log streaming in web interface
-
-### Kamal
-```bash
-# View logs
-kamal app logs
-
-# Check status
-kamal app details
+kamal env push
+kamal env list
 ```
 
 ## Troubleshooting
 
 ### Common Issues
-1. **Build failures**: Check Ruby version in Dockerfile
-2. **Database connection**: Verify DATABASE_URL format
-3. **Asset compilation**: Ensure RAILS_MASTER_KEY is set
-4. **Memory issues**: Adjust server resources
 
-### Debug Commands
+**Build failures:**
+- Check Dockerfile syntax
+- Verify all dependencies are installed
+- Review build logs for missing packages
+
+**Deploy failures:**
+- Validate configuration syntax
+- Check secrets are set correctly
+- Verify server connectivity (Kamal)
+
+**Runtime errors:**
+- Check environment variables
+- Review application logs  
+- Verify database connections
+
+### Platform-Specific Commands
+
+**Fly.io debugging:**
 ```bash
-# Fly.io console access
-fly ssh console
-
-# Kamal console access
-kamal app exec -i --reuse "rails console"
-
-# Check environment
-kamal app exec "printenv"
+flyctl logs
+flyctl ssh console
+flyctl status
 ```
 
-## Testing
+**Render debugging:**
+- View logs in dashboard
+- Check service health
+- Review event history
 
+**Kamal debugging:**
 ```bash
-bin/synth test deploy
+kamal app logs
+kamal app exec -i bash
+kamal config
 ```
 
-## Version
+## Customization
 
-Current version: 1.0.0
+The deployment configurations are templates. Customize them for your needs:
+
+- **Scaling**: Adjust instance counts and sizes
+- **Regions**: Choose optimal locations for your users  
+- **Resources**: Configure CPU, memory, and storage
+- **Services**: Add databases, caches, or other services
+- **Networking**: Configure load balancers and SSL
+
+## Cost Optimization
+
+- **Fly.io**: Use auto-start/stop for low-traffic apps
+- **Render**: Choose appropriate instance sizes
+- **Kamal**: Optimize server utilization
+
+See each platform's documentation for detailed pricing and optimization guides.
