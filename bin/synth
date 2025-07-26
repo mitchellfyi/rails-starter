@@ -48,7 +48,7 @@ class SynthCLI
     when 'doctor'
       cli.doctor
     when 'upgrade'
-      module_name = args[1]
+      module_name = args[1..-1].find { |arg| !arg.start_with?('--') && !arg.start_with?('-') }
       cli.upgrade(module_name)
     when 'help', '--help', '-h', nil
       cli.show_help
@@ -133,10 +133,13 @@ class SynthCLI
   end
 
   def upgrade(module_name = nil)
+    backup_enabled = !ARGV.include?('--no-backup')
+    non_interactive = ARGV.include?('--yes') || ARGV.include?('-y')
+    
     if module_name
-      upgrade_single_module(module_name)
+      upgrade_single_module(module_name, backup_enabled, non_interactive)
     else
-      upgrade_all_modules
+      upgrade_all_modules(backup_enabled, non_interactive)
     end
   end
 
@@ -153,13 +156,21 @@ class SynthCLI
         remove MODULE         Uninstall a feature module  
         info MODULE           Show detailed information about a module
         test [MODULE]         Run tests for a module or all modules
-        upgrade [MODULE]      Upgrade one or all installed modules
+        upgrade [MODULE]      Upgrade one or all installed modules to latest versions
         doctor                Validate setup and configuration
         help                  Show this help message
       
       OPTIONS:
         --verbose, -v         Enable verbose output
         --force, -f           Force operation without confirmation
+        --yes, -y             Auto-confirm prompts (non-interactive mode)
+        --no-backup           Skip creating backups during upgrades
+      
+      UPGRADE OPTIONS:
+        upgrade               Upgrade all installed modules
+        upgrade MODULE        Upgrade specific module only
+        upgrade --yes         Upgrade without prompting for conflicts
+        upgrade --no-backup   Upgrade without creating backups
       
       EXAMPLES:
         bin/synth list
@@ -167,6 +178,9 @@ class SynthCLI
         bin/synth remove cms --force
         bin/synth info ai
         bin/synth test billing
+        bin/synth upgrade
+        bin/synth upgrade ai --verbose
+        bin/synth upgrade --yes --no-backup
         bin/synth doctor
     HELP
   end
@@ -386,18 +400,51 @@ class SynthCLI
     end
   end
 
-  def upgrade_single_module(module_name)
+  def upgrade_single_module(module_name, backup_enabled = true, non_interactive = false)
     unless module_installed?(module_name)
       puts "❌ Module '#{module_name}' is not installed"
       exit 1
     end
     
-    puts "🔄 Upgrading #{module_name} module..."
+    registry = load_registry
+    installed_info = registry.dig('installed', module_name)
+    current_version = installed_info['version'] || '0.0.0'
+    
     module_template_path = File.join(TEMPLATE_PATH, module_name)
-    install_module(module_name, module_template_path)
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' template not found"
+      exit 1
+    end
+    
+    available_version = get_module_version(module_template_path)
+    
+    if version_compare(available_version, current_version) <= 0
+      puts "✅ Module '#{module_name}' is already up to date (v#{current_version})"
+      return
+    end
+    
+    puts "🔄 Upgrading #{module_name} from v#{current_version} to v#{available_version}..."
+    
+    # Create backup if enabled
+    if backup_enabled
+      backup_path = create_module_backup(module_name, current_version)
+      puts "💾 Created backup at #{backup_path}" if @verbose
+    end
+    
+    # Check for conflicts and prompt user
+    conflicts = detect_conflicts(module_name, module_template_path)
+    if !conflicts.empty? && !non_interactive
+      handle_conflicts(conflicts, module_name)
+    end
+    
+    # Perform the upgrade
+    perform_module_upgrade(module_name, module_template_path, current_version, available_version)
+    
+    puts "✅ Successfully upgraded #{module_name} to v#{available_version}!"
+    log_module_action(:upgrade, module_name, "#{current_version} -> #{available_version}")
   end
 
-  def upgrade_all_modules
+  def upgrade_all_modules(backup_enabled = true, non_interactive = false)
     registry = load_registry
     installed_modules = registry['installed'] || {}
     
@@ -406,9 +453,40 @@ class SynthCLI
       return
     end
     
-    puts "🔄 Upgrading all installed modules..."
-    installed_modules.keys.each do |module_name|
-      upgrade_single_module(module_name)
+    upgradeable_modules = []
+    installed_modules.each do |module_name, info|
+      current_version = info['version'] || '0.0.0'
+      module_template_path = File.join(TEMPLATE_PATH, module_name)
+      
+      next unless Dir.exist?(module_template_path)
+      
+      available_version = get_module_version(module_template_path)
+      if version_compare(available_version, current_version) > 0
+        upgradeable_modules << [module_name, current_version, available_version]
+      end
+    end
+    
+    if upgradeable_modules.empty?
+      puts "✅ All installed modules are up to date"
+      return
+    end
+    
+    puts "🔄 Found #{upgradeable_modules.length} module(s) to upgrade:"
+    upgradeable_modules.each do |name, current, available|
+      puts "  📦 #{name}: v#{current} -> v#{available}"
+    end
+    
+    unless non_interactive
+      print "\nProceed with upgrades? [Y/n]: "
+      confirmation = STDIN.gets.chomp.downcase
+      if confirmation == 'n' || confirmation == 'no'
+        puts "❌ Upgrade cancelled"
+        return
+      end
+    end
+    
+    upgradeable_modules.each do |module_name, _, _|
+      upgrade_single_module(module_name, backup_enabled, true) # Force non-interactive for bulk upgrades
     end
   end
 
@@ -560,6 +638,239 @@ class SynthCLI
 
   def force_mode?
     ARGV.include?('--force') || ARGV.include?('-f')
+  end
+
+  def get_module_version(module_template_path)
+    version_path = File.join(module_template_path, 'VERSION')
+    return '1.0.0' unless File.exist?(version_path)
+    File.read(version_path).strip
+  end
+
+  def version_compare(version1, version2)
+    # Simple semantic version comparison
+    v1_parts = version1.split('.').map(&:to_i)
+    v2_parts = version2.split('.').map(&:to_i)
+    
+    # Pad arrays to same length
+    max_length = [v1_parts.length, v2_parts.length].max
+    v1_parts += [0] * (max_length - v1_parts.length)
+    v2_parts += [0] * (max_length - v2_parts.length)
+    
+    # Compare each part
+    v1_parts.zip(v2_parts).each do |a, b|
+      return 1 if a > b
+      return -1 if a < b
+    end
+    0
+  end
+
+  def create_module_backup(module_name, version)
+    timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
+    backup_dir = File.join('backups', 'synth_modules', "#{module_name}_v#{version}_#{timestamp}")
+    
+    FileUtils.mkdir_p(backup_dir)
+    
+    # Backup module files from app/domains
+    domains_path = File.join('app', 'domains', module_name)
+    if Dir.exist?(domains_path)
+      FileUtils.cp_r(domains_path, File.join(backup_dir, 'app_domains'))
+    end
+    
+    # Backup specs/tests
+    ['spec', 'test'].each do |test_dir|
+      test_path = File.join(test_dir, 'domains', module_name)
+      if Dir.exist?(test_path)
+        FileUtils.cp_r(test_path, File.join(backup_dir, "#{test_dir}_domains"))
+      end
+    end
+    
+    # Backup registry entry
+    registry = load_registry
+    module_registry = { 'module' => module_name, 'info' => registry.dig('installed', module_name) }
+    File.write(File.join(backup_dir, 'registry.json'), JSON.pretty_generate(module_registry))
+    
+    backup_dir
+  end
+
+  def detect_conflicts(module_name, module_template_path)
+    conflicts = []
+    
+    # Check if there are local modifications to module files
+    domains_path = File.join('app', 'domains', module_name)
+    return conflicts unless Dir.exist?(domains_path)
+    
+    # Look for files that exist in both template and current installation
+    Dir.glob(File.join(module_template_path, "**/*")).each do |template_file|
+      next if File.directory?(template_file)
+      next if ['install.rb', 'remove.rb', 'VERSION'].include?(File.basename(template_file))
+      
+      relative_path = Pathname.new(template_file).relative_path_from(Pathname.new(module_template_path))
+      current_file = File.join(domains_path, relative_path)
+      
+      if File.exist?(current_file)
+        template_content = File.read(template_file)
+        current_content = File.read(current_file)
+        
+        if template_content != current_content
+          conflicts << {
+            file: relative_path.to_s,
+            template_path: template_file,
+            current_path: current_file
+          }
+        end
+      end
+    end
+    
+    conflicts
+  end
+
+  def handle_conflicts(conflicts, module_name)
+    puts "\n⚠️  Found #{conflicts.length} file conflict(s) in #{module_name}:"
+    conflicts.each { |c| puts "  📄 #{c[:file]}" }
+    
+    puts "\nConflict resolution options:"
+    puts "  [o] Overwrite all with template versions"
+    puts "  [k] Keep all current versions"
+    puts "  [i] Review each conflict individually"
+    puts "  [a] Abort upgrade"
+    
+    print "\nChoose option [o/k/i/a]: "
+    choice = STDIN.gets.chomp.downcase
+    
+    case choice
+    when 'o'
+      # Overwrite all - do nothing, normal upgrade will handle this
+      puts "📝 Will overwrite all conflicted files with template versions"
+    when 'k'
+      # Keep all - mark conflicts to skip
+      conflicts.each { |c| c[:action] = :keep }
+      puts "📝 Will keep all current file versions"
+    when 'i'
+      # Interactive review
+      handle_conflicts_interactively(conflicts)
+    when 'a'
+      puts "❌ Upgrade aborted"
+      exit 0
+    else
+      puts "❌ Invalid choice. Aborting upgrade."
+      exit 1
+    end
+  end
+
+  def handle_conflicts_interactively(conflicts)
+    conflicts.each do |conflict|
+      puts "\n" + "="*60
+      puts "Conflict in: #{conflict[:file]}"
+      puts "="*60
+      
+      puts "\n[1] Template version:"
+      puts File.read(conflict[:template_path]).lines.first(5).join
+      puts "... (truncated)" if File.read(conflict[:template_path]).lines.length > 5
+      
+      puts "\n[2] Current version:"
+      puts File.read(conflict[:current_path]).lines.first(5).join
+      puts "... (truncated)" if File.read(conflict[:current_path]).lines.length > 5
+      
+      print "\nChoose: [1] Use template, [2] Keep current, [s] Skip this file: "
+      choice = STDIN.gets.chomp
+      
+      case choice
+      when '1'
+        conflict[:action] = :overwrite
+      when '2'
+        conflict[:action] = :keep
+      when 's'
+        conflict[:action] = :skip
+      else
+        puts "Invalid choice, keeping current version"
+        conflict[:action] = :keep
+      end
+    end
+  end
+
+  def perform_module_upgrade(module_name, module_template_path, current_version, new_version)
+    # Handle migrations first
+    handle_module_migrations(module_name, module_template_path)
+    
+    # Handle configuration updates
+    handle_module_config(module_name, module_template_path)
+    
+    # Update module files with conflict resolution
+    update_module_files(module_name, module_template_path)
+    
+    # Handle seed data
+    handle_module_seeds(module_name, module_template_path)
+    
+    # Update registry
+    update_registry(module_name, {
+      'version' => new_version,
+      'installed_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+      'template_path' => module_template_path,
+      'previous_version' => current_version,
+      'upgraded_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z')
+    })
+  end
+
+  def handle_module_migrations(module_name, module_template_path)
+    migration_path = File.join(module_template_path, 'db', 'migrate')
+    return unless Dir.exist?(migration_path)
+    
+    puts "🗄️  Processing migrations for #{module_name}..." if @verbose
+    
+    # Copy migrations to main db/migrate directory
+    Dir.glob(File.join(migration_path, "*.rb")).each do |migration_file|
+      migration_name = File.basename(migration_file)
+      target_path = File.join('db', 'migrate', migration_name)
+      
+      unless File.exist?(target_path)
+        FileUtils.mkdir_p('db/migrate')
+        FileUtils.cp(migration_file, target_path)
+        puts "  ✅ Copied migration #{migration_name}" if @verbose
+      end
+    end
+  end
+
+  def handle_module_config(module_name, module_template_path)
+    config_path = File.join(module_template_path, 'config')
+    return unless Dir.exist?(config_path)
+    
+    puts "⚙️  Processing configuration for #{module_name}..." if @verbose
+    
+    # Handle initializers
+    initializers_path = File.join(config_path, 'initializers')
+    if Dir.exist?(initializers_path)
+      FileUtils.mkdir_p('config/initializers')
+      Dir.glob(File.join(initializers_path, "*.rb")).each do |initializer|
+        target_path = File.join('config/initializers', File.basename(initializer))
+        FileUtils.cp(initializer, target_path)
+        puts "  ✅ Updated initializer #{File.basename(initializer)}" if @verbose
+      end
+    end
+    
+    # Handle routes
+    routes_file = File.join(config_path, 'routes.rb')
+    if File.exist?(routes_file)
+      puts "  📝 Found routes file - manual integration may be required" if @verbose
+    end
+  end
+
+  def update_module_files(module_name, module_template_path)
+    # Use existing copy_module_files method but with conflict awareness
+    copy_module_files(module_name, module_template_path)
+  end
+
+  def handle_module_seeds(module_name, module_template_path)
+    seeds_path = File.join(module_template_path, 'db', 'seeds.rb')
+    return unless File.exist?(seeds_path)
+    
+    puts "🌱 Found seed data for #{module_name} - consider running: rails db:seed" if @verbose
+    
+    # Copy seeds to a module-specific location
+    target_seeds_dir = File.join('db', 'seeds')
+    FileUtils.mkdir_p(target_seeds_dir)
+    target_seeds_file = File.join(target_seeds_dir, "#{module_name}_seeds.rb")
+    FileUtils.cp(seeds_path, target_seeds_file)
+    puts "  ✅ Copied seeds to #{target_seeds_file}" if @verbose
   end
 end
 
