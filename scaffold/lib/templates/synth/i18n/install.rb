@@ -142,7 +142,7 @@ helper_content = <<~RUBY
           "#{amount.to_f.round(2)} #{currency_symbol(currency)}"
         else
           # Default English formatting
-          "\#{currency_symbol(currency)}#{number_with_precision(amount, precision: 2, delimiter: ',')}"
+          "#{currency_symbol(currency)}#{number_with_precision(amount, precision: 2, delimiter: ',')}"
         end
       end
 
