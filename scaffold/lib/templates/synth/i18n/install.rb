@@ -60,8 +60,7 @@ initializer_content = <<~RUBY
 
     def detect_locale
       # 1. User preference (if logged in)
-      return current_user.locale if user_signed_in? && current_user.locale.present? && 
-                                   I18n.available_locales.include?(current_user.locale.to_sym)
+      return current_user.locale if user_has_valid_locale?
       
       # 2. URL parameter
       return params[:locale] if params[:locale].present? && 
