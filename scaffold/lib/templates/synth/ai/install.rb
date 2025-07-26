@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # AI module installer
-puts 'Installing AI module...'
+say 'Installing AI module...'
 
 # In a real implementation, this would:
 # - Add AI gems to Gemfile (ruby-openai, anthropic-sdk, etc.)
