@@ -244,7 +244,11 @@ module Synth
 
         test_commands.each do |cmd|
           puts "Running: #{cmd}"
-          system(cmd) # In a real implementation, this would be more sophisticated
+          unless system(cmd)
+            puts "❌ Command failed: #{cmd}"
+            log_operation('test_ai_error', description: "Command failed: #{cmd}")
+            return
+          end
         end
         
         log_operation('test_ai_complete', description: 'AI tests completed')
