@@ -1,98 +1,162 @@
-<div class="max-w-4xl mx-auto p-6">
-  <h1 class="text-3xl font-bold mb-6">Billing Dashboard</h1>
+<div class="max-w-6xl mx-auto p-4 sm:p-6">
+  <header class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Billing Dashboard</h1>
+    <p class="mt-2 text-gray-600">Manage your subscription and billing information</p>
+  </header>
 
   <% if @subscription %>
     <!-- Current Subscription -->
-    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4">Current Subscription</h2>
+    <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-6" aria-labelledby="current-subscription">
+      <h2 id="current-subscription" class="text-xl font-semibold mb-4">Current Subscription</h2>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <p class="text-sm text-gray-600">Plan</p>
-          <p class="font-medium"><%= @subscription.plan.name %></p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Plan</p>
+          <p class="font-medium text-gray-900"><%= @subscription.plan.name %></p>
         </div>
         
-        <div>
-          <p class="text-sm text-gray-600">Status</p>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Status</p>
           <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
                      <%= @subscription.active? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
             <%= @subscription.status.titleize %>
           </span>
         </div>
         
-        <div>
-          <p class="text-sm text-gray-600">Amount</p>
-          <p class="font-medium">$<%= @subscription.plan.price_in_dollars %> / <%= @subscription.plan.interval %></p>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Amount</p>
+          <p class="font-medium text-gray-900">$<%= @subscription.plan.price_in_dollars %> / <%= @subscription.plan.interval %></p>
         </div>
         
         <% if @subscription.on_trial? %>
-          <div>
-            <p class="text-sm text-gray-600">Trial Ends</p>
-            <p class="font-medium"><%= @subscription.trial_ends_at.strftime('%B %d, %Y') %></p>
+          <div class="bg-blue-50 rounded-lg p-4">
+            <p class="text-sm text-blue-700 mb-1">Trial Ends</p>
+            <p class="font-medium text-blue-900"><%= @subscription.trial_ends_at.strftime('%B %d, %Y') %></p>
             <p class="text-xs text-blue-600"><%= @subscription.trial_days_remaining %> days remaining</p>
           </div>
-        <% end %>
-        
-        <% if @subscription.current_period_end %>
-          <div>
-            <p class="text-sm text-gray-600">Next Billing Date</p>
-            <p class="font-medium"><%= @subscription.current_period_end.strftime('%B %d, %Y') %></p>
+        <% elsif @subscription.current_period_end %>
+          <div class="bg-gray-50 rounded-lg p-4">
+            <p class="text-sm text-gray-600 mb-1">Next Billing Date</p>
+            <p class="font-medium text-gray-900"><%= @subscription.current_period_end.strftime('%B %d, %Y') %></p>
           </div>
         <% end %>
       </div>
       
-      <div class="mt-6 flex space-x-4">
-        <%= link_to 'Change Plan', billing_plans_path, class: 'btn btn-secondary' %>
-        <%= link_to 'Cancel Subscription', billing_cancel_path, method: :delete, 
-                    confirm: 'Are you sure you want to cancel your subscription?',
-                    class: 'btn btn-outline-danger' %>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <%= link_to billing_plans_path, class: 'inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors' do %>
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+          </svg>
+          Change Plan
+        <% end %>
+        <%= link_to billing_cancel_path, method: :delete, 
+                    data: { confirm: 'Are you sure you want to cancel your subscription?' },
+                    class: 'inline-flex justify-center items-center px-4 py-2 border border-red-300 rounded-lg shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors' do %>
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          Cancel Subscription
+        <% end %>
       </div>
-    </div>
+    </section>
   <% else %>
     <!-- No Active Subscription -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-      <h2 class="text-xl font-semibold text-blue-900 mb-2">No Active Subscription</h2>
-      <p class="text-blue-700 mb-4">Choose a plan to get started with all our features.</p>
-      <%= link_to 'View Plans', billing_plans_path, class: 'btn btn-primary' %>
-    </div>
+    <section class="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-6 text-center" aria-labelledby="no-subscription">
+      <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+        </svg>
+      </div>
+      <h2 id="no-subscription" class="text-xl font-semibold text-blue-900 mb-2">No Active Subscription</h2>
+      <p class="text-blue-700 mb-6 max-w-md mx-auto">Choose a plan to get started with all our premium features and unlock your full potential.</p>
+      <%= link_to billing_plans_path, class: 'inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm' do %>
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        View Plans
+      <% end %>
+    </section>
   <% end %>
 
   <!-- Recent Invoices -->
-  <div class="bg-white border border-gray-200 rounded-lg p-6">
-    <h2 class="text-xl font-semibold mb-4">Recent Invoices</h2>
+  <section class="bg-white border border-gray-200 rounded-lg p-4 sm:p-6" aria-labelledby="recent-invoices">
+    <h2 id="recent-invoices" class="text-xl font-semibold mb-4 flex items-center">
+      <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+      </svg>
+      Recent Invoices
+    </h2>
     
     <% if @invoices.any? %>
-      <div class="overflow-x-auto">
+      <!-- Mobile Card Layout -->
+      <div class="block lg:hidden space-y-4">
+        <% @invoices.each do |invoice| %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <div class="text-sm font-medium text-gray-900">
+                  Invoice #<%= invoice.number || invoice.id %>
+                </div>
+                <div class="text-sm text-gray-500">
+                  <%= invoice.created_at.strftime('%B %d, %Y') %>
+                </div>
+              </div>
+              <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full 
+                         <%= invoice.status == 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' %>">
+                <%= invoice.status.titleize %>
+              </span>
+            </div>
+            
+            <div class="flex justify-between items-center">
+              <div class="text-lg font-semibold text-gray-900">
+                $<%= invoice.amount_in_dollars %>
+              </div>
+              <% if invoice.status == 'paid' %>
+                <%= link_to download_invoice_path(invoice), 
+                    class: 'inline-flex items-center px-3 py-1 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors' do %>
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Download PDF
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Desktop Table Layout -->
+      <div class="hidden lg:block overflow-hidden border border-gray-200 rounded-lg">
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Invoice
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Date
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Amount
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <% @invoices.each do |invoice| %>
-              <tr>
+              <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   #<%= invoice.number || invoice.id %>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <%= invoice.created_at.strftime('%B %d, %Y') %>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                   $<%= invoice.amount_in_dollars %>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -103,8 +167,13 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <% if invoice.status == 'paid' %>
-                    <%= link_to 'Download PDF', download_invoice_path(invoice), 
-                                class: 'text-blue-600 hover:text-blue-900' %>
+                    <%= link_to download_invoice_path(invoice), 
+                        class: 'text-blue-600 hover:text-blue-900 inline-flex items-center' do %>
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      Download PDF
+                    <% end %>
                   <% end %>
                 </td>
               </tr>
@@ -113,7 +182,13 @@
         </table>
       </div>
     <% else %>
-      <p class="text-gray-500">No invoices yet.</p>
+      <div class="text-center py-12">
+        <svg class="mx-auto w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No invoices yet</h3>
+        <p class="text-gray-500">Your invoices will appear here once you have an active subscription.</p>
+      </div>
     <% end %>
-  </div>
+  </section>
 </div>
