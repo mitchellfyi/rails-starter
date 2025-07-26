@@ -15,7 +15,7 @@ template File.join(template_dir, 'fly.toml.tt'), 'fly.toml'
 template File.join(template_dir, 'render.yaml.tt'), 'render.yaml'
 
 # Copy Kamal configuration
-copy_file File.join(template_dir, 'config/deploy.yml.tt'), 'config/deploy.yml'
+template File.join(template_dir, 'config/deploy.yml.tt'), 'config/deploy.yml'
 copy_file File.join(template_dir, 'config/postgres/init.sql'), 'config/postgres/init.sql'
 
 # Copy container files
