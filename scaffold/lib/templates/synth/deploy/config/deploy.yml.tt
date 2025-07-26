@@ -7,8 +7,8 @@ image: <%= app_name %>
 servers:
   web:
     hosts:
-      - YOUR_SERVER_IP_1
-      - YOUR_SERVER_IP_2
+      - YOUR_SERVER_IP_1 # Replace with the public IP address of your first web server (e.g., 192.168.1.1)
+      - YOUR_SERVER_IP_2 # Replace with the public IP address of your second web server (e.g., 192.168.1.2)
     labels:
       traefik.http.routers.web.rule: Host(`yourapp.com`)
       traefik.http.routers.web.tls.certresolver: letsencrypt
