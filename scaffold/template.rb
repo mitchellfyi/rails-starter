@@ -160,5 +160,3 @@ after_bundle do
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
-gem 'rolify', '~> 6.0'
-gem 'friendly_id', '~> 5.4'
