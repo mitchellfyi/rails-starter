@@ -1,0 +1,80 @@
+<%= form_with url: onboarding_step_path(@step), method: :post, local: true, class: "space-y-6" do |form| %>
+  <div class="text-center">
+    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 mb-4">
+      <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2C7 1.448 7.448 1 8 1h8c.552 0 1 .448 1 1v2M7 4H5c-1.104 0-2 .896-2 2v14c0 1.104.896 2 2 2h14c1.104 0 2-.896 2-2V6c0-1.104-.896-2-2-2h-2M7 4h10M11 11h2"></path>
+      </svg>
+    </div>
+    
+    <h3 class="text-lg font-medium text-gray-900 mb-2">
+      Ready to get started?
+    </h3>
+    
+    <p class="text-gray-600 mb-6">
+      We'll help you set up your application step by step. 
+      <% if step_data[:available_modules].any? %>
+        We've detected that you have these modules available: 
+        <span class="font-medium"><%= step_data[:available_modules].map(&:humanize).join(', ') %></span>.
+      <% end %>
+    </p>
+    
+    <% if step_data[:estimated_time] %>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-blue-800">
+              This should take about <strong><%= step_data[:estimated_time] %></strong> to complete.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+    <div class="space-y-4">
+      <h4 class="text-md font-medium text-gray-900">What we'll set up:</h4>
+      <ul class="text-sm text-gray-600 space-y-2">
+        <li class="flex items-center">
+          <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          Your account and preferences
+        </li>
+        <% if step_data[:available_modules].include?('workspace') %>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            Your first workspace and team invitations
+          </li>
+        <% end %>
+        <% if step_data[:available_modules].include?('billing') %>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            Payment and billing preferences
+          </li>
+        <% end %>
+        <% if step_data[:available_modules].include?('ai') %>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            AI provider integrations
+          </li>
+        <% end %>
+        <li class="flex items-center">
+          <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          Key features and navigation
+        </li>
+      </ul>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,164 @@
+<%= form_with url: onboarding_step_path(@step), method: :post, local: true, class: "space-y-6" do |form| %>
+  <div>
+    <div class="flex items-center mb-4">
+      <div class="flex-shrink-0">
+        <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+        </svg>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-medium text-gray-900">Set Up Billing</h3>
+        <p class="text-sm text-gray-600">Configure your payment method to unlock premium features.</p>
+      </div>
+    </div>
+
+    <% if step_data[:has_billing] %>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-sm font-medium text-green-800">Billing already configured</h4>
+            <p class="text-sm text-green-700">Great! You already have billing set up. You can continue to the next step.</p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="space-y-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <h4 class="text-sm font-medium text-blue-800">Free Trial Available</h4>
+              <p class="text-sm text-blue-700">
+                You can start with our free trial. No payment required to get started!
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="focus:outline-none">
+                <span class="absolute inset-0" aria-hidden="true"></span>
+                <p class="text-sm font-medium text-gray-900">Free Trial</p>
+                <p class="text-sm text-gray-500">Start with 14 days free</p>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              <input type="radio" name="billing[plan]" value="trial" checked class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+            </div>
+          </div>
+
+          <div class="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="focus:outline-none">
+                <span class="absolute inset-0" aria-hidden="true"></span>
+                <p class="text-sm font-medium text-gray-900">Add Payment Method</p>
+                <p class="text-sm text-gray-500">Set up billing now</p>
+              </div>
+            </div>
+            <div class="flex-shrink-0">
+              <input type="radio" name="billing[plan]" value="paid" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
+            </div>
+          </div>
+        </div>
+
+        <div id="payment-method-fields" class="hidden space-y-4">
+          <div>
+            <%= form.label :payment_method, "Preferred Payment Method", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select "billing[payment_method]", 
+                options_for_select([
+                  ['Credit Card', 'card'],
+                  ['Bank Account', 'bank'],
+                  ['PayPal', 'paypal']
+                ], 'card'),
+                {},
+                { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" } %>
+          </div>
+          
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h4 class="text-sm font-medium text-yellow-800">Note</h4>
+                <p class="text-sm text-yellow-700">
+                  Payment setup will redirect you to our secure billing partner. You'll return here after completing the setup.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <h4 class="text-sm font-medium text-gray-900">What you'll get:</h4>
+          <ul class="text-sm text-gray-600 space-y-2">
+            <li class="flex items-center">
+              <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Access to premium features
+            </li>
+            <li class="flex items-center">
+              <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Priority customer support
+            </li>
+            <li class="flex items-center">
+              <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Advanced collaboration tools
+            </li>
+            <li class="flex items-center">
+              <svg class="h-4 w-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              Enhanced security options
+            </li>
+          </ul>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const radios = document.querySelectorAll('input[name="billing[plan]"]');
+      const paymentFields = document.getElementById('payment-method-fields');
+      
+      radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+          if (this.value === 'paid') {
+            paymentFields.classList.remove('hidden');
+          } else {
+            paymentFields.classList.add('hidden');
+          }
+        });
+      });
+    });
+  </script>
+<% end %>

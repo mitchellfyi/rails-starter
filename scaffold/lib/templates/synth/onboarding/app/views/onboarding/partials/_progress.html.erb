@@ -1,0 +1,21 @@
+<div class="mb-8">
+  <div class="flex items-center justify-between">
+    <div class="flex-1">
+      <div class="flex items-center space-x-4">
+        <div class="text-sm font-medium text-gray-600">
+          Progress: <%= @onboarding_progress.progress_percentage %>%
+        </div>
+        <div class="flex-1 bg-gray-200 rounded-full h-2">
+          <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300" 
+               style="width: <%= @onboarding_progress.progress_percentage %>%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <% if @step_data[:estimated_time] %>
+    <div class="mt-2 text-xs text-gray-500">
+      Estimated time remaining: <%= @step_data[:estimated_time] %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,74 @@
+<%= form_with url: onboarding_step_path(@step), method: :post, local: true, class: "space-y-6" do |form| %>
+  <div>
+    <div class="flex items-center mb-4">
+      <div class="flex-shrink-0">
+        <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+        </svg>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-medium text-gray-900">Create Your First Workspace</h3>
+        <p class="text-sm text-gray-600">Workspaces help you organize projects and collaborate with your team.</p>
+      </div>
+    </div>
+
+    <% if step_data[:existing_workspaces].any? %>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-sm font-medium text-green-800">Great! You already have workspaces</h4>
+            <div class="mt-2 text-sm text-green-700">
+              <p>You've already created these workspaces:</p>
+              <ul class="mt-1 list-disc list-inside">
+                <% step_data[:existing_workspaces].each do |workspace| %>
+                  <li><%= workspace.name %></li>
+                <% end %>
+              </ul>
+              <p class="mt-2">You can create another one below or continue to the next step.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="space-y-4">
+      <div>
+        <%= form.label :workspace_name, "Workspace Name", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_field "workspace[name]", 
+            placeholder: "e.g., My Company, Project Alpha, Marketing Team",
+            class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+        <p class="mt-1 text-xs text-gray-500">Choose a name that represents your team or project.</p>
+      </div>
+
+      <div>
+        <%= form.label :workspace_description, "Description (optional)", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_area "workspace[description]", 
+            rows: 3,
+            placeholder: "Describe what this workspace is for...",
+            class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+        <p class="mt-1 text-xs text-gray-500">Help your team understand the purpose of this workspace.</p>
+      </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h4 class="text-sm font-medium text-blue-800">Tip</h4>
+          <p class="text-sm text-blue-700">
+            You can create multiple workspaces later from your dashboard. Each workspace has its own members, projects, and settings.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,23 @@
+<% content_for :title, @step_data[:title] %>
+
+<div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
+    <!-- Progress indicator -->
+    <%= render 'onboarding/partials/progress' %>
+    
+    <div class="mt-8">
+      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div class="mb-6">
+          <h2 class="text-2xl font-bold text-gray-900"><%= @step_data[:title] %></h2>
+          <p class="mt-2 text-sm text-gray-600"><%= @step_data[:description] %></p>
+        </div>
+
+        <!-- Render the specific step content -->
+        <%= render "onboarding/steps/#{@step}", step_data: @step_data %>
+        
+        <!-- Navigation -->
+        <%= render 'onboarding/partials/navigation' %>
+      </div>
+    </div>
+  </div>
+</div>
