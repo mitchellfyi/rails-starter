@@ -42,6 +42,26 @@ module Synth
     desc 'doctor', 'Validate setup, keys, and MCP fetchers'
     def doctor
       puts 'Running synth doctor...'
+      
+      # Check if we're in a Rails app
+      unless File.exist?('config/application.rb')
+        puts '❌ Not in a Rails application directory'
+        return
+      end
+      
+      # Check environment configuration
+      puts '🔍 Checking environment configuration...'
+      system('rails deploy:validate_env') if File.exist?('lib/tasks/deploy.rake')
+      
+      # Check database connection
+      puts '🔍 Checking database connection...'
+      system('rails deploy:check_db') if File.exist?('lib/tasks/deploy.rake')
+      
+      # Check Redis connection
+      puts '🔍 Checking Redis connection...'
+      system('rails deploy:check_redis') if File.exist?('lib/tasks/deploy.rake')
+      
+      puts '✅ Doctor check completed!'
     end
 
     desc 'scaffold AGENT', 'Scaffold an agent'

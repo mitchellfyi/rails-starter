@@ -132,6 +132,149 @@ after_bundle do
 
   RUBY
 
+  # Create deployment configuration files and environment setup
+  create_file '.env.example', <<~ENV
+# Rails SaaS Starter Template - Environment Configuration
+# Copy this file to .env and fill in your actual values
+
+# Rails Configuration
+RAILS_ENV=development
+SECRET_KEY_BASE=your_secret_key_base_here_generate_with_rails_secret
+RAILS_LOG_LEVEL=info
+
+# Database Configuration (PostgreSQL with pgvector extension)
+DATABASE_URL=postgresql://username:password@localhost:5432/myapp_development
+
+# Redis Configuration (for Sidekiq and caching)
+REDIS_URL=redis://localhost:6379/0
+
+# Authentication & Session Configuration
+DEVISE_SECRET_KEY=your_devise_secret_key_here
+
+# OmniAuth Configuration
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Email Configuration (SMTP)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+FROM_EMAIL=noreply@your_domain.com
+
+# Stripe Configuration
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+
+# AI/LLM Provider Configuration
+OPENAI_API_KEY=sk-your_openai_api_key_here
+ANTHROPIC_API_KEY=sk-ant-your_anthropic_api_key
+
+# Application Configuration
+APP_HOST=localhost:3000
+APP_NAME=Rails SaaS Starter
+
+# Feature Flags
+FEATURE_AI_ENABLED=true
+FEATURE_BILLING_ENABLED=true
+  ENV
+  
+  # Add health check route
+  route "get '/health', to: 'health#show'"
+  
+  # Create health check controller
+  create_file 'app/controllers/health_controller.rb', <<~RUBY
+# frozen_string_literal: true
+
+class HealthController < ApplicationController
+  skip_before_action :authenticate_user!, if: :devise_controller?
+  skip_before_action :verify_authenticity_token
+  
+  def show
+    checks = {
+      database: check_database,
+      redis: check_redis
+    }
+    
+    healthy = checks.all? { |_service, status| status[:healthy] }
+    
+    response_data = {
+      status: healthy ? 'healthy' : 'unhealthy',
+      timestamp: Time.current.iso8601,
+      checks: checks
+    }
+    
+    status_code = healthy ? :ok : :service_unavailable
+    render json: response_data, status: status_code
+  end
+
+  private
+
+  def check_database
+    ActiveRecord::Base.connection.execute('SELECT 1')
+    { healthy: true, message: 'Database connection successful' }
+  rescue => e
+    { healthy: false, message: "Database error: #{e.message}" }
+  end
+
+  def check_redis
+    Redis.new(url: ENV.fetch('REDIS_URL', 'redis://localhost:6379/0')).ping
+    { healthy: true, message: 'Redis connection successful' }
+  rescue => e
+    { healthy: false, message: "Redis error: #{e.message}" }
+  end
+end
+  RUBY
+  
+  # Create deployment rake tasks
+  create_file 'lib/tasks/deploy.rake', <<~RUBY
+# frozen_string_literal: true
+
+namespace :deploy do
+  desc 'Bootstrap a new environment'
+  task bootstrap: :environment do
+    puts '🚀 Bootstrapping new environment...'
+    Rake::Task['db:create'].invoke
+    Rake::Task['db:migrate'].invoke
+    Rake::Task['db:seed'].invoke
+    puts '🎉 Environment bootstrap completed!'
+  end
+
+  desc 'Validate environment configuration'
+  task validate_env: :environment do
+    errors = []
+    
+    required_vars = %w[SECRET_KEY_BASE DATABASE_URL REDIS_URL]
+    required_vars.each do |var|
+      errors << "#{var} is not set" if ENV[var].blank?
+    end
+    
+    if errors.any?
+      puts "❌ Environment validation failed:"
+      errors.each { |error| puts "   - #{error}" }
+      exit 1
+    else
+      puts "✅ Environment configuration is valid"
+    end
+  end
+end
+  RUBY
+  
+  # Create deploy module for synth CLI
+  run 'mkdir -p lib/templates/synth/deploy'
+  create_file 'lib/templates/synth/deploy/install.rb', <<~RUBY
+say 'Installing Deploy module...'
+say '✅ Deploy module installed!'
+say 'Run: rails deploy:validate_env to check configuration'
+  RUBY
+  create_file 'lib/templates/synth/deploy/README.md', <<~MD
+# Deploy Module
+
+Provides deployment configuration and environment management tools.
+  MD
+  
   # Create an example AI module skeleton
   run 'mkdir -p lib/templates/synth/ai'
   create_file 'lib/templates/synth/ai/install.rb', <<~RUBY
@@ -163,3 +306,14 @@ after_bundle do
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
+say ""
+say "🚀 Deployment files have been created:"
+say "   - .env.example (copy to .env and fill in your values)"
+say "   - Health check endpoint at /health"
+say "   - Deployment rake tasks (run 'rails deploy:validate_env')"
+say ""
+say "📁 Additional deployment configs available in lib/templates/:"
+say "   - fly.toml (Fly.io deployment)"
+say "   - render.yaml (Render deployment)"  
+say "   - kamal.yml (Kamal deployment)"
+say "   - Dockerfile (Docker builds)"

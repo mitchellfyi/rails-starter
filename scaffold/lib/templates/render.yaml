@@ -1,0 +1,134 @@
+# render.yaml - Render deployment configuration for Rails SaaS Starter Template
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # Main Rails application
+  - type: web
+    name: rails-app
+    env: ruby
+    region: oregon  # Change to your preferred region
+    plan: starter   # Change to standard/pro for production
+    buildCommand: "./bin/render-build.sh"
+    startCommand: "bundle exec puma -C config/puma.rb"
+    healthCheckPath: "/health"
+    autoDeploy: false
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: RAILS_LOG_TO_STDOUT
+        value: "true"
+      - key: RAILS_SERVE_STATIC_FILES
+        value: "true"
+      - key: RAILS_MASTER_KEY
+        sync: false  # Set this in Render dashboard
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postgres-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: redis-cache
+          property: connectionString
+      # AI Provider API Keys (set in Render dashboard)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # OAuth Credentials (set in Render dashboard)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      # Stripe Configuration (set in Render dashboard)
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # Email Configuration (set in Render dashboard)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      # Application Configuration
+      - key: APP_HOST
+        value: your-app-name.onrender.com  # Update with your actual domain
+      - key: APP_NAME
+        value: Rails SaaS Starter
+      - key: FEATURE_AI_ENABLED
+        value: "true"
+      - key: FEATURE_BILLING_ENABLED
+        value: "true"
+      - key: FEATURE_CMS_ENABLED
+        value: "true"
+
+  # Sidekiq background job worker
+  - type: worker
+    name: sidekiq-worker
+    env: ruby
+    region: oregon  # Same region as web service
+    plan: starter   # Change to standard/pro for production
+    buildCommand: "./bin/render-build.sh"
+    startCommand: "bundle exec sidekiq"
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: postgres-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: redis-cache
+          property: connectionString
+      # Copy essential environment variables from web service
+      - key: SECRET_KEY_BASE
+        fromService:
+          type: web
+          name: rails-app
+          envVarKey: SECRET_KEY_BASE
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+
+databases:
+  # PostgreSQL database with pgvector extension
+  - name: postgres-db
+    databaseName: myapp_production
+    user: myapp
+    region: oregon  # Same region as services
+    plan: starter   # Change to standard/pro for production
+    postgresMajorVersion: 15
+    # Note: You may need to manually enable pgvector extension after creation
+    # Connect to your database and run: CREATE EXTENSION IF NOT EXISTS vector;
+
+services:
+  # Redis for caching and Sidekiq
+  - type: redis
+    name: redis-cache
+    region: oregon  # Same region as other services
+    plan: starter   # Change to standard/pro for production
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Empty list allows access from all Render services
