@@ -74,6 +74,8 @@ The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/temp
 
 The template encourages full test coverage.  Every module ships with unit, integration, and system tests.  External services (OpenAI, Claude, Stripe, GitHub) are stubbed to ensure deterministic runs.  The GitHub Actions workflow (`.github/workflows/test.yml`) installs the template into a fresh app and runs the full suite across a matrix of Ruby and PostgreSQL versions.
 
+For detailed information about the test matrix and CI/CD setup, see [GitHub Actions Test Matrix Documentation](docs/github-actions-test-matrix.md).
+
 ### Seeding
 
 Seed data sets up a demo organisation with a user, example prompt templates, example LLM jobs and outputs, dummy Stripe plans, and a sample blog post.  Seeds are idempotent, meaning you can run them multiple times without duplicating data.
