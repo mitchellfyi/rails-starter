@@ -2,7 +2,7 @@ Subject: You've been invited to join <%= @workspace.name %>
 
 Hello!
 
-<%= @invited_by.email %> has invited you to join "<%= @workspace.name %>" as a <%= @invitation.role %>.
+<%= @invited_by.email %> has invited you to join "<%= @workspace.name %>" as a <%= @invitation.workspace_role&.display_name || @invitation.role.humanize %>.
 
 <% if @workspace.description.present? %>
 About this workspace:
