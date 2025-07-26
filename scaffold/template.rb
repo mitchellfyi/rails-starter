@@ -16,9 +16,12 @@
 say "🪝 Setting up Rails SaaS Starter Template..."
 
 # Add gems to the Gemfile
-gem 'pg', '~> 1.5'
+# Note: Rails already includes some gems, so we'll modify the existing entries
+gsub_file 'Gemfile', /gem ['"]pg['"].*/, "gem 'pg', '~> 1.5'"
+gsub_file 'Gemfile', /gem ['"]turbo-rails['"](?!, "~> 1.5").*/, "gem 'turbo-rails', '~> 1.5'"
+gsub_file 'Gemfile', /gem ['"]stimulus-rails['"](?!, "~> 1.2").*/, "gem 'stimulus-rails', '~> 1.2'"
+
 gem 'pgvector', '~> 0.5'
-gem 'pgvector', '~> 0.3.2'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
 gem 'devise', '~> 4.9'
@@ -26,8 +29,6 @@ gem 'devise', '~> 4.9'
 gem 'omniauth', '~> 2.1'
 gem 'stripe', '~> 15.3'
 gem 'pundit', '~> 2.1'
-gem 'turbo-rails', '~> 1.5'
-gem 'stimulus-rails', '~> 1.2'
 gem 'tailwindcss-rails', '~> 4.3'
 gem 'jsonapi-serializer', '~> 3.2'
 
