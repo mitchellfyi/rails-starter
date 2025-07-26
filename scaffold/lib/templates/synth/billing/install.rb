@@ -853,7 +853,8 @@ after_bundle do
     end
   RUBY
 
-  create_file 'db/migrate/001_create_billing_tables.rb', migration_template
+  timestamp = Time.now.utc.strftime("%Y%m%d%H%M%S")
+  create_file "db/migrate/#{timestamp}_create_billing_tables.rb", migration_template
 
   # Add routes
   route <<~'RUBY'
