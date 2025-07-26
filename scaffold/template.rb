@@ -160,9 +160,3 @@ after_bundle do
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
-gem 'rolify', '~> 6.0'
-gem 'friendly_id', '~> 5.4'
-gem 'devise-two-factor', '~> 4.0'
-gem 'omniauth-google-oauth2', '~> 1.0'
-gem 'omniauth-github', '~> 2.0'
-gem 'omniauth-slack', '~> 2.0'
