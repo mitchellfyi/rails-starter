@@ -12,30 +12,45 @@ module UserWorkspaceExtensions
     has_many :created_workspaces, class_name: 'Workspace', foreign_key: 'created_by_id', dependent: :destroy
     has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'invited_by_id', dependent: :destroy
     has_many :received_invitations, class_name: 'Invitation', foreign_key: 'email', primary_key: 'email'
+    has_many :impersonations_as_impersonator, class_name: 'Impersonation', foreign_key: 'impersonator_id', dependent: :destroy
+    has_many :impersonations_as_impersonated, class_name: 'Impersonation', foreign_key: 'impersonated_user_id', dependent: :destroy
   end
 
   def admin_workspaces
-    workspaces.joins(:memberships).where(memberships: { role: 'admin' })
+    workspaces.joins(memberships: :workspace_role).where(workspace_roles: { name: 'admin' })
   end
 
   def member_workspaces
-    workspaces.joins(:memberships).where(memberships: { role: 'member' })
+    workspaces.joins(memberships: :workspace_role).where(workspace_roles: { name: 'member' })
   end
 
   def guest_workspaces
-    workspaces.joins(:memberships).where(memberships: { role: 'guest' })
+    workspaces.joins(memberships: :workspace_role).where(workspace_roles: { name: 'guest' })
   end
 
   def workspace_role(workspace)
-    memberships.find_by(workspace: workspace)&.role
+    memberships.find_by(workspace: workspace)&.workspace_role&.name
   end
 
   def admin_of?(workspace)
-    memberships.exists?(workspace: workspace, role: 'admin')
+    memberships.joins(:workspace_role).exists?(workspace: workspace, workspace_roles: { name: 'admin' })
   end
 
   def member_of?(workspace)
     memberships.exists?(workspace: workspace)
+  end
+
+  def can_impersonate_in?(workspace)
+    membership = memberships.find_by(workspace: workspace)
+    membership&.can_impersonate?
+  end
+
+  def active_impersonation_in(workspace)
+    impersonations_as_impersonator.active.find_by(workspace: workspace)
+  end
+
+  def being_impersonated_in?(workspace)
+    impersonations_as_impersonated.active.exists?(workspace: workspace)
   end
 
   def pending_invitations

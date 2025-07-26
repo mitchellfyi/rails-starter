@@ -6,15 +6,15 @@ class MembershipPolicy < ApplicationPolicy
   end
 
   def create?
-    workspace_admin?
+    workspace_member? && can_invite_members?
   end
 
   def update?
-    workspace_admin? || own_membership?
+    (workspace_member? && can_manage_members?) || own_membership?
   end
 
   def destroy?
-    workspace_admin? || own_membership?
+    (workspace_member? && can_remove_members?) || own_membership?
   end
 
   private
@@ -24,7 +24,22 @@ class MembershipPolicy < ApplicationPolicy
   end
 
   def workspace_admin?
-    record.workspace.memberships.exists?(user: user, role: 'admin')
+    record.workspace.memberships.joins(:workspace_role).exists?(user: user, workspace_roles: { name: 'admin' })
+  end
+
+  def can_invite_members?
+    membership = record.workspace.memberships.find_by(user: user)
+    membership&.can_invite_members?
+  end
+
+  def can_manage_members?
+    membership = record.workspace.memberships.find_by(user: user)
+    membership&.can_manage_workspace?
+  end
+
+  def can_remove_members?
+    membership = record.workspace.memberships.find_by(user: user)
+    membership&.can_remove_members?
   end
 
   def own_membership?
