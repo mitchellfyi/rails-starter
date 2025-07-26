@@ -190,7 +190,7 @@ after_bundle do
           puts 'Installed modules:'
 
           if Dir.exist?(modules_path)
-            Dir.children(modules_path).each { |module_dir| puts "  - \#{module_dir}" }
+            Dir.children(modules_path).each { |module_dir| puts "  - #{module_dir}" }
           else
             puts '  (none)'
           end
