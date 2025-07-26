@@ -28,7 +28,12 @@ gem 'turbo-rails', '~> 1.5'
 gem 'stimulus-rails', '~> 1.2'
 gem 'tailwindcss-rails', '~> 0.8'
 gem 'jsonapi-serializer', '~> 3.2'
+
 gem 'rswag', '~> 2.14'
+
+
+
+
 gem_group :development, :test do
   gem 'dotenv-rails', '~> 3.1'
   gem 'factory_bot_rails', '~> 6.2'
@@ -99,6 +104,7 @@ after_bundle do
         def remove(module_name)
           puts "[stub] Remove module: #{module_name}"
         end
+        
 
         desc 'upgrade', 'Upgrade installed modules'
         def upgrade
@@ -154,3 +160,5 @@ after_bundle do
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
+gem 'rolify', '~> 6.0'
+gem 'friendly_id', '~> 5.4'
