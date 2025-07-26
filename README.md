@@ -33,7 +33,9 @@ Most Rails templates are either toy examples or opinionated stacks that become b
    bin/synth add ai          # Add AI/LLM support
    bin/synth add billing     # Add Stripe billing
    bin/synth remove cms      # Remove the CMS/blog engine
-   bin/synth upgrade         # Pull in latest module versions
+   bin/synth upgrade         # Upgrade all modules to latest versions
+   bin/synth upgrade ai      # Upgrade specific module with conflict resolution
+   bin/synth upgrade --yes   # Non-interactive upgrade for CI/CD
    bin/synth test ai         # Run AI tests
    bin/synth doctor          # Validate your setup (environment, database, Redis, keys)
    bin/synth scaffold agent chatbot_support
@@ -84,6 +86,12 @@ For detailed information about the test matrix and CI/CD setup, see [GitHub Acti
 ### Seeding
 
 Seed data sets up a demo organisation with a user, example prompt templates, example LLM jobs and outputs, dummy Stripe plans, and a sample blog post.  Seeds are idempotent, meaning you can run them multiple times without duplicating data.
+
+## Documentation
+
+For detailed guides on specific features:
+
+- **[Module Upgrade Guide](docs/MODULE_UPGRADE_GUIDE.md)** - Comprehensive guide to upgrading template modules with conflict resolution, backup management, and CI/CD integration
 
 ## Contributing
 
