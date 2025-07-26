@@ -1,0 +1,19 @@
+<div class="bg-gray-50 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center mb-16">
+      <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+        <%= @page.title %>
+      </h1>
+      
+      <% if @page.excerpt.present? %>
+        <p class="text-2xl text-gray-600 max-w-4xl mx-auto mb-8">
+          <%= @page.excerpt %>
+        </p>
+      <% end %>
+    </div>
+
+    <div class="prose prose-xl prose-blue max-w-none text-center">
+      <%= @page.content %>
+    </div>
+  </div>
+</div>

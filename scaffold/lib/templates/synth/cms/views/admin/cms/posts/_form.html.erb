@@ -1,0 +1,265 @@
+<% content_for :title, @post.persisted? ? "Edit Post" : "New Post" %>
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="md:flex md:items-center md:justify-between">
+    <div class="min-w-0 flex-1">
+      <h1 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        <%= @post.persisted? ? "Edit Post" : "New Post" %>
+      </h1>
+      <% if @post.persisted? %>
+        <p class="mt-1 text-sm text-gray-500">
+          Created <%= time_ago_in_words(@post.created_at) %> ago
+          <% if @post.published? %>
+            • <%= link_to "View Live", blog_post_path(@post.slug), target: "_blank", class: "text-blue-600 hover:text-blue-500" %>
+          <% end %>
+        </p>
+      <% end %>
+    </div>
+    <div class="mt-4 flex space-x-3 md:ml-4 md:mt-0">
+      <%= link_to "Cancel", admin_cms_posts_path, 
+          class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50" %>
+    </div>
+  </div>
+
+  <%= form_with model: [:admin, :cms, @post], local: true, 
+      data: { cms_form: true }, 
+      class: "space-y-8" do |form| %>
+    
+    <% if @post.errors.any? %>
+      <div class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">
+              There were <%= pluralize(@post.errors.count, "error") %> with your submission:
+            </h3>
+            <div class="mt-2 text-sm text-red-700">
+              <ul class="list-disc pl-5 space-y-1">
+                <% @post.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Title -->
+        <div class="cms-form-field">
+          <%= form.label :title, class: "cms-form-label" do %>
+            Title <span class="text-red-500">*</span>
+          <% end %>
+          <%= form.text_field :title, 
+              required: true,
+              data: { generate_slug: "#post_slug", character_count: 100 },
+              class: "cms-form-input" %>
+        </div>
+
+        <!-- Slug -->
+        <div class="cms-form-field">
+          <%= form.label :slug, class: "cms-form-label" %>
+          <%= form.text_field :slug, 
+              id: "post_slug",
+              class: "cms-form-input" %>
+          <p class="mt-1 text-sm text-gray-500">
+            Leave blank to auto-generate from title. Used in the URL: /blog/<em class="text-gray-700">your-slug-here</em>
+          </p>
+        </div>
+
+        <!-- Excerpt -->
+        <div class="cms-form-field">
+          <%= form.label :excerpt, class: "cms-form-label" %>
+          <%= form.text_area :excerpt, 
+              rows: 3,
+              data: { character_count: 500, auto_resize: true },
+              class: "cms-form-textarea",
+              placeholder: "Brief description of the post (optional). Will be used in post listings and SEO." %>
+        </div>
+
+        <!-- Content -->
+        <div class="cms-form-field">
+          <%= form.label :content, class: "cms-form-label" do %>
+            Content <span class="text-red-500">*</span>
+          <% end %>
+          <%= form.rich_text_area :content, 
+              required: true,
+              class: "cms-form-textarea" %>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Publish Settings -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Publish</h3>
+          
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <%= form.check_box :published, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+              <%= form.label :published, "Published", class: "ml-2 block text-sm text-gray-900" %>
+            </div>
+            
+            <div class="flex items-center">
+              <%= form.check_box :featured, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+              <%= form.label :featured, "Featured Post", class: "ml-2 block text-sm text-gray-900" %>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-gray-200">
+            <%= form.submit @post.persisted? ? "Update Post" : "Create Post", 
+                class: "w-full cms-btn-primary" %>
+          </div>
+        </div>
+
+        <!-- Category & Tags -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Organization</h3>
+          
+          <div class="space-y-4">
+            <!-- Category -->
+            <div>
+              <%= form.label :category_id, "Category", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <%= form.select :category_id, 
+                  options_from_collection_for_select(@categories, :id, :name, @post.category_id),
+                  { prompt: 'Select a category' },
+                  { class: "cms-form-select" } %>
+            </div>
+
+            <!-- Tags -->
+            <div>
+              <%= form.label :tag_names, "Tags", class: "block text-sm font-medium text-gray-700 mb-2" %>
+              <div class="tag-input-container" data-tag-input-container>
+                <% @post.tags.each do |tag| %>
+                  <span class="tag-pill bg-blue-100 text-blue-800">
+                    <%= tag.name %>
+                    <button type="button" class="ml-1 text-blue-600 hover:text-blue-800" onclick="removeTag(this)">×</button>
+                  </span>
+                <% end %>
+                <input type="text" 
+                       data-tag-input
+                       placeholder="Add tags..."
+                       class="tag-input">
+                <%= form.hidden_field :tag_names, value: @post.tag_names.join(',') %>
+              </div>
+              <p class="mt-1 text-sm text-gray-500">
+                Type tag names and press Enter or comma to add them.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Post Statistics -->
+        <% if @post.persisted? %>
+          <div class="bg-white shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Statistics</h3>
+            
+            <dl class="space-y-3">
+              <div class="flex justify-between">
+                <dt class="text-sm text-gray-500">Views</dt>
+                <dd class="text-sm font-medium text-gray-900"><%= @post.view_count %></dd>
+              </div>
+              <div class="flex justify-between">
+                <dt class="text-sm text-gray-500">Reading Time</dt>
+                <dd class="text-sm font-medium text-gray-900"><%= reading_time(@post) %></dd>
+              </div>
+              <div class="flex justify-between">
+                <dt class="text-sm text-gray-500">Created</dt>
+                <dd class="text-sm font-medium text-gray-900">
+                  <%= @post.created_at.strftime('%m/%d/%Y') %>
+                </dd>
+              </div>
+              <% if @post.published_at %>
+                <div class="flex justify-between">
+                  <dt class="text-sm text-gray-500">Published</dt>
+                  <dd class="text-sm font-medium text-gray-900">
+                    <%= @post.published_at.strftime('%m/%d/%Y') %>
+                  </dd>
+                </div>
+              <% end %>
+            </dl>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- SEO Metadata Section -->
+    <div class="seo-metadata-section" data-seo-form>
+      <h3>SEO & Social Media</h3>
+      
+      <%= fields_for :seo_metadata_attributes, @post.seo_metadata || @post.build_seo_metadata do |seo_form| %>
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div class="space-y-4">
+            <div>
+              <%= seo_form.label :meta_title, "Meta Title", class: "cms-form-label" %>
+              <%= seo_form.text_field :meta_title, 
+                  data: { seo_title: true, character_count: 60 },
+                  class: "cms-form-input",
+                  placeholder: "Leave blank to use post title" %>
+            </div>
+            
+            <div>
+              <%= seo_form.label :meta_description, "Meta Description", class: "cms-form-label" %>
+              <%= seo_form.text_area :meta_description, 
+                  rows: 3,
+                  data: { seo_description: true, character_count: 160 },
+                  class: "cms-form-textarea",
+                  placeholder: "Brief description for search engines" %>
+            </div>
+            
+            <div>
+              <%= seo_form.label :meta_keywords, "Meta Keywords", class: "cms-form-label" %>
+              <%= seo_form.text_field :meta_keywords, 
+                  class: "cms-form-input",
+                  placeholder: "keyword1, keyword2, keyword3" %>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <%= seo_form.label :canonical_url, "Canonical URL", class: "cms-form-label" %>
+              <%= seo_form.url_field :canonical_url, 
+                  class: "cms-form-input",
+                  placeholder: "https://yourdomain.com/blog/post-url" %>
+            </div>
+            
+            <div>
+              <%= seo_form.label :og_image_url, "Social Media Image", class: "cms-form-label" %>
+              <%= seo_form.url_field :og_image_url, 
+                  class: "cms-form-input",
+                  placeholder: "https://yourdomain.com/image.jpg" %>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex items-center">
+                <%= seo_form.check_box :index_page, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+                <%= seo_form.label :index_page, "Index Page", class: "ml-2 block text-sm text-gray-900" %>
+              </div>
+              
+              <div class="flex items-center">
+                <%= seo_form.check_box :follow_links, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+                <%= seo_form.label :follow_links, "Follow Links", class: "ml-2 block text-sm text-gray-900" %>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- SEO Preview -->
+        <div class="mt-6">
+          <h4 class="text-sm font-medium text-gray-900 mb-2">Search Engine Preview</h4>
+          <div class="border border-gray-200 rounded-md p-4 bg-gray-50" data-seo-preview>
+            <!-- Preview will be populated by JavaScript -->
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

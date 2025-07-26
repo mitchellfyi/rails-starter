@@ -1,0 +1,23 @@
+<div class="bg-white">
+  <div class="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:py-20 lg:px-8">
+    <div class="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center">
+      <div>
+        <h1 class="text-4xl font-bold text-gray-900 sm:text-5xl">
+          <%= @page.title %>
+        </h1>
+        
+        <% if @page.excerpt.present? %>
+          <p class="mt-6 text-xl text-gray-500 max-w-3xl">
+            <%= @page.excerpt %>
+          </p>
+        <% end %>
+      </div>
+      
+      <div class="mt-8 lg:mt-0">
+        <div class="prose prose-lg prose-blue">
+          <%= @page.content %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

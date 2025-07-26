@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title><%= Rails.application.class.module_parent_name %> Blog</title>
+    <description>Latest blog posts and articles</description>
+    <link><%= Rails.application.config.cms.sitemap_host %>/blog</link>
+    <atom:link href="<%= Rails.application.config.cms.sitemap_host %>/blog.rss" rel="self" type="application/rss+xml" />
+    <language>en-us</language>
+    <lastBuildDate><%= @posts.first&.updated_at&.rfc2822 %></lastBuildDate>
+    <pubDate><%= @posts.first&.published_at&.rfc2822 %></pubDate>
+    <ttl>60</ttl>
+
+    <% @posts.each do |post| %>
+      <item>
+        <title><%= xml_escape(post.title) %></title>
+        <description><%= xml_escape(post.excerpt_or_content) %></description>
+        <pubDate><%= post.published_at&.rfc2822 %></pubDate>
+        <link><%= Rails.application.config.cms.sitemap_host %>/blog/<%= post.slug %></link>
+        <guid isPermaLink="true"><%= Rails.application.config.cms.sitemap_host %>/blog/<%= post.slug %></guid>
+        <dc:creator><%= xml_escape(post.author.display_name) %></dc:creator>
+        <% if post.category %>
+          <category><%= xml_escape(post.category.name) %></category>
+        <% end %>
+      </item>
+    <% end %>
+  </channel>
+</rss>
