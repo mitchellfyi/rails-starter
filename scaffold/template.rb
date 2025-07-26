@@ -191,8 +191,7 @@ after_bundle do
           puts 'Installed modules:'
 
           if Dir.exist?(modules_path)
-
-            Dir.children(modules_path).each { |m| puts "  - #{m}" }
+            Dir.children(modules_path).each { |module_dir| puts "  - \#{module_dir}" }
           else
             puts '  (none)'
           end
@@ -200,13 +199,13 @@ after_bundle do
 
         desc 'add MODULE', 'Add a module (e.g. billing, ai)'
         def add(module_name)
-          puts "[stub] Add module: #{module_name}"
+          puts "[stub] Add module: \#{module_name}"
           # TODO: implement installer loading lib/templates/synth/<module>/install.rb
         end
 
         desc 'remove MODULE', 'Remove a module'
         def remove(module_name)
-          puts "[stub] Remove module: #{module_name}"
+          puts "[stub] Remove module: \#{module_name}"
         end
         
 
@@ -228,7 +227,7 @@ after_bundle do
 
         desc 'scaffold agent NAME', 'Scaffold a new AI agent'
         def scaffold(name)
-          puts "[stub] Scaffold agent: #{name}"
+          puts "[stub] Scaffold agent: \#{name}"
         end
       end
     end
