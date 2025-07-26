@@ -1,0 +1,102 @@
+# frozen_string_literal: true
+
+# Test fixtures for CMS models
+
+# Categories
+tutorials:
+  name: "Tutorials"
+  slug: "tutorials"
+  description: "Step-by-step guides and tutorials"
+  sort_order: 1
+
+news:
+  name: "News"
+  slug: "news" 
+  description: "Latest news and updates"
+  sort_order: 2
+
+# Tags
+rails:
+  name: "Rails"
+  slug: "rails"
+  color: "#DC2626"
+
+ruby:
+  name: "Ruby"
+  slug: "ruby"
+  color: "#DC2626"
+
+tutorial:
+  name: "Tutorial"
+  slug: "tutorial"
+  color: "#10B981"
+
+# Posts
+published_post:
+  title: "Getting Started with Rails"
+  slug: "getting-started-with-rails"
+  content: "<p>This is a comprehensive guide to getting started with Ruby on Rails development.</p>"
+  excerpt: "Learn Rails development from scratch"
+  author: admin (User)
+  category: tutorials
+  published: true
+  published_at: <%= 1.week.ago %>
+  view_count: 42
+  reading_time: 5
+
+draft_post:
+  title: "Draft Post"
+  slug: "draft-post"
+  content: "<p>This is a draft post that shouldn't be visible to the public.</p>"
+  author: admin (User)
+  published: false
+
+# Pages
+about_page:
+  title: "About Us"
+  slug: "about"
+  content: "<p>Learn about our company and mission.</p>"
+  author: admin (User)
+  published: true
+  published_at: <%= 1.month.ago %>
+  template_name: "default"
+
+contact_page:
+  title: "Contact"
+  slug: "contact"
+  content: "<p>Get in touch with us.</p>"
+  author: admin (User)
+  published: true
+  published_at: <%= 1.month.ago %>
+  template_name: "contact"
+
+# Post Tags (join table)
+post_rails_tag:
+  post: published_post
+  tag: rails
+
+post_tutorial_tag:
+  post: published_post
+  tag: tutorial
+
+# SEO Metadata
+post_seo:
+  seo_optimizable: published_post (Post)
+  meta_title: "Getting Started with Rails - Complete Guide"
+  meta_description: "Learn Ruby on Rails development from scratch with this comprehensive tutorial covering setup, basics, and best practices."
+  meta_keywords: "rails, ruby, tutorial, web development"
+  og_title: "Getting Started with Rails"
+  og_description: "Complete guide to Rails development"
+  og_type: "article"
+  index_page: true
+  follow_links: true
+
+page_seo:
+  seo_optimizable: about_page (Page)
+  meta_title: "About Us - Rails SaaS Company"
+  meta_description: "Learn about our mission to provide the best Rails SaaS development tools and resources."
+  og_title: "About Us"
+  og_description: "Rails SaaS development experts"
+  og_type: "website"
+  index_page: true
+  follow_links: true

@@ -1,0 +1,165 @@
+/* CMS Admin Styles */
+
+/* Enhance ActionText editor */
+.trix-editor {
+  @apply border border-gray-300 rounded-md p-4 min-h-[200px] focus:ring-blue-500 focus:border-blue-500;
+}
+
+.trix-toolbar {
+  @apply border border-gray-300 rounded-t-md bg-gray-50 p-2;
+}
+
+.trix-toolbar .trix-button-group {
+  @apply inline-flex mr-2;
+}
+
+.trix-toolbar .trix-button {
+  @apply px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded border-0 bg-transparent;
+}
+
+.trix-toolbar .trix-button.trix-active {
+  @apply bg-blue-100 text-blue-700;
+}
+
+/* Form enhancements */
+.cms-form-field {
+  @apply mb-6;
+}
+
+.cms-form-label {
+  @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+.cms-form-input {
+  @apply block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+
+.cms-form-textarea {
+  @apply block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+
+.cms-form-select {
+  @apply block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+
+/* Button styles */
+.cms-btn-primary {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+}
+
+.cms-btn-secondary {
+  @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+}
+
+.cms-btn-danger {
+  @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500;
+}
+
+/* SEO metadata form */
+.seo-metadata-section {
+  @apply bg-gray-50 p-6 rounded-lg border border-gray-200;
+}
+
+.seo-metadata-section h3 {
+  @apply text-lg font-medium text-gray-900 mb-4;
+}
+
+/* Tag input enhancement */
+.tag-input-container {
+  @apply flex flex-wrap gap-2 p-3 border border-gray-300 rounded-md min-h-[42px] focus-within:ring-blue-500 focus-within:border-blue-500;
+}
+
+.tag-pill {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.tag-input {
+  @apply border-0 outline-none flex-1 min-w-[120px];
+}
+
+/* Status badges */
+.status-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.status-badge.published {
+  @apply bg-green-100 text-green-800;
+}
+
+.status-badge.draft {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.status-badge.featured {
+  @apply bg-blue-100 text-blue-800;
+}
+
+/* Responsive tables */
+@media (max-width: 768px) {
+  .cms-table {
+    @apply block;
+  }
+  
+  .cms-table thead {
+    @apply hidden;
+  }
+  
+  .cms-table tbody,
+  .cms-table tr,
+  .cms-table td {
+    @apply block;
+  }
+  
+  .cms-table tr {
+    @apply border border-gray-200 mb-4 p-4 rounded-lg;
+  }
+  
+  .cms-table td {
+    @apply border-0 pb-2;
+  }
+  
+  .cms-table td:before {
+    content: attr(data-label) ": ";
+    @apply font-medium text-gray-700;
+  }
+}
+
+/* Loading states */
+.loading {
+  @apply opacity-50 pointer-events-none;
+}
+
+.loading:after {
+  content: "";
+  @apply absolute inset-0 bg-white bg-opacity-75;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' stroke='currentColor' stroke-width='4'%3E%3C/circle%3E%3Cpath fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .cms-dark-mode {
+    @apply bg-gray-900 text-white;
+  }
+  
+  .cms-dark-mode .trix-toolbar {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .cms-dark-mode .trix-editor {
+    @apply bg-gray-800 border-gray-700 text-white;
+  }
+}
+
+/* Print styles */
+@media print {
+  .cms-no-print {
+    @apply hidden;
+  }
+  
+  .cms-print-full-width {
+    @apply w-full;
+  }
+}

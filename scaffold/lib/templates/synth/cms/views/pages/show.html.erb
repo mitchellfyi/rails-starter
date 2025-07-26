@@ -1,0 +1,17 @@
+<% content_for :title, @page.seo_metadata&.meta_title || @page.title %>
+<% content_for :description, @page.seo_metadata&.meta_description || @page.excerpt_or_content %>
+
+<%= seo_meta_tags(@page) %>
+
+<% case @page.template_name %>
+<% when 'landing' %>
+  <%= render 'pages/templates/landing' %>
+<% when 'full_width' %>
+  <%= render 'pages/templates/full_width' %>
+<% when 'contact' %>
+  <%= render 'pages/templates/contact' %>
+<% when 'about' %>
+  <%= render 'pages/templates/about' %>
+<% else %>
+  <%= render 'pages/templates/default' %>
+<% end %>

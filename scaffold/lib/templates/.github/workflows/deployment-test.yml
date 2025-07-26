@@ -1,0 +1,184 @@
+name: Deployment Templates Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  RAILS_ENV: test
+  NODE_ENV: test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rails_starter_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.2.0'
+        bundler-cache: true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'yarn'
+
+    - name: Create Rails app with template
+      run: |
+        cd /tmp
+        rails new test_app --dev -m ${{ github.workspace }}/scaffold/template.rb --skip-git --skip-bundle
+        cd test_app
+
+    - name: Install dependencies
+      run: |
+        cd /tmp/test_app
+        bundle install
+        yarn install
+
+    - name: Copy deployment files
+      run: |
+        cd /tmp/test_app
+        cp ${{ github.workspace }}/scaffold/lib/templates/.env.example .env.example
+        cp ${{ github.workspace }}/scaffold/lib/templates/fly.toml fly.toml
+        cp ${{ github.workspace }}/scaffold/lib/templates/render.yaml render.yaml
+        cp ${{ github.workspace }}/scaffold/lib/templates/kamal.yml kamal.yml
+        cp ${{ github.workspace }}/scaffold/lib/templates/Dockerfile Dockerfile
+        mkdir -p bin
+        cp ${{ github.workspace }}/scaffold/lib/templates/bin/render-build.sh bin/render-build.sh
+        cp ${{ github.workspace }}/scaffold/lib/templates/bin/docker-entrypoint bin/docker-entrypoint
+        chmod +x bin/render-build.sh bin/docker-entrypoint
+        mkdir -p lib/tasks
+        cp ${{ github.workspace }}/scaffold/lib/templates/lib/tasks/deploy.rake lib/tasks/deploy.rake
+        mkdir -p app/controllers
+        cp ${{ github.workspace }}/scaffold/lib/templates/app/controllers/health_controller.rb app/controllers/health_controller.rb
+
+    - name: Setup test environment
+      run: |
+        cd /tmp/test_app
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rails_starter_test" >> .env
+        echo "REDIS_URL=redis://localhost:6379/0" >> .env
+        echo "SECRET_KEY_BASE=$(bundle exec rails secret)" >> .env
+        echo "FEATURE_AI_ENABLED=false" >> .env
+        echo "FEATURE_BILLING_ENABLED=false" >> .env
+
+    - name: Setup database
+      run: |
+        cd /tmp/test_app
+        bundle exec rails db:create
+        bundle exec rails db:migrate
+
+    - name: Add health route
+      run: |
+        cd /tmp/test_app
+        echo "Rails.application.routes.draw do" > config/routes.rb
+        echo "  get '/health', to: 'health#show'" >> config/routes.rb
+        echo "  root 'health#show'" >> config/routes.rb
+        echo "end" >> config/routes.rb
+
+    - name: Test deploy rake tasks
+      run: |
+        cd /tmp/test_app
+        bundle exec rails deploy:check_db
+        bundle exec rails deploy:check_redis
+        bundle exec rails deploy:validate_services
+        bundle exec rails deploy:validate_env
+
+    - name: Test application boot
+      run: |
+        cd /tmp/test_app
+        timeout 30s bundle exec rails server &
+        sleep 15
+        curl -f http://localhost:3000/health || (echo "Health check failed" && exit 1)
+
+    - name: Test Docker build
+      run: |
+        cd /tmp/test_app
+        echo "FROM ruby:3.2.0-slim" > Dockerfile.test
+        echo "WORKDIR /app" >> Dockerfile.test
+        echo "COPY Gemfile Gemfile.lock ./" >> Dockerfile.test
+        echo "RUN apt-get update && apt-get install -y build-essential libpq-dev" >> Dockerfile.test
+        echo "RUN bundle install" >> Dockerfile.test
+        echo "COPY . ." >> Dockerfile.test
+        echo "EXPOSE 3000" >> Dockerfile.test
+        echo "CMD bundle exec rails server -b 0.0.0.0" >> Dockerfile.test
+        docker build -f Dockerfile.test -t test-app .
+
+    - name: Validate deployment configs
+      run: |
+        cd /tmp/test_app
+        # Check that all deployment files exist and are valid
+        test -f fly.toml
+        test -f render.yaml
+        test -f kamal.yml
+        test -f Dockerfile
+        test -f .env.example
+        test -f bin/render-build.sh
+        test -f bin/docker-entrypoint
+        test -f lib/tasks/deploy.rake
+        test -f app/controllers/health_controller.rb
+        
+        # Validate YAML files
+        ruby -e "require 'yaml'; YAML.load_file('render.yaml')"
+        ruby -e "require 'yaml'; YAML.load_file('kamal.yml')"
+        
+        echo "✅ All deployment files are present and valid"
+
+  deployment-specific-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        deployment: [fly, render, kamal]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Test ${{ matrix.deployment }} configuration
+      run: |
+        case "${{ matrix.deployment }}" in
+          fly)
+            # Test fly.toml syntax
+            grep -q "app.*=" scaffold/lib/templates/fly.toml
+            grep -q "primary_region.*=" scaffold/lib/templates/fly.toml
+            grep -q "processes" scaffold/lib/templates/fly.toml
+            ;;
+          render)
+            # Test render.yaml syntax
+            ruby -e "require 'yaml'; config = YAML.load_file('scaffold/lib/templates/render.yaml'); puts 'Services: ' + config['services'].length.to_s"
+            ;;
+          kamal)
+            # Test kamal.yml syntax
+            ruby -e "require 'yaml'; config = YAML.load_file('scaffold/lib/templates/kamal.yml'); puts 'Service: ' + config['service']"
+            ;;
+        esac
+        echo "✅ ${{ matrix.deployment }} configuration is valid"

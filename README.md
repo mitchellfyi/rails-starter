@@ -35,13 +35,17 @@ Most Rails templates are either toy examples or opinionated stacks that become b
    bin/synth remove cms      # Remove the CMS/blog engine
    bin/synth upgrade         # Pull in latest module versions
    bin/synth test ai         # Run AI tests
-   bin/synth doctor          # Validate your setup (keys, MCP fetchers)
+   bin/synth doctor          # Validate your setup (environment, database, Redis, keys)
    bin/synth scaffold agent chatbot_support
    ```
 
 4. **Configure your environment.**  Copy `.env.example` to `.env` and fill in secrets for Devise, OmniAuth providers, Stripe API keys, and LLM providers.  Configure your database (`config/database.yml`) and set up Redis.
 
-5. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+5. **Validate deployment setup.**  Run `rails deploy:validate_env` to check your configuration, then use `rails deploy:bootstrap` to set up a new environment.
+
+6. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+
+7. **Deploy to production.**  Choose from Fly.io, Render, or Kamal deployment platforms. See `DEPLOYMENT.md` for complete deployment guides and platform-specific instructions.
 
 ## Features
 
@@ -58,6 +62,7 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 * **CMS/blog engine** powered by ActionText with WYSIWYG editor, SEO metadata, and sitemap generation.
 * **Admin panel** with impersonation, audit logs, Sidekiq UI, and feature flag toggles.
 * **Internationalisation** (i18n) with locale detection, right‑to‑left support, and currency/date formatting.
+* **Deployment readiness** with configurations for Fly.io, Render, and Kamal, comprehensive environment management, health checks, and CI/CD workflows.
 * **CI/CD** templates for GitHub Actions, plus deployment configs for Fly.io, Render, and Kamal.
 
 ### AI system
@@ -74,46 +79,7 @@ The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/temp
 
 The template encourages full test coverage.  Every module ships with unit, integration, and system tests.  External services (OpenAI, Claude, Stripe, GitHub) are stubbed to ensure deterministic runs.  The GitHub Actions workflow (`.github/workflows/test.yml`) installs the template into a fresh app and runs the full suite across a matrix of Ruby and PostgreSQL versions.
 
-**Test Infrastructure:**
-- **RSpec** with comprehensive configuration and helpers
-- **FactoryBot** for test data generation with realistic factories
-- **Capybara** for system/integration testing with Selenium support
-- **WebMock** for HTTP request stubbing and offline testing
-- **Database Cleaner** for proper test isolation
-- **Shoulda Matchers** for concise model testing
-
-**Test Coverage:**
-- **Model tests** - Validations, associations, scopes, business logic
-- **Request tests** - API endpoints with JSON:API compliance
-- **System tests** - End-to-end user workflows with Capybara
-- **External service mocks** - OpenAI, Claude, Stripe, GitHub APIs
-- **AI module tests** - Prompt templates, LLM jobs, MCP fetchers
-- **Billing tests** - Subscription management, payment flows
-- **Admin tests** - User management, audit logs, feature flags
-
-**Running Tests:**
-```sh
-# Full test suite
-bundle exec rspec
-
-# Module-specific tests
-bin/synth test ai          # AI system tests
-bin/synth test auth        # Authentication tests
-bin/synth test billing     # Billing and subscription tests
-bin/synth test admin       # Admin panel tests
-bin/synth test api         # API endpoint tests
-
-# Test types
-bundle exec rspec spec/models    # Unit tests
-bundle exec rspec spec/requests  # Integration tests
-bundle exec rspec spec/system    # System tests
-```
-
-**Continuous Integration:**
-- Tests across Ruby 3.2, 3.3 and PostgreSQL 14, 15, 16
-- Template generation and installation verification
-- Security scanning with Brakeman and bundle-audit
-- Code coverage reporting with SimpleCov
+For detailed information about the test matrix and CI/CD setup, see [GitHub Actions Test Matrix Documentation](docs/github-actions-test-matrix.md).
 
 ### Seeding
 

@@ -1,0 +1,104 @@
+<% content_for :title, "Manage Categories" %>
+
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="md:flex md:items-center md:justify-between">
+    <div class="min-w-0 flex-1">
+      <h1 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        Categories
+      </h1>
+      <p class="mt-1 text-sm text-gray-500">
+        Organize your blog posts with categories
+      </p>
+    </div>
+    <div class="mt-4 flex md:ml-4 md:mt-0">
+      <%= link_to "New Category", new_admin_cms_category_path,
+          class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" %>
+    </div>
+  </div>
+
+  <!-- Categories Table -->
+  <div class="bg-white shadow rounded-lg overflow-hidden">
+    <% if @categories.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Name
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Description
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Posts
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Parent
+            </th>
+            <th class="relative px-6 py-3">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @categories.each do |category| %>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4">
+                <div class="flex items-center">
+                  <div>
+                    <div class="text-sm font-medium text-gray-900">
+                      <%= link_to category.name, admin_cms_category_path(category), 
+                          class: "hover:text-blue-600" %>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                      /blog/category/<%= category.slug %>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">
+                  <%= truncate(category.description, length: 60) if category.description.present? %>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= category.published_posts_count %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= category.parent&.name || "—" %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex items-center justify-end space-x-2">
+                  <%= link_to "View", blog_category_path(category.slug), 
+                      target: "_blank",
+                      class: "text-blue-600 hover:text-blue-900" %>
+                  <%= link_to "Edit", edit_admin_cms_category_path(category),
+                      class: "text-gray-600 hover:text-gray-900" %>
+                  <%= link_to "Delete", admin_cms_category_path(category),
+                      method: :delete,
+                      data: { 
+                        confirm: "Are you sure? This will remove the category from all posts.",
+                        turbo_method: :delete
+                      },
+                      class: "text-red-600 hover:text-red-900" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No categories</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating your first category.</p>
+        <div class="mt-6">
+          <%= link_to "New Category", new_admin_cms_category_path,
+              class: "inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

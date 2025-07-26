@@ -1,0 +1,225 @@
+<% content_for :title, @page_title || "Blog" %>
+<% content_for :description, @page_description || "Latest blog posts and articles" %>
+
+<%= seo_meta_tags %>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <header class="mb-12 text-center">
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">
+      <%= @page_title || "Blog" %>
+    </h1>
+    <% if @page_description.present? %>
+      <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+        <%= @page_description %>
+      </p>
+    <% end %>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <!-- Main Content -->
+    <main class="lg:col-span-3">
+      <!-- Featured Posts -->
+      <% if @featured_posts&.any? && params[:page].blank? && params[:category_id].blank? && params[:q].blank? %>
+        <section class="mb-12">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">Featured Posts</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <% @featured_posts.each do |post| %>
+              <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                <div class="p-6">
+                  <div class="flex items-center text-sm text-gray-500 mb-3">
+                    <%= format_post_date(post) %>
+                    <span class="mx-2">•</span>
+                    <%= reading_time(post) %>
+                  </div>
+                  <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                    <%= link_to post.title, blog_post_path(post.slug), 
+                        class: "hover:text-blue-600 transition-colors" %>
+                  </h3>
+                  <p class="text-gray-600 mb-4">
+                    <%= truncate_html(post.excerpt_or_content, length: 120) %>
+                  </p>
+                  <div class="flex items-center justify-between">
+                    <% if post.category.present? %>
+                      <%= category_link(post.category, class: "text-sm") %>
+                    <% end %>
+                    <span class="text-sm font-medium text-blue-600">Featured</span>
+                  </div>
+                </div>
+              </article>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+
+      <!-- Search Results Header -->
+      <% if params[:q].present? %>
+        <div class="mb-6">
+          <h2 class="text-2xl font-semibold text-gray-900">
+            Search Results for "<%= params[:q] %>"
+          </h2>
+          <p class="text-gray-600 mt-2">
+            <%= pluralize(@posts.total_count, 'result') %> found
+          </p>
+        </div>
+      <% end %>
+
+      <!-- Posts Grid -->
+      <% if @posts.any? %>
+        <div class="space-y-8">
+          <% @posts.each do |post| %>
+            <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div class="p-8">
+                <div class="flex items-center text-sm text-gray-500 mb-4">
+                  <%= format_post_date(post) %>
+                  <span class="mx-2">•</span>
+                  <%= reading_time(post) %>
+                  <% if post.category.present? %>
+                    <span class="mx-2">•</span>
+                    <%= category_link(post.category, class: "text-sm") %>
+                  <% end %>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-gray-900 mb-4">
+                  <%= link_to post.title, blog_post_path(post.slug), 
+                      class: "hover:text-blue-600 transition-colors" %>
+                </h2>
+                
+                <p class="text-gray-600 text-lg mb-6 leading-relaxed">
+                  <%= truncate_html(post.excerpt_or_content, length: 250) %>
+                </p>
+                
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                    <div class="text-sm text-gray-500">
+                      By <%= post.author.display_name %>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center space-x-4">
+                    <% if post.tags.any? %>
+                      <div class="hidden sm:block">
+                        <%= tag_links(post.tags.limit(3)) %>
+                      </div>
+                    <% end %>
+                    <%= link_to "Read more", blog_post_path(post.slug),
+                        class: "text-blue-600 hover:text-blue-800 font-medium" %>
+                  </div>
+                </div>
+              </div>
+            </article>
+          <% end %>
+        </div>
+
+        <!-- Pagination -->
+        <% if @posts.respond_to?(:total_pages) && @posts.total_pages > 1 %>
+          <nav class="flex items-center justify-between border-t border-gray-200 px-4 sm:px-0 mt-12">
+            <div class="-mt-px flex w-0 flex-1">
+              <% if @posts.prev_page %>
+                <%= link_to blog_path(page: @posts.prev_page), 
+                    class: "inline-flex items-center border-t-2 border-transparent pr-1 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700" do %>
+                  <svg class="mr-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10a.75.75 0 01-.75.75H4.66l2.1 1.95a.75.75 0 11-1.02 1.1l-3.5-3.25a.75.75 0 010-1.1l3.5-3.25a.75.75 0 111.02 1.1L4.66 9.25h12.59A.75.75 0 0118 10z" clip-rule="evenodd" />
+                  </svg>
+                  Previous
+                <% end %>
+              <% end %>
+            </div>
+            <div class="hidden md:-mt-px md:flex">
+              <% (1..@posts.total_pages).each do |page| %>
+                <% if page == @posts.current_page %>
+                  <span class="inline-flex items-center border-t-2 border-blue-500 px-4 pt-4 text-sm font-medium text-blue-600">
+                    <%= page %>
+                  </span>
+                <% else %>
+                  <%= link_to page, blog_path(page: page),
+                      class: "inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700" %>
+                <% end %>
+              <% end %>
+            </div>
+            <div class="-mt-px flex w-0 flex-1 justify-end">
+              <% if @posts.next_page %>
+                <%= link_to blog_path(page: @posts.next_page),
+                    class: "inline-flex items-center border-t-2 border-transparent pl-1 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700" do %>
+                  Next
+                  <svg class="ml-3 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M2 10a.75.75 0 01.75-.75h12.59l-2.1-1.95a.75.75 0 111.02-1.1l3.5 3.25a.75.75 0 010 1.1l-3.5 3.25a.75.75 0 11-1.02-1.1l2.1-1.95H2.75A.75.75 0 012 10z" clip-rule="evenodd" />
+                  </svg>
+                <% end %>
+              <% end %>
+            </div>
+          </nav>
+        <% end %>
+      <% else %>
+        <div class="text-center py-12">
+          <div class="text-gray-400 mb-4">
+            <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
+          <p class="text-gray-500">
+            <% if params[:q].present? %>
+              Try adjusting your search terms or browse all posts.
+            <% else %>
+              Check back soon for new content.
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+    </main>
+
+    <!-- Sidebar -->
+    <aside class="lg:col-span-1">
+      <!-- Search -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Search</h3>
+        <%= form_with url: blog_path, method: :get, local: true, class: "space-y-4" do |form| %>
+          <div>
+            <%= form.text_field :q, value: params[:q], 
+                placeholder: "Search posts...", 
+                class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" %>
+          </div>
+          <%= form.submit "Search", 
+              class: "w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" %>
+        <% end %>
+      </div>
+
+      <!-- Categories -->
+      <% if @categories&.any? %>
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Categories</h3>
+          <ul class="space-y-2">
+            <% @categories.each do |category| %>
+              <li class="flex items-center justify-between">
+                <%= link_to category.name, blog_category_path(category.slug), 
+                    class: "text-gray-700 hover:text-blue-600 transition-colors" %>
+                <span class="text-sm text-gray-500">
+                  <%= category.respond_to?(:posts_count) ? category.posts_count : category.published_posts_count %>
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <!-- Popular Tags -->
+      <% if @popular_tags&.any? %>
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Popular Tags</h3>
+          <div class="flex flex-wrap gap-2">
+            <% @popular_tags.each do |tag| %>
+              <%= link_to blog_tag_path(tag.slug), 
+                  class: "inline-block bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full hover:bg-gray-200 transition-colors" do %>
+                #<%= tag.name %>
+                <span class="text-xs text-gray-500 ml-1">
+                  <%= tag.respond_to?(:posts_count) ? tag.posts_count : tag.published_posts_count %>
+                </span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </aside>
+  </div>
+</div>
