@@ -2,25 +2,41 @@
 
 <div class="space-y-6">
   <!-- Header -->
-  <div class="md:flex md:items-center md:justify-between">
+  <header class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
     <div class="min-w-0 flex-1">
-      <h1 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
         <%= @post.persisted? ? "Edit Post" : "New Post" %>
       </h1>
       <% if @post.persisted? %>
-        <p class="mt-1 text-sm text-gray-500">
-          Created <%= time_ago_in_words(@post.created_at) %> ago
+        <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+          <span class="flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Created <%= time_ago_in_words(@post.created_at) %> ago
+          </span>
           <% if @post.published? %>
-            • <%= link_to "View Live", blog_post_path(@post.slug), target: "_blank", class: "text-blue-600 hover:text-blue-500" %>
+            <span>•</span>
+            <%= link_to blog_post_path(@post.slug), target: "_blank", class: "text-blue-600 hover:text-blue-500 transition-colors flex items-center" do %>
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+              </svg>
+              View Live
+            <% end %>
           <% end %>
-        </p>
+        </div>
       <% end %>
     </div>
-    <div class="mt-4 flex space-x-3 md:ml-4 md:mt-0">
-      <%= link_to "Cancel", admin_cms_posts_path, 
-          class: "inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50" %>
+    <div class="flex-shrink-0">
+      <%= link_to admin_cms_posts_path, 
+          class: "w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" do %>
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+        Cancel
+      <% end %>
     </div>
-  </div>
+  </header>
 
   <%= form_with model: [:admin, :cms, @post], local: true, 
       data: { cms_form: true }, 
@@ -50,18 +66,19 @@
       </div>
     <% end %>
 
-    <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3 xl:gap-8">
       <!-- Main Content -->
-      <div class="lg:col-span-2 space-y-6">
+      <div class="xl:col-span-2 space-y-6">
         <!-- Title -->
         <div class="cms-form-field">
           <%= form.label :title, class: "cms-form-label" do %>
-            Title <span class="text-red-500">*</span>
+            Title <span class="text-red-500" aria-label="required">*</span>
           <% end %>
           <%= form.text_field :title, 
               required: true,
               data: { generate_slug: "#post_slug", character_count: 100 },
-              class: "cms-form-input" %>
+              class: "cms-form-input",
+              placeholder: "Enter a compelling title for your post" %>
         </div>
 
         <!-- Slug -->
@@ -69,9 +86,13 @@
           <%= form.label :slug, class: "cms-form-label" %>
           <%= form.text_field :slug, 
               id: "post_slug",
-              class: "cms-form-input" %>
+              class: "cms-form-input",
+              placeholder: "auto-generated-from-title" %>
           <p class="mt-1 text-sm text-gray-500">
-            Leave blank to auto-generate from title. Used in the URL: /blog/<em class="text-gray-700">your-slug-here</em>
+            Leave blank to auto-generate from title. Used in the URL: 
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700 font-mono">
+              /blog/<em class="not-italic">your-slug-here</em>
+            </span>
           </p>
         </div>
 
@@ -82,13 +103,16 @@
               rows: 3,
               data: { character_count: 500, auto_resize: true },
               class: "cms-form-textarea",
-              placeholder: "Brief description of the post (optional). Will be used in post listings and SEO." %>
+              placeholder: "Write a brief description that will appear in post listings and search results..." %>
+          <p class="mt-1 text-sm text-gray-500">
+            Optional summary for SEO and post previews (recommended: 150-160 characters)
+          </p>
         </div>
 
         <!-- Content -->
         <div class="cms-form-field">
           <%= form.label :content, class: "cms-form-label" do %>
-            Content <span class="text-red-500">*</span>
+            Content <span class="text-red-500" aria-label="required">*</span>
           <% end %>
           <%= form.rich_text_area :content, 
               required: true,
@@ -97,32 +121,48 @@
       </div>
 
       <!-- Sidebar -->
-      <div class="space-y-6">
+      <aside class="space-y-6">
         <!-- Publish Settings -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Publish</h3>
+        <div class="bg-white shadow-sm rounded-lg p-4 sm:p-6 border border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+            Publish Settings
+          </h2>
           
           <div class="space-y-4">
-            <div class="flex items-center">
-              <%= form.check_box :published, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
-              <%= form.label :published, "Published", class: "ml-2 block text-sm text-gray-900" %>
-            </div>
+            <label class="flex items-start">
+              <%= form.check_box :published, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5" %>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Published</div>
+                <div class="text-xs text-gray-500">Make this post visible to the public</div>
+              </div>
+            </label>
             
-            <div class="flex items-center">
-              <%= form.check_box :featured, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
-              <%= form.label :featured, "Featured Post", class: "ml-2 block text-sm text-gray-900" %>
-            </div>
+            <label class="flex items-start">
+              <%= form.check_box :featured, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5" %>
+              <div class="ml-3">
+                <div class="text-sm font-medium text-gray-900">Featured Post</div>
+                <div class="text-xs text-gray-500">Highlight this post on the homepage</div>
+              </div>
+            </label>
           </div>
 
           <div class="mt-6 pt-6 border-t border-gray-200">
             <%= form.submit @post.persisted? ? "Update Post" : "Create Post", 
-                class: "w-full cms-btn-primary" %>
+                class: "w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" %>
           </div>
         </div>
 
         <!-- Category & Tags -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <h3 class="text-lg font-medium text-gray-900 mb-4">Organization</h3>
+        <div class="bg-white shadow-sm rounded-lg p-4 sm:p-6 border border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+            </svg>
+            Organization
+          </h2>
           
           <div class="space-y-4">
             <!-- Category -->
@@ -159,29 +199,47 @@
 
         <!-- Post Statistics -->
         <% if @post.persisted? %>
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Statistics</h3>
+          <div class="bg-white shadow-sm rounded-lg p-4 sm:p-6 border border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              Statistics
+            </h2>
             
-            <dl class="space-y-3">
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-500">Views</dt>
-                <dd class="text-sm font-medium text-gray-900"><%= @post.view_count %></dd>
+            <dl class="grid grid-cols-2 gap-4 text-center">
+              <div class="bg-gray-50 rounded-lg p-3">
+                <dt class="text-xs text-gray-500 uppercase tracking-wide">Views</dt>
+                <dd class="text-lg font-semibold text-gray-900"><%= @post.view_count %></dd>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-500">Reading Time</dt>
-                <dd class="text-sm font-medium text-gray-900"><%= reading_time(@post) %></dd>
+              <div class="bg-gray-50 rounded-lg p-3">
+                <dt class="text-xs text-gray-500 uppercase tracking-wide">Reading Time</dt>
+                <dd class="text-lg font-semibold text-gray-900"><%= reading_time(@post) %></dd>
               </div>
-              <div class="flex justify-between">
-                <dt class="text-sm text-gray-500">Created</dt>
+            </dl>
+            
+            <dl class="mt-4 space-y-3">
+              <div class="flex justify-between items-center">
+                <dt class="text-sm text-gray-500 flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                  </svg>
+                  Created
+                </dt>
                 <dd class="text-sm font-medium text-gray-900">
-                  <%= @post.created_at.strftime('%m/%d/%Y') %>
+                  <%= @post.created_at.strftime('%B %d, %Y') %>
                 </dd>
               </div>
               <% if @post.published_at %>
-                <div class="flex justify-between">
-                  <dt class="text-sm text-gray-500">Published</dt>
+                <div class="flex justify-between items-center">
+                  <dt class="text-sm text-gray-500 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                    Published
+                  </dt>
                   <dd class="text-sm font-medium text-gray-900">
-                    <%= @post.published_at.strftime('%m/%d/%Y') %>
+                    <%= @post.published_at.strftime('%B %d, %Y') %>
                   </dd>
                 </div>
               <% end %>
