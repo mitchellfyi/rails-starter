@@ -880,13 +880,13 @@ create_file 'lib/tasks/api.rake', <<~RUBY
     desc 'Validate that OpenAPI schema is up to date'
     task validate_schema: :environment do
       # Store current schema
-      current_schema = File.read(Rails.root.join('swagger/v1/swagger.yaml')) if File.exist?(Rails.root.join('swagger/v1/swagger.yaml'))
+      current_schema = File.read(SWAGGER_SCHEMA_PATH) if File.exist?(SWAGGER_SCHEMA_PATH)
       
       # Generate new schema
       Rake::Task['api:generate_schema'].invoke
       
       # Compare with current
-      new_schema = File.read(Rails.root.join('swagger/v1/swagger.yaml'))
+      new_schema = File.read(SWAGGER_SCHEMA_PATH)
       
       if current_schema != new_schema
         puts "❌ OpenAPI schema is out of date. Run 'rake api:generate_schema' to update."
