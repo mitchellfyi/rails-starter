@@ -538,6 +538,291 @@ after_bundle do
     </div>
   ERB
 
+  # Create users management views
+  create_file 'app/views/admin/users/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
+        <%= form_with url: admin_users_path, method: :get, local: true, class: "flex" do |f| %>
+          <%= f.text_field :search, placeholder: "Search by email...", value: params[:search], 
+                          class: "border border-gray-300 rounded-l px-4 py-2" %>
+          <%= f.submit "Search", class: "bg-blue-600 text-white px-4 py-2 rounded-r hover:bg-blue-700" %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% @users.each do |user| %>
+          <li>
+            <div class="px-4 py-4 flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                    <%= user.email.first.upcase %>
+                  </div>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900"><%= user.email %></div>
+                  <div class="text-sm text-gray-500">
+                    <% if user.admin? %>
+                      <span class="bg-red-100 text-red-800 px-2 py-1 text-xs rounded">Admin</span>
+                    <% end %>
+                    Joined <%= time_ago_in_words(user.created_at) %> ago
+                  </div>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <%= link_to "View", admin_user_path(user), class: "text-blue-600 hover:text-blue-800" %>
+                <%= link_to "Edit", edit_admin_user_path(user), class: "text-green-600 hover:text-green-800" %>
+                <% if current_user.can_impersonate? && user != current_user %>
+                  <%= link_to "Impersonate", admin_user_impersonate_path(user), method: :post,
+                             class: "text-purple-600 hover:text-purple-800",
+                             data: { confirm: "Impersonate #{user.email}?" } %>
+                <% end %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  ERB
+
+  # Create user show view  
+  create_file 'app/views/admin/users/show.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">User Details</h1>
+        <div class="space-x-2">
+          <%= link_to "Edit User", edit_admin_user_path(@user), class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+          <% if current_user.can_impersonate? && @user != current_user %>
+            <%= link_to "Impersonate", admin_user_impersonate_path(@user), method: :post,
+                       class: "bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700",
+                       data: { confirm: "Impersonate #{@user.email}?" } %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- User Information -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">User Information</h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Email</dt>
+            <dd class="text-sm text-gray-900"><%= @user.email %></dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Admin Status</dt>
+            <dd class="text-sm text-gray-900">
+              <% if @user.admin? %>
+                <span class="bg-red-100 text-red-800 px-2 py-1 text-xs rounded">Admin</span>
+              <% else %>
+                <span class="bg-gray-100 text-gray-800 px-2 py-1 text-xs rounded">Regular User</span>
+              <% end %>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Created</dt>
+            <dd class="text-sm text-gray-900"><%= @user.created_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+            <dd class="text-sm text-gray-900"><%= @user.updated_at.strftime("%B %d, %Y at %I:%M %p") %></dd>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+        <% if @audit_logs.any? %>
+          <div class="space-y-3">
+            <% @audit_logs.each do |log| %>
+              <div class="border-b border-gray-200 pb-2 last:border-0">
+                <p class="text-sm font-medium"><%= log.action_display %></p>
+                <p class="text-xs text-gray-500"><%= time_ago_in_words(log.created_at) %> ago</p>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-gray-500 text-sm">No recent activity</p>
+        <% end %>
+      </div>
+    </div>
+  ERB
+
+  # Create audit logs index view
+  create_file 'app/views/admin/audit_logs/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-4">Audit Logs</h1>
+      
+      <!-- Filters -->
+      <%= form_with url: admin_audit_logs_path, method: :get, local: true, class: "bg-white p-4 rounded-lg shadow mb-6" do |f| %>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <%= f.label :item_type, "Resource Type", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :item_type, options_for_select([['All Types', '']] + @item_types.map { |t| [t, t] }, params[:item_type]),
+                        {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+          </div>
+          <div>
+            <%= f.label :admin_id, "Admin User", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.select :admin_id, options_for_select([['All Admins', '']] + @admin_users.map { |u| [u.email, u.id] }, params[:admin_id]),
+                        {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+          </div>
+          <div>
+            <%= f.label :start_date, "Start Date", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.date_field :start_date, value: params[:start_date], class: "mt-1 block w-full border-gray-300 rounded" %>
+          </div>
+          <div>
+            <%= f.label :end_date, "End Date", class: "block text-sm font-medium text-gray-700" %>
+            <%= f.date_field :end_date, value: params[:end_date], class: "mt-1 block w-full border-gray-300 rounded" %>
+          </div>
+        </div>
+        <div class="mt-4">
+          <%= f.submit "Filter", class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+          <%= link_to "Clear", admin_audit_logs_path, class: "ml-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @audit_logs.each do |log| %>
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                           <%= log.event == 'create' ? 'bg-green-100 text-green-800' : 
+                               log.event == 'destroy' ? 'bg-red-100 text-red-800' : 
+                               'bg-yellow-100 text-yellow-800' %>">
+                  <%= log.action_display %>
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= log.item_display_name %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= log.admin_user&.email || 'System' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <%= time_ago_in_words(log.created_at) %> ago
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <%= link_to "View Details", admin_audit_log_path(log), class: "text-blue-600 hover:text-blue-900" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  ERB
+
+  # Create feature flags index view
+  create_file 'app/views/admin/feature_flags/index.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">Feature Flags</h1>
+      <p class="text-gray-600">Control experimental features and rollout new functionality.</p>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% @feature_flags.each do |flag| %>
+          <li>
+            <div class="px-4 py-4 flex items-center justify-between">
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <% if flag.enabled? %>
+                    <div class="h-3 w-3 bg-green-500 rounded-full"></div>
+                  <% else %>
+                    <div class="h-3 w-3 bg-gray-300 rounded-full"></div>
+                  <% end %>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900"><%= flag.name %></div>
+                  <div class="text-sm text-gray-500">
+                    Status: 
+                    <% if flag.enabled? %>
+                      <span class="text-green-600 font-medium">Enabled</span>
+                    <% else %>
+                      <span class="text-gray-600">Disabled</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <%= link_to "Details", admin_feature_flag_path(flag.name), class: "text-blue-600 hover:text-blue-800" %>
+                <%= link_to flag.enabled? ? "Disable" : "Enable", 
+                           admin_feature_flag_toggle_path(flag.name), 
+                           method: :patch,
+                           class: flag.enabled? ? "text-red-600 hover:text-red-800" : "text-green-600 hover:text-green-800",
+                           data: { confirm: "#{flag.enabled? ? 'Disable' : 'Enable'} feature '#{flag.name}'?" } %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <% if @feature_flags.empty? %>
+      <div class="text-center py-12">
+        <p class="text-gray-500">No feature flags configured yet.</p>
+      </div>
+    <% end %>
+  ERB
+
+  # Create user edit view
+  create_file 'app/views/admin/users/edit.html.erb', <<~'ERB'
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">Edit User</h1>
+        <%= link_to "← Back to User", admin_user_path(@user), class: "text-blue-600 hover:text-blue-800" %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-6 max-w-2xl">
+      <%= form_with model: [:admin, @user], local: true, class: "space-y-6" do |f| %>
+        <% if @user.errors.any? %>
+          <div class="bg-red-50 border border-red-200 rounded p-4">
+            <h3 class="text-red-800 font-medium">Please fix the following errors:</h3>
+            <ul class="mt-2 text-red-700 text-sm">
+              <% @user.errors.full_messages.each do |message| %>
+                <li>• <%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div>
+          <%= f.label :email, class: "block text-sm font-medium text-gray-700" %>
+          <%= f.email_field :email, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" %>
+        </div>
+
+        <div>
+          <%= f.label :admin, class: "flex items-center" %>
+          <%= f.check_box :admin, class: "mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500" %>
+          <span class="text-sm text-gray-700">Grant admin privileges</span>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+          <%= link_to "Cancel", admin_user_path(@user), class: "bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" %>
+          <%= f.submit "Update User", class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+        </div>
+      <% end %>
+    </div>
+  ERB
+
   # ==========================================
   # ROUTES
   # ==========================================
