@@ -53,9 +53,8 @@ after_bundle do
   # Configure Sidekiq as the Active Job backend
   environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
 
-  # Scaffold workspace/team models
-  generate :model, 'Workspace', 'name:string', 'slug:string'
-  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string'
+  # Basic User model first (Devise should handle this)
+  # Note: Enhanced workspace models will be available via bin/synth add workspace
 
   # Mount Sidekiq web UI behind authentication (requires admin? method on User)
   route "require 'sidekiq/web'\nauthenticate :user, lambda { |u| u.respond_to?(:admin?) && u.admin? } do\n  mount Sidekiq::Web => '/admin/sidekiq'\nend"
@@ -95,10 +94,26 @@ after_bundle do
           end
         end
 
-        desc 'add MODULE', 'Add a module (e.g. billing, ai)'
+        desc 'add MODULE', 'Add a module (e.g. ai, workspace, billing)'
         def add(module_name)
-          puts "[stub] Add module: #{module_name}"
-          # TODO: implement installer loading lib/templates/synth/<module>/install.rb
+          modules_path = File.expand_path('../templates/synth', __dir__)
+          module_path = File.join(modules_path, module_name)
+          
+          unless Dir.exist?(module_path)
+            puts "Error: Module '#{module_name}' not found"
+            puts "Available modules: #{Dir.exist?(modules_path) ? Dir.children(modules_path).join(', ') : 'none'}"
+            return
+          end
+
+          installer_path = File.join(module_path, 'install.rb')
+          
+          if File.exist?(installer_path)
+            puts "Installing #{module_name} module..."
+            load installer_path
+            puts "#{module_name.capitalize} module installed successfully!"
+          else
+            puts "Error: No installer found for #{module_name} module"
+          end
         end
 
         desc 'remove MODULE', 'Remove a module'
