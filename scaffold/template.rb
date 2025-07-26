@@ -6,17 +6,22 @@
 #   rails new myapp --dev -m https://example.com/template.rb
 #
 # This script will guide you through setting up the base stack for the
-# Rails SaaS Starter Template.  It appends necessary gems to your
+# Rails SaaS Starter Template.  It appends necessary gems to your
 # Gemfile, runs generators for authentication, background jobs, and
 # Tailwind/Hotwire, and scaffolds workspace/team models.  It also
 # installs a command‑line interface (`bin/synth`) and a default AI
 # module skeleton.  Feel free to customise this script to suit your
-# project's needs.
+# project’s needs.
 
 say "🪝 Setting up Rails SaaS Starter Template..."
 
 # Add gems to the Gemfile
 gem 'pg', '~> 1.5'
+gem 'pgvector', '~> 0.3.2'
+gem 'redis', '~> 5.4'
+gem 'sidekiq', '~> 8.0'
+gem 'devise', '~> 4.9'
+gem 'devise-two-factor', '~> 5.1'
 gem 'pgvector', '~> 0.5'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
@@ -24,6 +29,14 @@ gem 'sidekiq', '~> 8.0'
 # Authentication and authorization
 gem 'devise', '~> 4.9'
 gem 'omniauth', '~> 2.1'
+gem 'omniauth-google-oauth2', '~> 1.2'
+gem 'omniauth-github', '~> 2.0'
+gem 'omniauth-slack', '~> 2.5'
+gem 'omniauth-rails-csrf-protection', '~> 1.0'
+gem 'stripe', '~> 15.3'
+gem 'pundit', '~> 2.1'
+gem 'friendly_id', '~> 5.5'
+gem 'rolify', '~> 6.0'
 gem 'omniauth-google-oauth2', '~> 1.1'
 gem 'omniauth-github', '~> 2.0'
 gem 'omniauth-slack', '~> 2.24'
@@ -49,6 +62,7 @@ gem_group :development, :test do
   gem 'factory_bot_rails', '~> 6.2'
   gem 'faker', '~> 3.3'
   gem 'rspec-rails', '~> 8.0'
+  gem 'database_cleaner-active_record', '~> 2.1'
   gem 'shoulda-matchers', '~> 6.5'
   gem 'capybara', '~> 3.40'
   gem 'selenium-webdriver', '~> 4.27'
@@ -121,6 +135,10 @@ after_bundle do
   
   inject_into_file 'config/initializers/devise.rb', devise_config, after: "# config.confirmable = false\n"
 
+  # Generate FriendlyId and Rolify setups
+  generate 'friendly_id'
+  generate 'rolify', 'Role', 'User'
+
   # Configure Sidekiq as the Active Job backend
   say "⚙️  Configuring Sidekiq for background jobs..."
   environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
@@ -158,9 +176,6 @@ after_bundle do
 
   # Add OmniAuth columns to User model
   generate 'migration', 'AddOmniauthToUsers', 'provider:string', 'uid:string'
-  
-  # Add Devise confirmable and lockable columns
-  generate 'migration', 'AddDeviseToUsers', 'confirmation_token:string', 'confirmed_at:datetime', 'confirmation_sent_at:datetime', 'unconfirmed_email:string', 'locked_at:datetime', 'failed_attempts:integer', 'unlock_token:string'
 
   # Scaffold workspace/team models with enhanced features
   say "🏢 Creating workspace and team models..."
@@ -204,6 +219,101 @@ after_bundle do
   create_file 'app/serializers/application_serializer.rb', <<~RUBY
     # frozen_string_literal: true
 
+  # Generate Invitation model for workspace invitations
+  generate :model, 'Invitation', 'sender:references', 'recipient_email:string', 'token:string', 'workspace:references', 'status:string'
+
+  # Generate controllers for workspace management
+  generate :controller, 'Workspaces', 'index', 'show', 'new', 'create', 'edit', 'update', 'destroy'
+  generate :controller, 'Memberships', 'index', 'create', 'destroy'
+  generate :controller, 'Invitations', 'create', 'show', 'accept', 'reject'
+
+  # Configure models with enhanced functionality
+  inject_into_file 'app/models/workspace.rb', after: "class Workspace < ApplicationRecord\n" do
+    <<~RUBY
+      extend FriendlyId
+      friendly_id :name, use: :slugged
+      
+      has_many :memberships, dependent: :destroy
+      has_many :users, through: :memberships
+      has_many :invitations, dependent: :destroy
+      
+      validates :name, presence: true, uniqueness: true
+    RUBY
+  end
+
+  inject_into_file 'app/models/membership.rb', after: "class Membership < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :workspace
+      belongs_to :user
+      
+      validates :role, presence: true, inclusion: { in: %w[admin member viewer] }
+      validates :user_id, uniqueness: { scope: :workspace_id }
+    RUBY
+  end
+
+  inject_into_file 'app/models/invitation.rb', after: "class Invitation < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :sender, class_name: 'User'
+      belongs_to :workspace
+      
+      validates :recipient_email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+      validates :token, presence: true, uniqueness: true
+      validates :status, presence: true, inclusion: { in: %w[pending accepted rejected] }
+      
+      before_validation :generate_token, on: :create
+      
+      scope :pending, -> { where(status: 'pending') }
+      
+      def accept!
+        update!(status: 'accepted')
+      end
+      
+      def reject!
+        update!(status: 'rejected')
+      end
+      
+      private
+      
+      def generate_token
+        require 'securerandom'
+        self.token = SecureRandom.urlsafe_base64(32) if token.blank?
+      end
+    RUBY
+  end
+
+  inject_into_file 'app/models/user.rb', after: "class User < ApplicationRecord\n" do
+    <<~RUBY
+      rolify
+      devise :two_factor_authenticatable,
+             :otp_secret_encryption_key => Rails.application.credentials.dig(:otp, :encryption_key)
+      
+      has_many :memberships, dependent: :destroy
+      has_many :workspaces, through: :memberships
+      has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'sender_id', dependent: :destroy
+      
+      def admin?
+        has_role?(:admin)
+      end
+    RUBY
+  end
+
+  # Configure routes for slug-based workspace routing
+  route "resources :workspaces, param: :slug do\n    resources :memberships\n    resources :invitations\n  end"
+
+  # Configure Devise for 2FA and OmniAuth providers
+  initializer 'omniauth.rb', <<~RUBY
+    Rails.application.config.to_prepare do
+      Devise.setup do |config|
+        config.omniauth :google_oauth2, Rails.application.credentials.dig(:google, :client_id), Rails.application.credentials.dig(:google, :client_secret)
+        config.omniauth :github, Rails.application.credentials.dig(:github, :client_id), Rails.application.credentials.dig(:github, :client_secret), scope: 'user:email'
+        config.omniauth :slack, Rails.application.credentials.dig(:slack, :client_id), Rails.application.credentials.dig(:slack, :client_secret)
+      end
+    end
+  RUBY
+
+  # Configure Sidekiq as the Active Job backend
+
+  # Mount Sidekiq web UI behind authentication (requires admin? method on User)
     class ApplicationSerializer
       include JSONAPI::Serializer
     end
@@ -307,7 +417,7 @@ after_bundle do
     
     # Methods
     def full_name
-      "#{first_name} #{last_name}".strip
+      "\#{first_name} \#{last_name}".strip
     end
     
     def admin?
@@ -887,16 +997,35 @@ after_bundle do
           puts 'Installed modules:'
 
           if Dir.exist?(modules_path)
+            Dir.children(modules_path).each { |module_dir| puts "  - #{module_dir}" }
             Dir.children(modules_path).each { |m| puts "  - #{m}" }
           else
             puts '  (none)'
           end
         end
 
-        desc 'add MODULE', 'Add a module (e.g. billing, ai)'
+        desc 'add MODULE', 'Add a module (e.g. ai, workspace, billing)'
         def add(module_name)
-          puts "[stub] Add module: #{module_name}"
+          puts "[stub] Add module: \#{module_name}"
           # TODO: implement installer loading lib/templates/synth/<module>/install.rb
+          modules_path = File.expand_path('../templates/synth', __dir__)
+          module_path = File.join(modules_path, module_name)
+          
+          unless Dir.exist?(module_path)
+            puts "Error: Module '#{module_name}' not found"
+            puts "Available modules: #{Dir.exist?(modules_path) ? Dir.children(modules_path).join(', ') : 'none'}"
+            return
+          end
+
+          installer_path = File.join(module_path, 'install.rb')
+          
+          if File.exist?(installer_path)
+            puts "Installing #{module_name} module..."
+            load installer_path
+            puts "#{module_name.capitalize} module installed successfully!"
+          else
+            puts "Error: No installer found for #{module_name} module"
+          end
         end
 
         desc 'remove MODULE', 'Remove a module'
@@ -1013,6 +1142,102 @@ after_bundle do
 
     It will add the necessary models, migrations, routes, controllers, and tests.
   MD
+
+  # Create GitHub Actions workflow template for CI with API schema validation
+  run 'mkdir -p .github/workflows'
+  create_file '.github/workflows/test.yml', <<~YAML
+    name: Test Suite
+
+    on:
+      push:
+        branches: [ main, develop ]
+      pull_request:
+        branches: [ main, develop ]
+
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+
+        services:
+          postgres:
+            image: postgres:15
+            env:
+              POSTGRES_PASSWORD: postgres
+            options: >-
+              --health-cmd pg_isready
+              --health-interval 10s
+              --health-timeout 5s
+              --health-retries 5
+            ports:
+              - 5432:5432
+
+          redis:
+            image: redis:7
+            options: >-
+              --health-cmd "redis-cli ping"
+              --health-interval 10s
+              --health-timeout 5s
+              --health-retries 5
+            ports:
+              - 6379:6379
+
+        steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up Ruby
+          uses: ruby/setup-ruby@v1
+          with:
+            ruby-version: '3.2'
+            bundler-cache: true
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '18'
+            cache: 'yarn'
+
+        - name: Install dependencies
+          run: |
+            bundle install
+            yarn install
+
+        - name: Set up database
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            bundle exec rails db:setup
+
+        - name: Run tests
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            bundle exec rspec
+
+        - name: Validate API schema
+          env:
+            DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+            RAILS_ENV: test
+          run: |
+            if [ -f lib/tasks/api.rake ]; then
+              bundle exec rake api:validate_schema
+            else
+              echo "API module not installed, skipping schema validation"
+            fi
+
+        - name: Upload API schema
+          if: github.ref == 'refs/heads/main'
+          uses: actions/upload-artifact@v4
+          with:
+            name: api-schema
+            path: swagger/
+  YAML
+  
+  # Run database setup
+  say "🗃️  Setting up database..."
+  rails_command 'db:create'
+  rails_command 'db:migrate'
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
