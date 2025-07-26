@@ -40,7 +40,7 @@ after_bundle do
       validates :name, presence: true, uniqueness: { scope: :workspace_id }
       validates :slug, presence: true, uniqueness: { scope: :workspace_id }, format: { with: /\A[a-z0-9_-]+\z/ }
       validates :prompt_body, presence: true
-      validates :output_format, presence: true, inclusion: { in: Rails.application.config.ai.output_formats }
+      validates :output_format, presence: true, inclusion: { in: AI_OUTPUT_FORMATS }
 
       belongs_to :workspace, optional: true
       belongs_to :created_by, class_name: 'User', optional: true
