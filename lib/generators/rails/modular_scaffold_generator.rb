@@ -22,10 +22,9 @@ module Rails
           exit 1
         end
 
-        # Generate model within the domain
-        invoke "rails:model", [name, attributes.map(&:to_s)],
-               dir: "#{domain_path}/app/models",
-               migration: true
+        # Generate model in the main app/models directory (not in domain)
+        # This keeps models centralized while domain logic goes in subfolders
+        invoke "rails:model", [name, attributes.map(&:to_s)]
 
         # Generate controller within the domain
         invoke "rails:controller", [name.pluralize, "--no-helper", "--no-assets"],

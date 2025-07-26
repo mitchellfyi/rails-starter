@@ -18,7 +18,8 @@ gem 'kaminari' # Moved from end of file
 # Run bundle install and set up admin configuration after gems are installed
 after_bundle do
   # Create domain-specific directories
-  run 'mkdir -p app/domains/admin/app/{controllers/admin,models/concerns,policies,views/admin/dashboard,views/admin/users,views/admin/audit_logs,views/admin/feature_flags,views/layouts}'
+  run 'mkdir -p app/domains/admin/app/{controllers/admin,policies,views/admin/dashboard,views/admin/users,views/admin/audit_logs,views/admin/feature_flags,views/layouts}'
+  run 'mkdir -p app/models/concerns' # Ensure models directory exists
 
   # ==========================================
   # CONFIGURATION AND INITIALIZERS
@@ -83,7 +84,7 @@ after_bundle do
   # ==========================================
 
   # Create Admin User concern
-  create_file 'app/domains/admin/app/models/concerns/admin_user.rb', <<~'RUBY'
+  create_file 'app/models/concerns/admin_user.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module AdminUser
@@ -110,7 +111,7 @@ after_bundle do
   RUBY
 
   # Create Auditable concern for models
-  create_file 'app/domains/admin/app/models/concerns/auditable.rb', <<~'RUBY'
+  create_file 'app/models/concerns/auditable.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module Auditable
@@ -143,7 +144,7 @@ after_bundle do
   RUBY
 
   # Create ActivityTrackable concern for models to automatically log activities
-  create_file 'app/domains/admin/app/models/concerns/activity_trackable.rb', <<~'RUBY'
+  create_file 'app/models/concerns/activity_trackable.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module ActivityTrackable
@@ -226,7 +227,7 @@ after_bundle do
   RUBY
 
   # Create AuditLog model for easier querying
-  create_file 'app/domains/admin/app/models/audit_log.rb', <<~'RUBY'
+  create_file 'app/models/audit_log.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class AuditLog < ApplicationRecord
@@ -290,7 +291,7 @@ after_bundle do
   RUBY
 
   # Create UserActivity model for user activity feeds
-  create_file 'app/domains/admin/app/models/user_activity.rb', <<~'RUBY'
+  create_file 'app/models/user_activity.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class UserActivity < ApplicationRecord

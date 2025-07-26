@@ -16,7 +16,8 @@ add_gem 'rqrcode', '~> 2.2' # For QR codes
 
 after_bundle do
   # Create domain-specific directories
-  run 'mkdir -p app/domains/auth/app/{controllers,models/concerns,services,jobs,mailers,policies,queries}'
+  run 'mkdir -p app/domains/auth/app/{controllers,services,jobs,mailers,policies,queries}'
+  run 'mkdir -p app/models/concerns' # Ensure models directory exists
 
   # Set up Devise
   generate 'devise:install'
@@ -55,13 +56,8 @@ after_bundle do
 
   # Create Identity model for OAuth providers
   generate 'model', 'Identity', 'user:references', 'provider:string', 'uid:string', 'email:string', 'name:string', 'image_url:string'
-  # Move generated Identity model to domain-specific path
-  # This assumes the model file is created in app/models/identity.rb
-  # and needs to be moved to app/domains/auth/app/models/identity.rb
+  # Identity model is generated in central models directory (correct location)
   # The migration will remain in db/migrate
-  if File.exist?('app/models/identity.rb')
-    FileUtils.mv 'app/models/identity.rb', 'app/domains/auth/app/models/identity.rb'
-  end
 
   # Create sessions controller in domain-specific path
   create_file 'app/domains/auth/app/controllers/sessions_controller.rb', <<~'RUBY'
@@ -175,7 +171,7 @@ after_bundle do
   RUBY
 
   # Create User model enhancements in domain-specific path
-  create_file 'app/domains/auth/app/models/concerns/user_authentication.rb', <<~'RUBY'
+  create_file 'app/models/concerns/user_authentication.rb', <<~'RUBY'
     module UserAuthentication
       extend ActiveSupport::Concern
 

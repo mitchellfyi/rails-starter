@@ -12,7 +12,8 @@ add_gem 'paper_trail'
 # Run bundle install and set up AI configuration after gems are installed
 after_bundle do
   # Create domain-specific directories
-  run 'mkdir -p app/domains/ai/app/{controllers,models,services,jobs,views,policies,queries}'
+  run 'mkdir -p app/domains/ai/app/{controllers,services,jobs,views,policies,queries}'
+  run 'mkdir -p app/models' # Ensure models directory exists
   run 'mkdir -p spec/domains/ai/{models,controllers,jobs,fixtures}'
   # Create an initializer for AI configuration
   initializer 'ai.rb', <<~'RUBY'
@@ -34,7 +35,7 @@ after_bundle do
   RUBY
 
   # Create PromptTemplate model and migration
-  create_file 'app/domains/ai/app/models/prompt_template.rb', <<~'RUBY'
+  create_file 'app/models/prompt_template.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptTemplate < ApplicationRecord
@@ -92,7 +93,7 @@ after_bundle do
   RUBY
 
   # Create PromptExecution model for audit history
-  create_file 'app/domains/ai/app/models/prompt_execution.rb', <<~'RUBY'
+  create_file 'app/models/prompt_execution.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptExecution < ApplicationRecord

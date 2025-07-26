@@ -7,7 +7,8 @@
 say 'Installing Onboarding module...'
 
 # Create domain-specific directories
-run 'mkdir -p app/domains/onboarding/app/{controllers,models,services,views/onboarding/steps,views/onboarding/partials}'
+run 'mkdir -p app/domains/onboarding/app/{controllers,services,views/onboarding/steps,views/onboarding/partials}'
+run 'mkdir -p app/models/concerns' # Ensure models directory exists
 run 'mkdir -p spec/domains/onboarding/{models,controllers,services,integration,fixtures}'
 
 # Generate the OnboardingProgress model
@@ -17,10 +18,10 @@ generate :model, 'OnboardingProgress',
   'completed_steps:json',
   'skipped:boolean:default=false',
   'completed_at:datetime',
-  dir: 'app/domains/onboarding/app/models'
+  dir: 'app/models'
 
 # Copy model files
-copy_file 'app/models/onboarding_progress.rb', 'app/domains/onboarding/app/models/onboarding_progress.rb'
+copy_file 'app/models/onboarding_progress.rb', 'app/models/onboarding_progress.rb'
 
 # Copy controller files
 copy_file 'app/controllers/onboarding_controller.rb', 'app/domains/onboarding/app/controllers/onboarding_controller.rb'
@@ -43,7 +44,7 @@ copy_file 'app/views/onboarding/partials/_progress.html.erb', 'app/domains/onboa
 copy_file 'app/views/onboarding/partials/_navigation.html.erb', 'app/domains/onboarding/app/views/onboarding/partials/_navigation.html.erb'
 
 # Copy concern for User model
-copy_file 'app/models/concerns/onboardable.rb', 'app/domains/onboarding/app/models/concerns/onboardable.rb'
+copy_file 'app/models/concerns/onboardable.rb', 'app/models/concerns/onboardable.rb'
 
 # Add routes
 route_content = <<~RUBY
@@ -85,8 +86,7 @@ initializer_content = <<~RUBY
   # Onboarding module configuration
   Rails.application.config.autoload_paths += %W[
     \#{Rails.root}/app/domains/onboarding/app/controllers
-    \#{Rails.root}/app/domains/onboarding/app/models
-    \#{Rails.root}/app/domains/onboarding/app/models/concerns
+    # Models are in the standard Rails app/models directory
     \#{Rails.root}/app/domains/onboarding/app/services
   ]
 RUBY
