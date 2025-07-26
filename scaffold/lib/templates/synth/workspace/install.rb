@@ -23,13 +23,13 @@ end
 if File.exist?('app/models/membership.rb')
   say 'Membership model already exists, skipping generation...'
 else  
-  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references', 'joined_at:datetime'
+  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references:user', 'joined_at:datetime'
 end
 
 if File.exist?('app/models/invitation.rb')
   say 'Invitation model already exists, skipping generation...'
 else
-  generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references', 'accepted_at:datetime', 'expires_at:datetime'
+  generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references:user', 'accepted_at:datetime', 'expires_at:datetime'
 end
 
 # Generate controllers
