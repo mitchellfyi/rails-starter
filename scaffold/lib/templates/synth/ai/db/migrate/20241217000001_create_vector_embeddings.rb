@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 class CreateVectorEmbeddings < ActiveRecord::Migration[7.1]
+  EMBEDDING_DIMENSION = 1536
+
   def up
     # Enable pgvector extension
     enable_extension 'vector'
     
     create_table :vector_embeddings do |t|
       t.text :content, null: false
-      t.vector :embedding, limit: 1536, null: false # OpenAI ada-002 dimensions
+      t.vector :embedding, limit: EMBEDDING_DIMENSION, null: false # OpenAI ada-002 dimensions
       t.string :content_type, null: false
       t.string :namespace
       t.json :metadata, default: {}
