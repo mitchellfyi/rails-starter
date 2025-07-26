@@ -22,7 +22,15 @@ class WorkspacePolicy < ApplicationPolicy
   end
 
   def manage_members?
-    workspace_admin?
+    workspace_member? && current_membership&.can_manage_workspace?
+  end
+
+  def manage_roles?
+    workspace_member? && current_membership&.can_manage_roles?
+  end
+
+  def impersonate?
+    workspace_member? && current_membership&.can_impersonate?
   end
 
   private
@@ -32,7 +40,11 @@ class WorkspacePolicy < ApplicationPolicy
   end
 
   def workspace_admin?
-    record.memberships.exists?(user: user, role: 'admin')
+    record.memberships.joins(:workspace_role).exists?(user: user, workspace_roles: { name: 'admin' })
+  end
+
+  def current_membership
+    @current_membership ||= record.memberships.find_by(user: user)
   end
 
   class Scope < Scope

@@ -19,6 +19,12 @@ class InvitationsController < ApplicationController
     
     @invitation = @workspace.invitations.build(invitation_params)
     @invitation.invited_by = current_user
+    
+    # Set workspace_role based on role parameter
+    workspace_role = @workspace.workspace_roles.find_by(name: invitation_params[:role])
+    if workspace_role
+      @invitation.workspace_role = workspace_role
+    end
 
     if @invitation.save
       InvitationMailer.invite_user(@invitation).deliver_later
@@ -64,6 +70,6 @@ class InvitationsController < ApplicationController
   end
 
   def invitation_params
-    params.require(:invitation).permit(:email, :role)
+    params.require(:invitation).permit(:email, :role, :workspace_role_id)
   end
 end

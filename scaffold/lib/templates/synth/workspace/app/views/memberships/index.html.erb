@@ -23,10 +23,10 @@
             required: true,
             class: "block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
       </div>
-      <div class="sm:w-32">
+      <div class="sm:w-48">
         <%= form.label :role, "Role", class: "sr-only" %>
         <%= form.select :role, 
-            options_for_select([['Member', 'member'], ['Admin', 'admin'], ['Guest', 'guest']], 'member'),
+            options_from_collection_for_select(@available_roles, :name, :display_name, 'member'),
             {}, 
             { class: "block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
       </div>
@@ -68,10 +68,10 @@
                 </div>
               </div>
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                         <%= membership.role == 'admin' ? 'bg-purple-100 text-purple-800' : 
-                             membership.role == 'member' ? 'bg-green-100 text-green-800' :
+                         <%= membership.workspace_role.name == 'admin' ? 'bg-purple-100 text-purple-800' : 
+                             membership.workspace_role.name == 'member' ? 'bg-green-100 text-green-800' :
                              'bg-gray-100 text-gray-800' %>">
-                <%= membership.role %>
+                <%= membership.role_display_name %>
               </span>
             </div>
             
@@ -86,9 +86,9 @@
               <div class="flex flex-col gap-2">
                 <% if policy(membership).update? && membership.user != current_user %>
                   <%= form_with model: [membership.workspace, membership], method: :patch, class: "flex items-center gap-2" do |form| %>
-                    <%= form.label :role, "Change Role:", class: "text-xs text-gray-600" %>
-                    <%= form.select :role, 
-                        options_for_select([['Admin', 'admin'], ['Member', 'member'], ['Guest', 'guest']], membership.role),
+                    <%= form.label :workspace_role_id, "Change Role:", class: "text-xs text-gray-600" %>
+                    <%= form.select :workspace_role_id, 
+                        options_from_collection_for_select(@available_roles, :id, :display_name, membership.workspace_role_id),
                         {}, 
                         { class: "text-xs border-gray-300 rounded flex-1", onchange: "this.form.submit();" } %>
                   <% end %>
@@ -136,18 +136,18 @@
               
               <div class="flex items-center space-x-3">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                           <%= membership.role == 'admin' ? 'bg-purple-100 text-purple-800' : 
-                               membership.role == 'member' ? 'bg-green-100 text-green-800' :
+                           <%= membership.workspace_role.name == 'admin' ? 'bg-purple-100 text-purple-800' : 
+                               membership.workspace_role.name == 'member' ? 'bg-green-100 text-green-800' :
                                'bg-gray-100 text-gray-800' %>">
-                  <%= membership.role %>
+                  <%= membership.role_display_name %>
                 </span>
                 
                 <% if policy(membership).update? || policy(membership).destroy? %>
                   <div class="flex space-x-2">
                     <% if policy(membership).update? && membership.user != current_user %>
                       <%= form_with model: [membership.workspace, membership], method: :patch, class: "inline" do |form| %>
-                        <%= form.select :role, 
-                            options_for_select([['Admin', 'admin'], ['Member', 'member'], ['Guest', 'guest']], membership.role),
+                        <%= form.select :workspace_role_id, 
+                            options_from_collection_for_select(@available_roles, :id, :display_name, membership.workspace_role_id),
                             {}, 
                             { class: "text-xs border-gray-300 rounded", onchange: "this.form.submit();" } %>
                       <% end %>
@@ -180,19 +180,19 @@
 </div>
 
 <!-- Pending Invitations -->
-<% if policy(@workspace).manage_members? && @workspace.invitations.pending.any? %>
+<% if @can_manage && @pending_invitations&.any? %>
   <div class="bg-white shadow-sm rounded-lg mt-6 border border-gray-200">
     <div class="px-4 py-5 sm:p-6">
       <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
         <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
         </svg>
-        Pending Invitations (<%= @workspace.invitations.pending.count %>)
+        Pending Invitations (<%= @pending_invitations.count %>)
       </h3>
       
       <!-- Mobile Card Layout -->
       <div class="block sm:hidden space-y-4">
-        <% @workspace.invitations.pending.includes(:invited_by).each do |invitation| %>
+        <% @pending_invitations.each do |invitation| %>
           <div class="border border-gray-200 rounded-lg p-4">
             <div class="text-sm font-medium text-gray-900 break-words mb-2">
               <%= invitation.email %>
@@ -204,7 +204,7 @@
             </div>
             <div class="flex gap-2">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 capitalize">
-                <%= invitation.role %>
+                <%= invitation.workspace_role&.display_name || invitation.role.humanize %>
               </span>
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                 Pending
@@ -216,7 +216,7 @@
 
       <!-- Desktop Layout -->
       <div class="hidden sm:block divide-y divide-gray-200">
-        <% @workspace.invitations.pending.includes(:invited_by).each do |invitation| %>
+        <% @pending_invitations.each do |invitation| %>
           <div class="py-4 flex items-center justify-between">
             <div class="min-w-0 flex-1">
               <div class="text-sm font-medium text-gray-900 truncate">
@@ -230,7 +230,7 @@
             
             <div class="flex items-center space-x-3 ml-4">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 capitalize">
-                <%= invitation.role %>
+                <%= invitation.workspace_role&.display_name || invitation.role.humanize %>
               </span>
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                 Pending

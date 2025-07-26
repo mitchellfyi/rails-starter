@@ -10,6 +10,7 @@ class InvitationTest < ActiveSupport::TestCase
       workspace: @workspace,
       email: 'test@example.com',
       role: 'member',
+      workspace_role: @workspace.member_role_obj,
       invited_by: @user
     )
   end
@@ -85,7 +86,11 @@ class InvitationTest < ActiveSupport::TestCase
     invited_user = User.create!(email: 'test@example.com', password: 'password')
     
     # Make user already a member
-    @workspace.memberships.create!(user: invited_user, role: 'member')
+    @workspace.memberships.create!(
+      user: invited_user, 
+      role: 'member',
+      workspace_role: @workspace.member_role_obj
+    )
     
     assert_not @invitation.accept!(invited_user)
   end

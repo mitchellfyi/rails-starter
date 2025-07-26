@@ -17,6 +17,16 @@ resources :workspaces, param: :slug do
       patch :decline
     end
   end
+  
+  # Nested workspace role management
+  resources :workspace_roles, except: [:show] do
+    member do
+      patch :update_permissions
+    end
+  end
+  
+  # Nested impersonation management
+  resources :impersonations, only: [:index, :show, :new, :create, :destroy]
 end
 
 # Public invitation routes (no authentication required for viewing)

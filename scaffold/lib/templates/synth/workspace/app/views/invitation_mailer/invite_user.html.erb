@@ -29,7 +29,7 @@
       <div class="content">
         <p>Hello!</p>
         
-        <p><strong><%= @invited_by.email %></strong> has invited you to join "<strong><%= @workspace.name %></strong>" as a <strong><%= @invitation.role %></strong>.</p>
+        <p><strong><%= @invited_by.email %></strong> has invited you to join "<strong><%= @workspace.name %></strong>" as a <strong><%= @invitation.workspace_role&.display_name || @invitation.role.humanize %></strong>.</p>
         
         <% if @workspace.description.present? %>
           <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">

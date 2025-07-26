@@ -1,0 +1,125 @@
+<% content_for :title, "#{@workspace.name} - Roles" %>
+
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900"><%= @workspace.name %> Roles</h1>
+    <nav class="mt-2 text-sm text-gray-600" aria-label="Breadcrumb">
+      <%= link_to @workspace.name, @workspace, class: "text-blue-600 hover:text-blue-800 transition-colors" %> /
+      <span class="text-gray-900">Roles</span>
+    </nav>
+  </div>
+  <div class="flex flex-col sm:flex-row gap-3">
+    <%= link_to new_workspace_workspace_role_path(@workspace), 
+          class: "inline-flex justify-center items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors" do %>
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+      </svg>
+      Add Custom Role
+    <% end %>
+  </div>
+</div>
+
+<!-- System Roles -->
+<div class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6">
+  <div class="px-4 py-5 sm:p-6">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <svg class="w-5 h-5 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      System Roles (<%= @system_roles.count %>)
+    </h3>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <% @system_roles.each do |role| %>
+        <div class="border border-gray-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-medium text-gray-900"><%= role.display_name %></h4>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              System
+            </span>
+          </div>
+          
+          <% if role.description.present? %>
+            <p class="text-sm text-gray-600 mb-3"><%= role.description %></p>
+          <% end %>
+          
+          <div class="text-xs text-gray-500">
+            <%= pluralize(role.memberships.count, 'member') %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Roles -->
+<div class="bg-white shadow-sm rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:p-6">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+      </svg>
+      Custom Roles (<%= @custom_roles.count %>)
+    </h3>
+    
+    <% if @custom_roles.any? %>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <% @custom_roles.each do |role| %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-medium text-gray-900"><%= role.display_name %></h4>
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Custom
+                </span>
+                <div class="flex space-x-1">
+                  <%= link_to edit_workspace_workspace_role_path(@workspace, role), 
+                        class: "text-gray-400 hover:text-gray-600" do %>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                  <% end %>
+                  <% if role.memberships.empty? %>
+                    <%= link_to workspace_workspace_role_path(@workspace, role), 
+                          method: :delete,
+                          data: { confirm: "Are you sure you want to delete this role?" },
+                          class: "text-red-400 hover:text-red-600" do %>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+            
+            <% if role.description.present? %>
+              <p class="text-sm text-gray-600 mb-3"><%= role.description %></p>
+            <% end %>
+            
+            <div class="text-xs text-gray-500">
+              <%= pluralize(role.memberships.count, 'member') %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-8">
+        <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No custom roles</h3>
+        <p class="text-gray-600 mb-6 max-w-sm mx-auto">Create custom roles to define specific permissions for your team members.</p>
+        <%= link_to new_workspace_workspace_role_path(@workspace), 
+              class: "inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors" do %>
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Create Custom Role
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
