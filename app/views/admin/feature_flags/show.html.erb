@@ -1,0 +1,86 @@
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1 style="margin: 0; color: #1f2937;"><%= @feature_flag.name %></h1>
+    <div>
+      <%= link_to "Edit", edit_admin_feature_flag_path(@feature_flag), class: "btn btn-primary" %>
+      <%= link_to "← Back to Flags", admin_feature_flags_path, class: "btn btn-secondary" %>
+    </div>
+  </div>
+  
+  <p style="color: #6b7280; margin-bottom: 1rem;"><%= @feature_flag.description %></p>
+  
+  <!-- Global Status -->
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+    <span style="font-weight: 500;">Global Status:</span>
+    <span style="background: <%= @feature_flag.enabled? ? '#10b981' : '#6b7280' %>; color: white; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+      <%= @feature_flag.enabled? ? 'Enabled' : 'Disabled' %>
+    </span>
+    <%= link_to @feature_flag.enabled? ? 'Disable Globally' : 'Enable Globally', 
+               admin_feature_flag_toggle_path(@feature_flag), 
+               method: :patch,
+               class: "btn #{ @feature_flag.enabled? ? 'btn-danger' : 'btn-success' }" %>
+  </div>
+</div>
+
+<!-- Workspace Overrides -->
+<% if @workspaces&.any? %>
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Workspace Overrides</h3>
+    <p style="color: #6b7280; margin-bottom: 1rem;">Control this feature flag for specific workspaces.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+      <% @workspaces.each do |workspace| %>
+        <div style="border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem;">
+          <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
+            <h4 style="margin: 0; color: #1f2937;"><%= workspace.name %></h4>
+            <div style="margin-left: auto;">
+              <%= link_to admin_feature_flag_toggle_workspace_path(@feature_flag, workspace_id: workspace.id), 
+                         method: :patch, 
+                         class: "btn #{ @feature_flag.enabled_for_workspace?(workspace) ? 'btn-danger' : 'btn-success' }" do %>
+                <%= @feature_flag.enabled_for_workspace?(workspace) ? 'Disable' : 'Enable' %>
+              <% end %>
+            </div>
+          </div>
+          
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            Status: <strong><%= @feature_flag.workspace_status(workspace) %></strong>
+          </div>
+          
+          <% if @feature_flag.workspace_override?(workspace) %>
+            <div style="font-size: 0.75rem; color: #f59e0b; margin-top: 0.25rem;">
+              ⚠️ Workspace override active
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="card">
+    <div style="text-align: center; padding: 2rem; color: #6b7280;">
+      <p>No workspaces available for per-workspace control.</p>
+      <p style="font-size: 0.875rem;">This feature flag can only be controlled globally.</p>
+    </div>
+  </div>
+<% end %>
+
+<!-- Recent Activity -->
+<div class="card">
+  <h3 style="margin-bottom: 1rem; color: #1f2937;">Recent Activity</h3>
+  <% recent_logs = AuditLog.where(resource_type: 'FeatureFlag', resource_id: @feature_flag.id).recent.limit(10) %>
+  <% if recent_logs.any? %>
+    <% recent_logs.each do |log| %>
+      <div style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-weight: 500;"><%= log.description %></p>
+        <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">
+          <%= log.created_at.strftime('%m/%d/%Y %I:%M %p') %>
+          <% if log.user %>
+            by <%= log.user.email %>
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  <% else %>
+    <p style="color: #6b7280;">No recent activity for this feature flag.</p>
+  <% end %>
+</div>

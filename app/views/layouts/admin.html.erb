@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin Panel - Rails SaaS Starter</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    
+    <style>
+      .admin-nav { background: #1f2937; color: white; padding: 1rem; }
+      .admin-nav a { color: #d1d5db; text-decoration: none; margin-right: 1.5rem; }
+      .admin-nav a:hover { color: white; }
+      .admin-content { padding: 2rem; }
+      .card { background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1rem; }
+      .btn { padding: 0.5rem 1rem; border-radius: 0.25rem; text-decoration: none; display: inline-block; }
+      .btn-primary { background: #3b82f6; color: white; }
+      .btn-success { background: #10b981; color: white; }
+      .btn-danger { background: #ef4444; color: white; }
+      .btn-secondary { background: #6b7280; color: white; }
+      .table { width: 100%; border-collapse: collapse; }
+      .table th, .table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+      .table th { background: #f9fafb; font-weight: 600; }
+      .filter-form { background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
+      .form-group { margin-bottom: 1rem; }
+      .form-control { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; }
+      .alert { padding: 1rem; border-radius: 0.25rem; margin-bottom: 1rem; }
+      .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+      .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    </style>
+  </head>
+
+  <body>
+    <!-- Admin Navigation -->
+    <nav class="admin-nav">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <%= link_to "Dashboard", admin_root_path %>
+          <%= link_to "Audit Logs", admin_audit_path %>
+          <%= link_to "Feature Flags", admin_feature_flags_path %>
+        </div>
+        <div>
+          <span style="margin-right: 1rem;">Admin: <%= current_user&.email %></span>
+          <%= link_to "← Back to Site", root_path %>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <% if notice %>
+      <div class="alert alert-success" style="margin: 1rem;">
+        <%= notice %>
+      </div>
+    <% end %>
+
+    <% if alert %>
+      <div class="alert alert-danger" style="margin: 1rem;">
+        <%= alert %>
+      </div>
+    <% end %>
+
+    <!-- Main Content -->
+    <main class="admin-content">
+      <%= yield %>
+    </main>
+  </body>
+</html>
