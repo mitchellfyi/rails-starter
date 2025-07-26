@@ -1,239 +1,102 @@
-# CMS Module - Content Management and Blog Engine
+# CMS/Blog Engine Module
 
-This module adds a comprehensive content management system and blog engine to your Rails app with ActionText, WYSIWYG editing, SEO optimization, and sitemap generation.
+This module adds a complete content management and blog engine to your Rails app with ActionText, WYSIWYG editing, SEO optimization, and sitemap generation.
 
 ## Features
 
-### 📝 Content Management
-- **Post Model**: Blog posts with rich content via ActionText
-- **Page Model**: Static pages with custom layouts
-- **Category & Tag Models**: Hierarchical content organization
-- **SEO Metadata**: Title, description, keywords for each piece of content
-- **Slug-based URLs**: SEO-friendly routing with FriendlyId
+- **Rich Content Creation**: ActionText integration with WYSIWYG editor for posts and pages
+- **Image & File Support**: Upload and embed images, documents, and other attachments
+- **SEO Optimization**: Meta titles, descriptions, keywords, and automatic sitemap.xml generation
+- **Admin Interface**: Comprehensive admin UI for managing content, categories, and tags
+- **Friendly URLs**: SEO-friendly slugged URLs for all content
+- **Performance**: Built-in caching and indexing for optimal performance
+- **Accessibility**: WCAG-compliant interface with proper semantic markup
 
-### 🎨 Rich Text Editing
-- **ActionText Integration**: Rails' built-in rich text editor
-- **Trix WYSIWYG Editor**: Modern, accessible rich text editing
-- **Image & Attachment Support**: Upload and embed media
-- **Content Formatting**: Support for headings, lists, links, quotes
+## Models
 
-### 🔍 SEO Optimization
-- **Meta Tags**: Automatic generation of meta title, description, keywords
-- **Sitemap.xml**: Auto-generated sitemap for search engines
-- **Structured Data**: Schema.org markup for better search visibility
-- **Canonical URLs**: Prevent duplicate content issues
-- **Open Graph**: Social media sharing optimization
-
-### 👨‍💼 Admin Interface
-- **Content Dashboard**: Overview of all posts and pages
-- **WYSIWYG Editor**: User-friendly content creation
-- **Category Management**: Hierarchical category organization
-- **Tag Management**: Flexible tagging system
-- **SEO Preview**: Preview how content appears in search results
-- **Publishing Workflow**: Draft, review, publish states
-
-### 🚀 Performance & Accessibility
-- **Caching**: Fragment and page caching for performance
-- **Responsive Design**: Mobile-first admin interface
-- **Accessibility**: WCAG 2.1 AA compliant
-- **Progressive Enhancement**: Works without JavaScript
+- **Post**: Blog posts with rich content, categories, tags, and SEO metadata
+- **Page**: Static pages (About, Terms, etc.) with rich content and SEO
+- **Category**: Organize posts into hierarchical categories
+- **Tag**: Tag posts for better discovery and organization
 
 ## Installation
 
-Run the following command from your application root:
+Run the following command from your application root to install the CMS module:
 
 ```bash
 bin/synth add cms
 ```
 
-This installs:
-- Post, Page, Category, Tag, and SeoMetadata models
-- Admin controllers and views for content management
-- Public controllers for blog and page display
-- ActionText integration with Trix editor
-- Sitemap generation service
-- SEO optimization helpers
-- Comprehensive test suite
-- Sample content and categories
-
-## Configuration
-
-### ActionText Setup
-
-The module automatically configures ActionText, but you may want to customize storage:
-
-```ruby
-# config/storage.yml
-local:
-  service: Disk
-  root: <%= Rails.root.join("storage") %>
-```
-
-### SEO Configuration
-
-Configure SEO defaults in an initializer:
-
-```ruby
-# config/initializers/cms.rb
-Rails.application.config.cms = ActiveSupport::OrderedOptions.new
-Rails.application.config.cms.default_meta_description = "Your site description"
-Rails.application.config.cms.sitemap_host = "https://yourdomain.com"
-Rails.application.config.cms.posts_per_page = 10
-```
+This will:
+- Add necessary gems (image_processing, friendly_id, meta-tags)
+- Generate models, controllers, and views
+- Run database migrations
+- Set up routes and admin interface
+- Configure ActionText and file storage
 
 ## Usage
 
-### Creating Content
+After installation:
 
-#### Blog Posts
-```ruby
-# Create a new blog post
-post = Post.new(
-  title: "Getting Started with Rails",
-  content: "Rich text content here...",
-  category: Category.find_by(name: "Tutorials"),
-  tags: [Tag.find_or_create_by(name: "rails")],
-  published: true
-)
+1. **Configure storage**: Set up Active Storage for file uploads
+2. **Admin access**: Visit `/admin/cms` to manage content
+3. **Create content**: Use the WYSIWYG editor to create posts and pages
+4. **SEO setup**: Configure meta tags and sitemap settings
+5. **Customize**: Modify views and styles to match your brand
 
-# Add SEO metadata
-post.seo_metadata = SeoMetadata.new(
-  meta_title: "Getting Started with Rails - Complete Guide",
-  meta_description: "Learn Rails development from scratch with this comprehensive tutorial.",
-  meta_keywords: "rails, ruby, tutorial, web development"
-)
+## Admin Interface
 
-post.save!
-```
+The admin interface provides:
+- Posts management with draft/published states
+- Pages management for static content
+- Categories and tags organization
+- SEO metadata editing
+- Preview functionality
+- Bulk operations
 
-#### Static Pages
-```ruby
-# Create a static page
-page = Page.new(
-  title: "About Us",
-  content: "Rich text content about your company...",
-  slug: "about",
-  published: true
-)
+## Public Interface
 
-page.seo_metadata = SeoMetadata.new(
-  meta_title: "About Us - Our Story",
-  meta_description: "Learn about our company history and mission."
-)
+The public interface includes:
+- Blog listing with pagination
+- Individual post pages
+- Category and tag pages
+- Static pages
+- RSS feeds
+- Sitemap.xml
 
-page.save!
-```
+## Configuration
 
-### Admin Interface
-
-Access the admin interface at `/admin/cms`:
-- `/admin/cms/posts` - Manage blog posts
-- `/admin/cms/pages` - Manage static pages
-- `/admin/cms/categories` - Organize categories
-- `/admin/cms/tags` - Manage tags
-
-### Public URLs
-
-Content is accessible via SEO-friendly URLs:
-- `/blog` - Blog post listing
-- `/blog/category/tutorials` - Posts in "Tutorials" category
-- `/blog/tag/rails` - Posts tagged with "rails"
-- `/blog/getting-started-with-rails` - Individual blog post
-- `/about` - Static page
-
-## Models
-
-### Post
-```ruby
-class Post < ApplicationRecord
-  extend FriendlyId
-  friendly_id :title, use: :slugged
-  
-  has_rich_text :content
-  belongs_to :category, optional: true
-  has_many :post_tags, dependent: :destroy
-  has_many :tags, through: :post_tags
-  has_one :seo_metadata, as: :seo_optimizable, dependent: :destroy
-  
-  validates :title, presence: true
-  validates :content, presence: true
-  
-  scope :published, -> { where(published: true) }
-  scope :recent, -> { order(created_at: :desc) }
-end
-```
-
-### Page
-```ruby
-class Page < ApplicationRecord
-  extend FriendlyId
-  friendly_id :title, use: :slugged
-  
-  has_rich_text :content
-  has_one :seo_metadata, as: :seo_optimizable, dependent: :destroy
-  
-  validates :title, presence: true
-  validates :content, presence: true
-  validates :slug, presence: true, uniqueness: true
-  
-  scope :published, -> { where(published: true) }
-end
-```
-
-### SeoMetadata
-```ruby
-class SeoMetadata < ApplicationRecord
-  belongs_to :seo_optimizable, polymorphic: true
-  
-  validates :meta_title, presence: true, length: { maximum: 60 }
-  validates :meta_description, presence: true, length: { maximum: 160 }
-  validates :meta_keywords, length: { maximum: 255 }
-end
-```
-
-## SEO Features
-
-### Meta Tags Helper
-
-The module provides helpers for generating SEO meta tags:
-
-```erb
-<!-- In your layout -->
-<%= seo_meta_tags(@post) %>
-```
-
-### Sitemap Generation
-
-Automatically generate sitemap.xml:
+Configure the CMS in `config/initializers/cms.rb`:
 
 ```ruby
-# Generate sitemap
-SitemapGenerator.new.generate
-
-# Access sitemap
-# GET /sitemap.xml
+Rails.application.config.cms.per_page = 10
+Rails.application.config.cms.cache_expires_in = 1.hour
+Rails.application.config.cms.sitemap_enabled = true
 ```
 
 ## Testing
 
-The module includes comprehensive tests:
+Run CMS-specific tests:
 
 ```bash
-# Run all CMS tests
-bin/rails test test/models/cms/
-bin/rails test test/controllers/cms/
-bin/rails test test/integration/cms/
-
-# Run specific test module
 bin/synth test cms
 ```
 
-## Next Steps
+## Customization
 
-After installation:
+The module is designed for easy customization:
+- Override views in `app/views/cms/`
+- Extend models with additional fields
+- Customize the admin interface
+- Add custom content types
 
-1. **Configure SEO Settings**: Update meta descriptions and sitemap host
-2. **Customize Styling**: Adapt the admin interface to your brand
-3. **Create Content**: Add your first blog posts and pages
-4. **Test Performance**: Verify caching is working correctly
-5. **Set up Analytics**: Track content performance
+## SEO Features
+
+- Meta titles and descriptions
+- Open Graph tags
+- Schema.org markup
+- Automatic sitemap.xml generation
+- Friendly URLs with redirects
+- Canonical URLs
+
+Contributions and improvements are welcome!

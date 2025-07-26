@@ -1,417 +1,940 @@
 # frozen_string_literal: true
 
 # Synth CMS module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the CMS module.
-# It sets up a comprehensive content management system with ActionText, SEO optimization,
-# and blog/page functionality.
+# This install script sets up a complete CMS/blog engine with ActionText,
+# WYSIWYG editing, SEO metadata, and sitemap generation.
 
-say_status :synth_cms, "Installing CMS module with ActionText and SEO optimization"
+say_status :synth_cms, "Installing CMS/Blog Engine module"
 
-# Add CMS specific gems to the application's Gemfile
+# Add required gems to the application's Gemfile
 gem 'friendly_id', '~> 5.5'
-gem 'image_processing', '~> 1.13' if !File.read('Gemfile').include?('image_processing')
+gem 'meta-tags', '~> 2.19'
+gem 'image_processing', '~> 1.12'
 gem 'kaminari', '~> 1.2'
 
-# Run bundle install and set up CMS configuration after gems are installed
+# Development gems for better admin experience
+gem_group :development do
+  gem 'rails_real_favicons', '~> 0.0.7'
+end
+
+# Run bundle install and set up CMS after gems are installed
 after_bundle do
-  # Create an initializer for CMS configuration
+  # Install ActionText if not already installed
+  unless File.exist?('db/migrate/*_create_action_text_tables.rb')
+    rails_command 'action_text:install'
+  end
+
+  # Install Active Storage if not already installed
+  unless File.exist?('db/migrate/*_create_active_storage_tables.rb')
+    rails_command 'active_storage:install'
+  end
+
+  # Generate FriendlyId configuration
+  generate 'friendly_id'
+
+  # Create CMS configuration initializer
   initializer 'cms.rb', <<~'RUBY'
     # CMS module configuration
     Rails.application.config.cms = ActiveSupport::OrderedOptions.new
-    Rails.application.config.cms.default_meta_description = "A Rails SaaS application"
-    Rails.application.config.cms.sitemap_host = ENV.fetch('SITEMAP_HOST', 'http://localhost:3000')
-    Rails.application.config.cms.posts_per_page = 10
-    Rails.application.config.cms.pages_per_page = 20
+
+    # Pagination settings
+    Rails.application.config.cms.per_page = 10
+    Rails.application.config.cms.admin_per_page = 20
+
+    # Caching settings
+    Rails.application.config.cms.cache_expires_in = 1.hour
     Rails.application.config.cms.enable_caching = Rails.env.production?
+
+    # SEO settings
+    Rails.application.config.cms.sitemap_enabled = true
+    Rails.application.config.cms.default_meta_title = "Your Site"
+    Rails.application.config.cms.default_meta_description = "Welcome to our site"
+
+    # Upload settings
+    Rails.application.config.cms.max_file_size = 10.megabytes
+    Rails.application.config.cms.allowed_file_types = %w[jpg jpeg png gif pdf doc docx]
   RUBY
 
-  # Install ActionText if not already present
-  rails_command 'action_text:install' unless File.exist?('app/models/concerns/action_text_content.rb')
+  # Generate CMS models
+  generate :model, 'Cms::Category', 
+           'name:string:index', 
+           'slug:string:uniq', 
+           'description:text',
+           'meta_title:string',
+           'meta_description:text',
+           'parent:references',
+           'position:integer',
+           'published:boolean:index'
 
-  # Create CMS models
-  directory 'app', 'app'
-  directory 'config', 'config'
-  directory 'db', 'db'
-  directory 'test', 'test'
+  generate :model, 'Cms::Tag',
+           'name:string:index',
+           'slug:string:uniq',
+           'description:text',
+           'color:string'
 
-  # Add routes to the application
+  generate :model, 'Cms::Post',
+           'title:string:index',
+           'slug:string:uniq',
+           'excerpt:text',
+           'meta_title:string',
+           'meta_description:text',
+           'meta_keywords:string',
+           'published:boolean:index',
+           'featured:boolean:index',
+           'published_at:datetime:index',
+           'author:references',
+           'category:references',
+           'view_count:integer:index'
+
+  generate :model, 'Cms::Page',
+           'title:string:index',
+           'slug:string:uniq',
+           'meta_title:string',
+           'meta_description:text',
+           'meta_keywords:string',
+           'published:boolean:index',
+           'template:string',
+           'position:integer'
+
+  # Generate join table for posts and tags
+  generate :migration, 'CreateCmsPostsTags', 'post:references', 'tag:references'
+
+  # Create CMS controllers directory
+  run 'mkdir -p app/controllers/cms'
+  run 'mkdir -p app/controllers/admin'
+
+  # Generate admin controllers
+  create_file 'app/controllers/admin/cms_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::CmsController < ApplicationController
+      before_action :authenticate_user!
+      before_action :ensure_admin!
+      layout 'admin'
+
+      protected
+
+      def ensure_admin!
+        redirect_to root_path unless current_user.respond_to?(:admin?) && current_user.admin?
+      end
+    end
+  RUBY
+
+  create_file 'app/controllers/admin/posts_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::PostsController < Admin::CmsController
+      before_action :set_post, only: [:show, :edit, :update, :destroy]
+
+      def index
+        @posts = Cms::Post.includes(:author, :category, :tags)
+                          .page(params[:page])
+                          .per(Rails.application.config.cms.admin_per_page)
+        @posts = @posts.where(published: params[:published]) if params[:published].present?
+      end
+
+      def show
+      end
+
+      def new
+        @post = Cms::Post.new
+      end
+
+      def create
+        @post = Cms::Post.new(post_params)
+        @post.author = current_user
+
+        if @post.save
+          redirect_to admin_post_path(@post), notice: 'Post created successfully.'
+        else
+          render :new, status: :unprocessable_entity
+        end
+      end
+
+      def edit
+      end
+
+      def update
+        if @post.update(post_params)
+          redirect_to admin_post_path(@post), notice: 'Post updated successfully.'
+        else
+          render :edit, status: :unprocessable_entity
+        end
+      end
+
+      def destroy
+        @post.destroy
+        redirect_to admin_posts_path, notice: 'Post deleted successfully.'
+      end
+
+      private
+
+      def set_post
+        @post = Cms::Post.friendly.find(params[:id])
+      end
+
+      def post_params
+        params.require(:cms_post).permit(:title, :excerpt, :content, :meta_title, 
+                                         :meta_description, :meta_keywords, :published, 
+                                         :featured, :published_at, :category_id, tag_ids: [])
+      end
+    end
+  RUBY
+
+  create_file 'app/controllers/admin/pages_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::PagesController < Admin::CmsController
+      before_action :set_page, only: [:show, :edit, :update, :destroy]
+
+      def index
+        @pages = Cms::Page.page(params[:page])
+                          .per(Rails.application.config.cms.admin_per_page)
+      end
+
+      def show
+      end
+
+      def new
+        @page = Cms::Page.new
+      end
+
+      def create
+        @page = Cms::Page.new(page_params)
+
+        if @page.save
+          redirect_to admin_page_path(@page), notice: 'Page created successfully.'
+        else
+          render :new, status: :unprocessable_entity
+        end
+      end
+
+      def edit
+      end
+
+      def update
+        if @page.update(page_params)
+          redirect_to admin_page_path(@page), notice: 'Page updated successfully.'
+        else
+          render :edit, status: :unprocessable_entity
+        end
+      end
+
+      def destroy
+        @page.destroy
+        redirect_to admin_pages_path, notice: 'Page deleted successfully.'
+      end
+
+      private
+
+      def set_page
+        @page = Cms::Page.friendly.find(params[:id])
+      end
+
+      def page_params
+        params.require(:cms_page).permit(:title, :content, :meta_title, 
+                                         :meta_description, :meta_keywords, 
+                                         :published, :template, :position)
+      end
+    end
+  RUBY
+
+  create_file 'app/controllers/admin/categories_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::CategoriesController < Admin::CmsController
+      before_action :set_category, only: [:show, :edit, :update, :destroy]
+
+      def index
+        @categories = Cms::Category.includes(:parent, :children)
+                                   .page(params[:page])
+                                   .per(Rails.application.config.cms.admin_per_page)
+      end
+
+      def show
+      end
+
+      def new
+        @category = Cms::Category.new
+      end
+
+      def create
+        @category = Cms::Category.new(category_params)
+
+        if @category.save
+          redirect_to admin_category_path(@category), notice: 'Category created successfully.'
+        else
+          render :new, status: :unprocessable_entity
+        end
+      end
+
+      def edit
+      end
+
+      def update
+        if @category.update(category_params)
+          redirect_to admin_category_path(@category), notice: 'Category updated successfully.'
+        else
+          render :edit, status: :unprocessable_entity
+        end
+      end
+
+      def destroy
+        @category.destroy
+        redirect_to admin_categories_path, notice: 'Category deleted successfully.'
+      end
+
+      private
+
+      def set_category
+        @category = Cms::Category.friendly.find(params[:id])
+      end
+
+      def category_params
+        params.require(:cms_category).permit(:name, :description, :meta_title, 
+                                             :meta_description, :parent_id, 
+                                             :position, :published)
+      end
+    end
+  RUBY
+
+  create_file 'app/controllers/admin/tags_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Admin::TagsController < Admin::CmsController
+      before_action :set_tag, only: [:show, :edit, :update, :destroy]
+
+      def index
+        @tags = Cms::Tag.page(params[:page])
+                        .per(Rails.application.config.cms.admin_per_page)
+      end
+
+      def show
+      end
+
+      def new
+        @tag = Cms::Tag.new
+      end
+
+      def create
+        @tag = Cms::Tag.new(tag_params)
+
+        if @tag.save
+          redirect_to admin_tag_path(@tag), notice: 'Tag created successfully.'
+        else
+          render :new, status: :unprocessable_entity
+        end
+      end
+
+      def edit
+      end
+
+      def update
+        if @tag.update(tag_params)
+          redirect_to admin_tag_path(@tag), notice: 'Tag updated successfully.'
+        else
+          render :edit, status: :unprocessable_entity
+        end
+      end
+
+      def destroy
+        @tag.destroy
+        redirect_to admin_tags_path, notice: 'Tag deleted successfully.'
+      end
+
+      private
+
+      def set_tag
+        @tag = Cms::Tag.friendly.find(params[:id])
+      end
+
+      def tag_params
+        params.require(:cms_tag).permit(:name, :description, :color)
+      end
+    end
+  RUBY
+
+  # Generate public controllers
+  create_file 'app/controllers/cms/posts_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Cms::PostsController < ApplicationController
+      before_action :set_post, only: [:show]
+      before_action :set_meta_tags
+
+      def index
+        @posts = Cms::Post.published
+                          .includes(:author, :category, :tags)
+                          .order(published_at: :desc)
+                          .page(params[:page])
+                          .per(Rails.application.config.cms.per_page)
+
+        if params[:category].present?
+          @category = Cms::Category.friendly.find(params[:category])
+          @posts = @posts.where(category: @category)
+        end
+
+        if params[:tag].present?
+          @tag = Cms::Tag.friendly.find(params[:tag])
+          @posts = @posts.joins(:tags).where(cms_tags: { id: @tag.id })
+        end
+      end
+
+      def show
+        @post.increment!(:view_count)
+        
+        set_meta_tags(
+          title: @post.meta_title.presence || @post.title,
+          description: @post.meta_description.presence || @post.excerpt,
+          keywords: @post.meta_keywords
+        )
+      end
+
+      private
+
+      def set_post
+        @post = Cms::Post.published.friendly.find(params[:id])
+      end
+
+      def set_meta_tags
+        set_meta_tags(
+          title: Rails.application.config.cms.default_meta_title,
+          description: Rails.application.config.cms.default_meta_description
+        )
+      end
+    end
+  RUBY
+
+  create_file 'app/controllers/cms/pages_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class Cms::PagesController < ApplicationController
+      before_action :set_page, only: [:show]
+
+      def show
+        set_meta_tags(
+          title: @page.meta_title.presence || @page.title,
+          description: @page.meta_description,
+          keywords: @page.meta_keywords
+        )
+
+        if @page.template.present?
+          render template: "cms/pages/templates/#{@page.template}"
+        else
+          render :show
+        end
+      end
+
+      private
+
+      def set_page
+        @page = Cms::Page.published.friendly.find(params[:id])
+      end
+    end
+  RUBY
+
+  # Generate sitemap controller
+  create_file 'app/controllers/sitemaps_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    class SitemapsController < ApplicationController
+      def show
+        @posts = Cms::Post.published.includes(:category)
+        @pages = Cms::Page.published
+        @categories = Cms::Category.published
+
+        respond_to do |format|
+          format.xml { render layout: false }
+        end
+      end
+    end
+  RUBY
+
+  # Add CMS routes
   route <<~'RUBY'
-    # CMS public routes
-    get '/blog', to: 'blog#index'
-    get '/blog/search', to: 'blog#search', as: 'blog_search'
-    get '/blog/feed', to: 'blog#feed', as: 'blog_feed', defaults: { format: 'rss' }
-    get '/blog/category/:slug', to: 'blog#category', as: 'blog_category'
-    get '/blog/tag/:slug', to: 'blog#tag', as: 'blog_tag'
-    get '/blog/:slug', to: 'blog#show', as: 'blog_post'
-    get '/sitemap.xml', to: 'sitemaps#show', defaults: { format: 'xml' }
-    
-    # Static pages route
-    get '/:slug', to: 'pages#show', as: 'page', constraints: { slug: /(?!admin|api|blog).*/ }
+    # CMS routes
+    namespace :cms do
+      resources :posts, only: [:index, :show], path: 'blog'
+      resources :pages, only: [:show], path: ''
+    end
 
     # Admin CMS routes
     namespace :admin do
-      namespace :cms do
-        root 'dashboard#index'
-        resources :posts do
-          member do
-            patch :publish
-            patch :unpublish
-          end
-        end
-        resources :pages do
-          member do
-            patch :publish
-            patch :unpublish
-          end
-        end
-        resources :categories
-        resources :tags
-        resources :seo_metadata, only: [:show, :edit, :update]
-      end
+      resources :posts, :pages, :categories, :tags
+      get 'cms', to: 'posts#index'
     end
 
-    # API routes for programmatic access
-    namespace :api do
-      namespace :v1 do
-        resources :posts, only: [:index, :show] do
-          collection do
-            get :published
-            get :recent
-          end
-        end
-        resources :pages, only: [:index, :show]
-        resources :categories, only: [:index, :show]
-        resources :tags, only: [:index, :show]
-      end
-    end
+    # SEO routes
+    get 'sitemap.xml', to: 'sitemaps#show', defaults: { format: 'xml' }
+    get 'blog', to: 'cms/posts#index'
+    get 'blog/category/:category', to: 'cms/posts#index', as: :blog_category
+    get 'blog/tag/:tag', to: 'cms/posts#index', as: :blog_tag
   RUBY
 
-  # Create migration for CMS tables
-  migration_template = <<~'RUBY'
-    class CreateCmsTables < ActiveRecord::Migration[7.0]
-      def change
-        create_table :categories do |t|
-          t.string :name, null: false
-          t.string :slug, null: false
-          t.text :description
-          t.references :parent, null: true, foreign_key: { to_table: :categories }
-          t.integer :sort_order, default: 0
-          t.timestamps
-        end
+  say_status :synth_cms, "Generated models, controllers, and routes"
 
-        create_table :tags do |t|
-          t.string :name, null: false
-          t.string :slug, null: false
-          t.text :description
-          t.string :color, default: '#3B82F6'
-          t.timestamps
-        end
-
-        create_table :posts do |t|
-          t.string :title, null: false
-          t.string :slug, null: false
-          t.text :excerpt
-          t.references :category, null: true, foreign_key: true
-          t.references :author, null: false, foreign_key: { to_table: :users }
-          t.boolean :published, default: false
-          t.datetime :published_at
-          t.integer :view_count, default: 0
-          t.boolean :featured, default: false
-          t.integer :reading_time # in minutes
-          t.timestamps
-        end
-
-        create_table :pages do |t|
-          t.string :title, null: false
-          t.string :slug, null: false
-          t.text :excerpt
-          t.references :author, null: false, foreign_key: { to_table: :users }
-          t.boolean :published, default: false
-          t.datetime :published_at
-          t.string :template_name, default: 'default'
-          t.integer :sort_order, default: 0
-          t.timestamps
-        end
-
-        create_table :post_tags do |t|
-          t.references :post, null: false, foreign_key: true
-          t.references :tag, null: false, foreign_key: true
-          t.timestamps
-        end
-
-        create_table :seo_metadata do |t|
-          t.references :seo_optimizable, polymorphic: true, null: false
-          t.string :meta_title, limit: 60
-          t.text :meta_description, limit: 160
-          t.string :meta_keywords
-          t.string :canonical_url
-          t.string :og_title
-          t.text :og_description
-          t.string :og_image_url
-          t.string :og_type, default: 'website'
-          t.boolean :index_page, default: true
-          t.boolean :follow_links, default: true
-          t.timestamps
-        end
-
-        # Add indexes for performance
-        add_index :categories, :slug, unique: true
-        add_index :categories, :parent_id
-        add_index :tags, :slug, unique: true
-        add_index :posts, :slug, unique: true
-        add_index :posts, [:published, :published_at]
-        add_index :posts, :category_id
-        add_index :posts, :author_id
-        add_index :pages, :slug, unique: true
-        add_index :pages, [:published, :published_at]
-        add_index :pages, :author_id
-        add_index :post_tags, [:post_id, :tag_id], unique: true
-        add_index :seo_metadata, [:seo_optimizable_type, :seo_optimizable_id], 
-                  name: 'index_seo_metadata_on_optimizable'
-        
-        # Add full-text search indexes for PostgreSQL
-        add_index :posts, :title, using: :gin, opclass: { title: :gin_trgm_ops }
-        add_index :posts, :excerpt, using: :gin, opclass: { excerpt: :gin_trgm_ops }
-        add_index :pages, :title, using: :gin, opclass: { title: :gin_trgm_ops }
-      end
-    end
-  RUBY
-
-  timestamp = Time.now.utc.strftime("%Y%m%d%H%M%S")
-  create_file "db/migrate/#{timestamp}_create_cms_tables.rb", migration_template
-
-  # Create FriendlyId configuration
-  rails_command 'generate friendly_id'
-
-  # Run migrations
-  rails_command 'db:migrate'
-
-  # Create seed data
-  create_file 'db/seeds/cms_seeds.rb', <<~'RUBY'
+  # Create model concerns and update models
+  run 'mkdir -p app/models/concerns'
+  
+  create_file 'app/models/concerns/seo_meta.rb', <<~'RUBY'
     # frozen_string_literal: true
 
-    # Create sample CMS content
+    module SeoMeta
+      extend ActiveSupport::Concern
 
-    # Create categories
-    unless Category.exists?
-      puts "Creating sample categories..."
+      def seo_title
+        meta_title.presence || title
+      end
 
-      Category.create!([
-        {
-          name: "Tutorials",
-          description: "Step-by-step guides and tutorials"
-        },
-        {
-          name: "News",
-          description: "Latest news and updates"
-        },
-        {
-          name: "Product Updates",
-          description: "New features and improvements"
-        },
-        {
-          name: "Company",
-          description: "Company news and announcements"
-        }
-      ])
+      def seo_description
+        meta_description.presence || try(:excerpt)
+      end
 
-      puts "Created #{Category.count} categories."
+      def seo_keywords
+        meta_keywords.presence || try(:tag_list)
+      end
     end
+  RUBY
 
-    # Create tags
-    unless Tag.exists?
-      puts "Creating sample tags..."
-
-      Tag.create!([
-        { name: "Rails", color: "#DC2626" },
-        { name: "Ruby", color: "#DC2626" },
-        { name: "JavaScript", color: "#F59E0B" },
-        { name: "TailwindCSS", color: "#06B6D4" },
-        { name: "Tutorial", color: "#10B981" },
-        { name: "Tips", color: "#8B5CF6" },
-        { name: "Best Practices", color: "#EC4899" }
-      ])
-
-      puts "Created #{Tag.count} tags."
-    end
-
-    # Create sample user if needed
-    user = User.first || User.create!(
-      email: 'admin@example.com',
-      password: 'password123',
-      name: 'Admin User',
-      admin: true
-    )
-
-    # Create sample blog posts
-    unless Post.exists?
-      puts "Creating sample blog posts..."
-
-      tutorials_category = Category.find_by(name: "Tutorials")
-      rails_tag = Tag.find_by(name: "Rails")
-      tutorial_tag = Tag.find_by(name: "Tutorial")
-
-      post = Post.create!(
-        title: "Getting Started with Rails SaaS Development",
-        excerpt: "Learn how to build a modern SaaS application with Ruby on Rails, including authentication, billing, and more.",
-        content: <<~HTML
-          <h2>Welcome to Rails SaaS Development</h2>
-          <p>Building a Software as a Service (SaaS) application with Ruby on Rails is an excellent choice for modern web development. Rails provides a solid foundation with convention over configuration, making it perfect for rapid development.</p>
-          
-          <h3>What You'll Learn</h3>
-          <ul>
-            <li>Setting up a Rails application with modern tools</li>
-            <li>Implementing authentication and authorization</li>
-            <li>Adding billing with Stripe</li>
-            <li>Building a content management system</li>
-            <li>Deploying to production</li>
-          </ul>
-          
-          <h3>Prerequisites</h3>
-          <p>Before we start, make sure you have:</p>
-          <ul>
-            <li>Ruby 3.2+ installed</li>
-            <li>Rails 8.0+ installed</li>
-            <li>PostgreSQL database</li>
-            <li>Basic knowledge of web development</li>
-          </ul>
-          
-          <h3>Getting Started</h3>
-          <p>Let's begin by creating a new Rails application with our starter template:</p>
-          
-          <pre><code>rails new myapp --dev -d postgresql -m template.rb</code></pre>
-          
-          <p>This command creates a new Rails application with all the necessary gems and configurations for SaaS development.</p>
-          
-          <h3>Next Steps</h3>
-          <p>In the next tutorial, we'll explore how to customize the authentication system and add team/workspace functionality.</p>
-        HTML,
-        category: tutorials_category,
-        author: user,
-        published: true,
-        published_at: 1.week.ago,
-        featured: true,
-        tags: [rails_tag, tutorial_tag]
-      )
-
-      # Create SEO metadata for the post
-      post.create_seo_metadata!(
-        meta_title: "Getting Started with Rails SaaS Development - Complete Guide",
-        meta_description: "Learn how to build a modern SaaS application with Ruby on Rails. Step-by-step tutorial covering authentication, billing, and deployment.",
-        meta_keywords: "rails, saas, ruby, tutorial, web development, authentication, billing",
-        og_title: "Getting Started with Rails SaaS Development",
-        og_description: "Complete guide to building SaaS applications with Ruby on Rails",
-        og_type: "article"
-      )
-
-      # Create another sample post
-      news_category = Category.find_by(name: "News")
+  # Update generated models
+  gsub_file 'app/models/cms/category.rb', /class Cms::Category.*/, <<~'RUBY'
+    class Cms::Category < ApplicationRecord
+      include SeoMeta
       
-      Post.create!(
-        title: "New Features in Rails 8.0",
-        excerpt: "Discover the latest features and improvements in Rails 8.0, including better performance and developer experience.",
-        content: <<~HTML
-          <h2>Rails 8.0 is Here!</h2>
-          <p>The Rails team has released version 8.0 with exciting new features and improvements that make development even more enjoyable.</p>
-          
-          <h3>Key Features</h3>
-          <ul>
-            <li>Improved performance across the board</li>
-            <li>Better developer experience</li>
-            <li>Enhanced security features</li>
-            <li>Modern frontend integration</li>
-          </ul>
-          
-          <p>We're excited to integrate these new features into our starter template to provide the best possible foundation for your SaaS applications.</p>
-        HTML,
-        category: news_category,
-        author: user,
-        published: true,
-        published_at: 2.days.ago,
-        tags: [rails_tag]
-      )
+      extend FriendlyId
+      friendly_id :name, use: :slugged
 
-      puts "Created #{Post.count} blog posts."
+      belongs_to :parent, class_name: 'Cms::Category', optional: true
+      has_many :children, class_name: 'Cms::Category', foreign_key: 'parent_id', dependent: :destroy
+      has_many :posts, class_name: 'Cms::Post', foreign_key: 'category_id', dependent: :nullify
+
+      validates :name, presence: true, uniqueness: true
+      validates :slug, presence: true, uniqueness: true
+
+      scope :published, -> { where(published: true) }
+      scope :ordered, -> { order(:position, :name) }
+      scope :roots, -> { where(parent_id: nil) }
+
+      def should_generate_new_friendly_id?
+        name_changed? || super
+      end
+
+      def to_param
+        slug
+      end
     end
-
-    # Create sample pages
-    unless Page.exists?
-      puts "Creating sample pages..."
-
-      about_page = Page.create!(
-        title: "About Us",
-        slug: "about",
-        content: <<~HTML
-          <h1>About Our Company</h1>
-          <p>We're passionate about building great software that helps businesses grow and succeed.</p>
-          
-          <h2>Our Mission</h2>
-          <p>To provide the best tools and resources for developers building SaaS applications with Ruby on Rails.</p>
-          
-          <h2>Our Team</h2>
-          <p>Our team consists of experienced developers, designers, and product managers who are committed to creating exceptional software.</p>
-          
-          <h2>Contact Us</h2>
-          <p>Ready to get started? <a href="/contact">Get in touch</a> and let's build something amazing together.</p>
-        HTML,
-        author: user,
-        published: true,
-        published_at: 1.month.ago
-      )
-
-      about_page.create_seo_metadata!(
-        meta_title: "About Us - Rails SaaS Experts",
-        meta_description: "Learn about our mission to provide the best tools for Rails SaaS development. Meet our team of experienced developers.",
-        meta_keywords: "about, company, rails, saas, team",
-        og_title: "About Us - Rails SaaS Experts",
-        og_description: "Passionate about building great Rails SaaS applications"
-      )
-
-      puts "Created #{Page.count} pages."
-    end
-
-    puts "CMS seeds completed successfully!"
   RUBY
 
-  # Update the main seeds file to include CMS seeds
-  append_to_file 'db/seeds.rb', <<~'RUBY'
+  gsub_file 'app/models/cms/tag.rb', /class Cms::Tag.*/, <<~'RUBY'
+    class Cms::Tag < ApplicationRecord
+      extend FriendlyId
+      friendly_id :name, use: :slugged
 
-    # Load CMS seeds
-    load Rails.root.join('db', 'seeds', 'cms_seeds.rb')
+      has_and_belongs_to_many :posts, class_name: 'Cms::Post', join_table: 'cms_posts_tags'
+
+      validates :name, presence: true, uniqueness: true
+      validates :slug, presence: true, uniqueness: true
+
+      scope :ordered, -> { order(:name) }
+
+      def should_generate_new_friendly_id?
+        name_changed? || super
+      end
+
+      def to_param
+        slug
+      end
+    end
   RUBY
 
-  # Update User model to include CMS associations
-  inject_into_class "app/models/user.rb", "User" do
-    "  include CmsAuthor\n"
-  end if File.exist?("app/models/user.rb")
+  gsub_file 'app/models/cms/post.rb', /class Cms::Post.*/, <<~'RUBY'
+    class Cms::Post < ApplicationRecord
+      include SeoMeta
+      
+      extend FriendlyId
+      friendly_id :title, use: :slugged
 
-  # Add environment variables to .env.example
-  append_to_file '.env.example', <<~'ENV'
+      has_rich_text :content
+      has_one_attached :featured_image
 
-    # CMS configuration
-    SITEMAP_HOST=http://localhost:3000
-  ENV
+      belongs_to :author, class_name: 'User'
+      belongs_to :category, class_name: 'Cms::Category', optional: true
+      has_and_belongs_to_many :tags, class_name: 'Cms::Tag', join_table: 'cms_posts_tags'
 
-  # Create view directories
-  empty_directory 'app/views/blog'
-  empty_directory 'app/views/pages'
-  empty_directory 'app/views/sitemaps'
-  empty_directory 'app/views/admin/cms'
-  empty_directory 'app/views/admin/cms/dashboard'
-  empty_directory 'app/views/admin/cms/posts'
-  empty_directory 'app/views/admin/cms/pages'
-  empty_directory 'app/views/admin/cms/categories'
-  empty_directory 'app/views/admin/cms/tags'
+      validates :title, presence: true
+      validates :slug, presence: true, uniqueness: true
+      validates :content, presence: true
 
-  # Copy view templates and other assets
-  directory 'views', 'app/views'
-  directory 'assets', 'app/assets'
+      scope :published, -> { where(published: true) }
+      scope :featured, -> { where(featured: true) }
+      scope :by_date, -> { order(published_at: :desc, created_at: :desc) }
+
+      before_validation :set_published_at, if: :will_save_change_to_published?
+
+      def should_generate_new_friendly_id?
+        title_changed? || super
+      end
+
+      def to_param
+        slug
+      end
+
+      def published?
+        published && published_at&.<= Time.current
+      end
+
+      def tag_list
+        tags.pluck(:name).join(', ')
+      end
+
+      private
+
+      def set_published_at
+        self.published_at = published? ? (published_at || Time.current) : nil
+      end
+    end
+  RUBY
+
+  gsub_file 'app/models/cms/page.rb', /class Cms::Page.*/, <<~'RUBY'
+    class Cms::Page < ApplicationRecord
+      include SeoMeta
+      
+      extend FriendlyId
+      friendly_id :title, use: :slugged
+
+      has_rich_text :content
+      has_one_attached :featured_image
+
+      validates :title, presence: true
+      validates :slug, presence: true, uniqueness: true
+      validates :content, presence: true
+
+      scope :published, -> { where(published: true) }
+      scope :ordered, -> { order(:position, :title) }
+
+      def should_generate_new_friendly_id?
+        title_changed? || super
+      end
+
+      def to_param
+        slug
+      end
+    end
+  RUBY
+
+  # Update the join table migration
+  migration_file = Dir.glob('db/migrate/*_create_cms_posts_tags.rb').first
+  if migration_file
+    gsub_file migration_file, /def change.*?end/m, <<~'RUBY'
+      def change
+        create_join_table :cms_posts, :cms_tags do |t|
+          t.index [:cms_post_id, :cms_tag_id], unique: true
+          t.index [:cms_tag_id, :cms_post_id], unique: true
+        end
+      end
+    RUBY
+  end
+
+  say_status :synth_cms, "Updated models with associations and validations"
+
+  # Generate views directory structure
+  run 'mkdir -p app/views/cms/posts'
+  run 'mkdir -p app/views/cms/pages'
+  run 'mkdir -p app/views/admin/posts'
+  run 'mkdir -p app/views/admin/pages'
+  run 'mkdir -p app/views/admin/categories'
+  run 'mkdir -p app/views/admin/tags'
+  run 'mkdir -p app/views/layouts'
+  run 'mkdir -p app/views/sitemaps'
+
+  # Load view templates
+  require_relative 'views'
+
+  # Create admin layout
+  create_file 'app/views/layouts/admin.html.erb', CmsViews::ADMIN_LAYOUT
+
+  # Create admin views
+  create_file 'app/views/admin/posts/index.html.erb', CmsViews::POSTS_INDEX
+  create_file 'app/views/admin/posts/_form.html.erb', CmsViews::POST_FORM
+  create_file 'app/views/admin/posts/new.html.erb', <<~'ERB'
+    <div class="md:flex md:items-center md:justify-between mb-8">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+          New Post
+        </h2>
+      </div>
+    </div>
+
+    <%= render 'form', post: @post %>
+  ERB
+
+  create_file 'app/views/admin/posts/edit.html.erb', <<~'ERB'
+    <div class="md:flex md:items-center md:justify-between mb-8">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+          Edit Post
+        </h2>
+      </div>
+      <div class="mt-4 flex md:ml-4 md:mt-0">
+        <%= link_to "View Post", cms_post_path(@post), 
+            class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
+            target: "_blank" %>
+      </div>
+    </div>
+
+    <%= render 'form', post: @post %>
+  ERB
+
+  create_file 'app/views/admin/posts/show.html.erb', <<~'ERB'
+    <div class="md:flex md:items-center md:justify-between mb-8">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+          <%= @post.title %>
+        </h2>
+        <div class="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
+          <div class="mt-2 flex items-center text-sm text-gray-500">
+            Status: 
+            <% if @post.published? %>
+              <span class="ml-1 inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Published</span>
+            <% else %>
+              <span class="ml-1 inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">Draft</span>
+            <% end %>
+          </div>
+          <div class="mt-2 flex items-center text-sm text-gray-500">
+            Published: <%= @post.published_at&.strftime("%B %d, %Y at %I:%M %p") || "Not published" %>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 flex md:ml-4 md:mt-0">
+        <%= link_to "Edit", edit_admin_post_path(@post), 
+            class: "inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+        <%= link_to "View Post", cms_post_path(@post), 
+            class: "ml-3 inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
+            target: "_blank" %>
+      </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="px-4 py-5 sm:p-6">
+        <div class="prose prose-lg max-w-none">
+          <%= @post.content %>
+        </div>
+      </div>
+    </div>
+  ERB
+
+  # Create public views
+  create_file 'app/views/cms/posts/index.html.erb', CmsViews::BLOG_INDEX
+  create_file 'app/views/cms/posts/show.html.erb', CmsViews::BLOG_POST
+
+  # Create sitemap view
+  create_file 'app/views/sitemaps/show.xml.erb', CmsViews::SITEMAP_XML
+
+  # Create basic page views (similar structure to posts)
+  create_file 'app/views/admin/pages/index.html.erb', <<~'ERB'
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h1 class="text-base font-semibold leading-6 text-gray-900">Pages</h1>
+        <p class="mt-2 text-sm text-gray-700">Manage your static pages.</p>
+      </div>
+      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+        <%= link_to "New Page", new_admin_page_path, 
+            class: "block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500" %>
+      </div>
+    </div>
+
+    <div class="mt-8 flow-root">
+      <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+          <table class="min-w-full divide-y divide-gray-300">
+            <thead>
+              <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Title</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Template</th>
+                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-0">
+                  <span class="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <% @pages.each do |page| %>
+                <tr>
+                  <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+                    <%= link_to page.title, admin_page_path(page), class: "text-indigo-600 hover:text-indigo-900" %>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                    <% if page.published? %>
+                      <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Published</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">Draft</span>
+                    <% end %>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                    <%= page.template || "Default" %>
+                  </td>
+                  <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
+                    <%= link_to "Edit", edit_admin_page_path(page), class: "text-indigo-600 hover:text-indigo-900" %>
+                    <%= link_to "Delete", admin_page_path(page), method: :delete, 
+                        data: { confirm: "Are you sure?" }, 
+                        class: "ml-2 text-red-600 hover:text-red-900" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <%= paginate @pages if respond_to?(:paginate) %>
+  ERB
+
+  # Similar forms for pages (reusing post form structure)
+  create_file 'app/views/admin/pages/_form.html.erb', <<~'ERB'
+    <%= form_with(model: [:admin, @page], local: true, class: "space-y-6") do |form| %>
+      <% if @page.errors.any? %>
+        <div class="rounded-md bg-red-50 p-4">
+          <div class="flex">
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">
+                <%= pluralize(@page.errors.count, "error") %> prohibited this page from being saved:
+              </h3>
+              <div class="mt-2 text-sm text-red-700">
+                <ul role="list" class="list-disc space-y-1 pl-5">
+                  <% @page.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <div>
+        <%= form.label :title, class: "block text-sm font-medium leading-6 text-gray-900" %>
+        <%= form.text_field :title, 
+            class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+      </div>
+
+      <div>
+        <%= form.label :content, class: "block text-sm font-medium leading-6 text-gray-900" %>
+        <%= form.rich_text_area :content, class: "mt-2" %>
+      </div>
+
+      <div class="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-2">
+        <div>
+          <%= form.label :template, class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <%= form.text_field :template, 
+              class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+          <p class="mt-2 text-sm text-gray-500">Optional custom template name</p>
+        </div>
+
+        <div>
+          <%= form.label :position, class: "block text-sm font-medium leading-6 text-gray-900" %>
+          <%= form.number_field :position, 
+              class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+        </div>
+      </div>
+
+      <!-- SEO Fields -->
+      <div class="border-t border-gray-200 pt-6">
+        <h3 class="text-lg font-medium leading-6 text-gray-900">SEO Settings</h3>
+        
+        <div class="mt-6 space-y-6">
+          <div>
+            <%= form.label :meta_title, class: "block text-sm font-medium leading-6 text-gray-900" %>
+            <%= form.text_field :meta_title, 
+                class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+          </div>
+
+          <div>
+            <%= form.label :meta_description, class: "block text-sm font-medium leading-6 text-gray-900" %>
+            <%= form.text_area :meta_description, rows: 3,
+                class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+          </div>
+
+          <div>
+            <%= form.label :meta_keywords, class: "block text-sm font-medium leading-6 text-gray-900" %>
+            <%= form.text_field :meta_keywords, 
+                class: "mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" %>
+            <p class="mt-2 text-sm text-gray-500">Separate keywords with commas</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Publishing Options -->
+      <div class="border-t border-gray-200 pt-6">
+        <h3 class="text-lg font-medium leading-6 text-gray-900">Publishing</h3>
+        
+        <div class="mt-6 space-y-6">
+          <div class="flex items-center">
+            <%= form.check_box :published, class: "h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600" %>
+            <%= form.label :published, "Published", class: "ml-3 text-sm font-medium text-gray-700" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-x-6">
+        <%= link_to "Cancel", admin_pages_path, 
+            class: "text-sm font-semibold leading-6 text-gray-900" %>
+        <%= form.submit class: "rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" %>
+      </div>
+    <% end %>
+  ERB
+
+  create_file 'app/views/admin/pages/new.html.erb', <<~'ERB'
+    <div class="md:flex md:items-center md:justify-between mb-8">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+          New Page
+        </h2>
+      </div>
+    </div>
+
+    <%= render 'form', page: @page %>
+  ERB
+
+  create_file 'app/views/admin/pages/edit.html.erb', <<~'ERB'
+    <div class="md:flex md:items-center md:justify-between mb-8">
+      <div class="min-w-0 flex-1">
+        <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+          Edit Page
+        </h2>
+      </div>
+      <div class="mt-4 flex md:ml-4 md:mt-0">
+        <%= link_to "View Page", cms_page_path(@page), 
+            class: "inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50",
+            target: "_blank" %>
+      </div>
+    </div>
+
+    <%= render 'form', page: @page %>
+  ERB
+
+  create_file 'app/views/cms/pages/show.html.erb', <<~'ERB'
+    <article class="mx-auto max-w-3xl px-6 py-24 lg:px-8">
+      <div class="mx-auto max-w-2xl lg:mx-0">
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          <%= @page.title %>
+        </h1>
+      </div>
+
+      <div class="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none">
+        <div class="prose prose-lg prose-gray max-w-none">
+          <%= @page.content %>
+        </div>
+      </div>
+    </article>
+  ERB
+
+  say_status :synth_cms, "Generated view templates"
 
   say_status :synth_cms, "CMS module installed successfully!"
   say_status :synth_cms, "Next steps:"
-  say_status :synth_cms, "1. Configure your sitemap host in .env: SITEMAP_HOST=https://yourdomain.com"
-  say_status :synth_cms, "2. Run seeds to create sample content: rails db:seed"
-  say_status :synth_cms, "3. Access admin interface at /admin/cms"
-  say_status :synth_cms, "4. View your blog at /blog"
-  say_status :synth_cms, "5. Run tests: bin/rails test test/models/cms/ test/controllers/cms/"
+  say_status :synth_cms, "1. Run: rails db:migrate"
+  say_status :synth_cms, "2. Add admin? method to User model"
+  say_status :synth_cms, "3. Configure Active Storage for file uploads"
+  say_status :synth_cms, "4. Visit /admin/cms to start creating content"
 end

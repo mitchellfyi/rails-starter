@@ -17,6 +17,11 @@ say "🪝 Setting up Rails SaaS Starter Template..."
 
 # Add gems to the Gemfile
 gem 'pg', '~> 1.5'
+gem 'pgvector', '~> 0.3.2'
+gem 'redis', '~> 5.4'
+gem 'sidekiq', '~> 8.0'
+gem 'devise', '~> 4.9'
+gem 'devise-two-factor', '~> 5.1'
 gem 'pgvector', '~> 0.5'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
@@ -24,6 +29,14 @@ gem 'sidekiq', '~> 8.0'
 # Authentication and authorization
 gem 'devise', '~> 4.9'
 gem 'omniauth', '~> 2.1'
+gem 'omniauth-google-oauth2', '~> 1.2'
+gem 'omniauth-github', '~> 2.0'
+gem 'omniauth-slack', '~> 2.5'
+gem 'omniauth-rails-csrf-protection', '~> 1.0'
+gem 'stripe', '~> 15.3'
+gem 'pundit', '~> 2.1'
+gem 'friendly_id', '~> 5.5'
+gem 'rolify', '~> 6.0'
 gem 'omniauth-google-oauth2', '~> 1.1'
 gem 'omniauth-github', '~> 2.0'
 gem 'omniauth-slack', '~> 2.24'
@@ -122,6 +135,10 @@ after_bundle do
   
   inject_into_file 'config/initializers/devise.rb', devise_config, after: "# config.confirmable = false\n"
 
+  # Generate FriendlyId and Rolify setups
+  generate 'friendly_id'
+  generate 'rolify', 'Role', 'User'
+
   # Configure Sidekiq as the Active Job backend
   say "⚙️  Configuring Sidekiq for background jobs..."
   environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
@@ -202,6 +219,101 @@ after_bundle do
   create_file 'app/serializers/application_serializer.rb', <<~RUBY
     # frozen_string_literal: true
 
+  # Generate Invitation model for workspace invitations
+  generate :model, 'Invitation', 'sender:references', 'recipient_email:string', 'token:string', 'workspace:references', 'status:string'
+
+  # Generate controllers for workspace management
+  generate :controller, 'Workspaces', 'index', 'show', 'new', 'create', 'edit', 'update', 'destroy'
+  generate :controller, 'Memberships', 'index', 'create', 'destroy'
+  generate :controller, 'Invitations', 'create', 'show', 'accept', 'reject'
+
+  # Configure models with enhanced functionality
+  inject_into_file 'app/models/workspace.rb', after: "class Workspace < ApplicationRecord\n" do
+    <<~RUBY
+      extend FriendlyId
+      friendly_id :name, use: :slugged
+      
+      has_many :memberships, dependent: :destroy
+      has_many :users, through: :memberships
+      has_many :invitations, dependent: :destroy
+      
+      validates :name, presence: true, uniqueness: true
+    RUBY
+  end
+
+  inject_into_file 'app/models/membership.rb', after: "class Membership < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :workspace
+      belongs_to :user
+      
+      validates :role, presence: true, inclusion: { in: %w[admin member viewer] }
+      validates :user_id, uniqueness: { scope: :workspace_id }
+    RUBY
+  end
+
+  inject_into_file 'app/models/invitation.rb', after: "class Invitation < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :sender, class_name: 'User'
+      belongs_to :workspace
+      
+      validates :recipient_email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+      validates :token, presence: true, uniqueness: true
+      validates :status, presence: true, inclusion: { in: %w[pending accepted rejected] }
+      
+      before_validation :generate_token, on: :create
+      
+      scope :pending, -> { where(status: 'pending') }
+      
+      def accept!
+        update!(status: 'accepted')
+      end
+      
+      def reject!
+        update!(status: 'rejected')
+      end
+      
+      private
+      
+      def generate_token
+        require 'securerandom'
+        self.token = SecureRandom.urlsafe_base64(32) if token.blank?
+      end
+    RUBY
+  end
+
+  inject_into_file 'app/models/user.rb', after: "class User < ApplicationRecord\n" do
+    <<~RUBY
+      rolify
+      devise :two_factor_authenticatable,
+             :otp_secret_encryption_key => Rails.application.credentials.dig(:otp, :encryption_key)
+      
+      has_many :memberships, dependent: :destroy
+      has_many :workspaces, through: :memberships
+      has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'sender_id', dependent: :destroy
+      
+      def admin?
+        has_role?(:admin)
+      end
+    RUBY
+  end
+
+  # Configure routes for slug-based workspace routing
+  route "resources :workspaces, param: :slug do\n    resources :memberships\n    resources :invitations\n  end"
+
+  # Configure Devise for 2FA and OmniAuth providers
+  initializer 'omniauth.rb', <<~RUBY
+    Rails.application.config.to_prepare do
+      Devise.setup do |config|
+        config.omniauth :google_oauth2, Rails.application.credentials.dig(:google, :client_id), Rails.application.credentials.dig(:google, :client_secret)
+        config.omniauth :github, Rails.application.credentials.dig(:github, :client_id), Rails.application.credentials.dig(:github, :client_secret), scope: 'user:email'
+        config.omniauth :slack, Rails.application.credentials.dig(:slack, :client_id), Rails.application.credentials.dig(:slack, :client_secret)
+      end
+    end
+  RUBY
+
+  # Configure Sidekiq as the Active Job backend
+
+  # Mount Sidekiq web UI behind authentication (requires admin? method on User)
     class ApplicationSerializer
       include JSONAPI::Serializer
     end
@@ -885,6 +997,7 @@ after_bundle do
           puts 'Installed modules:'
 
           if Dir.exist?(modules_path)
+            Dir.children(modules_path).each { |module_dir| puts "  - #{module_dir}" }
             Dir.children(modules_path).each { |m| puts "  - #{m}" }
           else
             puts '  (none)'
@@ -893,6 +1006,8 @@ after_bundle do
 
         desc 'add MODULE', 'Add a module (e.g. ai, workspace, billing)'
         def add(module_name)
+          puts "[stub] Add module: \#{module_name}"
+          # TODO: implement installer loading lib/templates/synth/<module>/install.rb
           modules_path = File.expand_path('../templates/synth', __dir__)
           module_path = File.join(modules_path, module_name)
           
