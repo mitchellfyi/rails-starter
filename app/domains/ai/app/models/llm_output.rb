@@ -53,8 +53,12 @@ class LLMOutput < ApplicationRecord
   end
 
   # Set feedback and optionally trigger actions
-  def set_feedback!(feedback_type, user: nil)
-    update!(feedback: feedback_type, feedback_at: Time.current)
+  def set_feedback!(feedback_type, user: nil, comment: nil)
+    update!(
+      feedback: feedback_type, 
+      feedback_at: Time.current,
+      feedback_comment: comment
+    )
     
     # Log the feedback for analytics
     Rails.logger.info "LLM output feedback received", {
@@ -62,17 +66,18 @@ class LLMOutput < ApplicationRecord
       feedback: feedback_type,
       user_id: user&.id,
       template_name: template_name,
-      model_name: model_name
+      model_name: model_name,
+      has_comment: comment.present?
     }
 
     # Could trigger follow-up actions based on feedback
     case feedback_type
     when 'thumbs_down'
       # Could automatically trigger a regeneration or notify admins
-      Rails.logger.info "Negative feedback received for LLM output #{id}"
+      Rails.logger.info "Negative feedback received for LLM output #{id}", { comment: comment }
     when 'thumbs_up'
       # Could be used for training data or quality metrics
-      Rails.logger.info "Positive feedback received for LLM output #{id}"
+      Rails.logger.info "Positive feedback received for LLM output #{id}", { comment: comment }
     end
   end
 
@@ -90,6 +95,10 @@ class LLMOutput < ApplicationRecord
 
   def processing?
     status == 'processing'
+  end
+
+  def has_feedback_comment?
+    feedback_comment.present?
   end
 
   # Format the output based on the specified format

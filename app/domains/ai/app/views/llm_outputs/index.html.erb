@@ -50,8 +50,11 @@
               </span>
               
               <% if output.feedback.present? && !output.none? %>
-                <span class="text-lg" title="User feedback: <%= output.thumbs_up? ? 'Positive' : 'Negative' %>">
+                <span class="text-lg flex items-center" title="User feedback: <%= output.thumbs_up? ? 'Positive' : 'Negative' %>">
                   <%= output.thumbs_up? ? '👍' : '👎' %>
+                  <% if output.has_feedback_comment? %>
+                    <span class="ml-1 text-xs">💬</span>
+                  <% end %>
                 </span>
               <% end %>
             </div>

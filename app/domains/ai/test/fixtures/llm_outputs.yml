@@ -25,6 +25,7 @@ two:
   parsed_output: "# Ruby on Rails Analysis\n\nRails is a powerful web framework..."
   feedback: 1
   feedback_at: <%= 1.day.ago %>
+  feedback_comment: "This analysis was very comprehensive and helpful!"
   user: two
 
 failed:
