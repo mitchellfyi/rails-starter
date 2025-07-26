@@ -1,0 +1,5 @@
+<span id="notification_count" 
+      class="notification-badge <%= 'hidden' if count.zero? %>" 
+      data-notification-count="<%= count %>">
+  <%= count > 99 ? '99+' : count %>
+</span>

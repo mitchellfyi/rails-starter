@@ -1,0 +1,38 @@
+<%= @notification.notification_type.humanize.upcase %>: <%= @notification.title %>
+
+<%= @notification.message %>
+
+<% if @data && @data.any? %>
+<% case @notification.notification_type %>
+<% when 'invitation_received' %>
+<% if @data['workspace_name'] %>
+Workspace: <%= @data['workspace_name'] %>
+<% end %>
+<% if @data['invited_by_name'] %>
+Invited by: <%= @data['invited_by_name'] %>
+<% end %>
+
+<% when /^billing_/ %>
+<% if @data['amount'] && @data['currency'] %>
+Amount: <%= @data['amount'] %> <%= @data['currency'] %>
+<% end %>
+<% if @data['reason'] %>
+Reason: <%= @data['reason'] %>
+<% end %>
+
+<% when /^job_/ %>
+<% if @data['job_name'] %>
+Job: <%= @data['job_name'] %>
+<% end %>
+<% if @data['error'] %>
+Error: <%= @data['error'] %>
+<% end %>
+<% end %>
+<% end %>
+
+---
+
+This notification was sent to <%= @user.email %> because you have email notifications enabled.
+
+Manage your notification preferences: <%= notification_preferences_url %>
+Visit your dashboard: <%= root_url %>

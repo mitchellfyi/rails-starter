@@ -1,0 +1,29 @@
+<% if user_signed_in? %>
+  <% unread_count = current_user.unread_notifications_count %>
+  
+  <div class="relative">
+    <%= link_to notifications_path, class: "relative p-2 text-gray-600 hover:text-gray-900" do %>
+      <!-- Bell icon -->
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+              d="M15 17h5l-5 5-5-5h5v-6a3 3 0 10-6 0v6z"></path>
+      </svg>
+      
+      <!-- Notification badge -->
+      <% if unread_count > 0 %>
+        <span class="notification-badge absolute -top-1 -right-1" 
+              data-notification-count="<%= unread_count %>">
+          <%= unread_count > 99 ? '99+' : unread_count %>
+        </span>
+      <% end %>
+    <% end %>
+    
+    <!-- Notification toasts container (for real-time notifications) -->
+    <div id="notification_toasts" 
+         data-controller="notification-toasts"
+         data-turbo-stream-target="notification_toasts_<%= current_user.id %>"
+         class="fixed top-4 right-4 z-50 space-y-2">
+      <!-- Toast notifications will appear here -->
+    </div>
+  </div>
+<% end %>
