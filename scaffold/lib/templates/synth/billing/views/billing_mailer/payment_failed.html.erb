@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .header { background-color: #fef2f2; padding: 20px; text-align: center; border-left: 4px solid #ef4444; }
+      .content { padding: 20px; }
+      .alert { background-color: #fef2f2; border: 1px solid #fecaca; padding: 15px; margin: 20px 0; border-radius: 4px; }
+      .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+      .button { display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Payment Failed</h1>
+      </div>
+      
+      <div class="content">
+        <p>Hi <%= @user.name || @user.email %>,</p>
+        
+        <div class="alert">
+          <p><strong>Action Required:</strong> We were unable to process your payment for your <strong><%= @subscription.plan.name %></strong> subscription.</p>
+        </div>
+        
+        <p>This could happen for several reasons:</p>
+        <ul>
+          <li>Your card has expired</li>
+          <li>Insufficient funds</li>
+          <li>Your bank declined the transaction</li>
+          <li>Your billing information has changed</li>
+        </ul>
+        
+        <p>To avoid any interruption to your service, please update your payment method as soon as possible.</p>
+        
+        <p style="text-align: center;">
+          <a href="<%= billing_url %>" class="button">Update Payment Method</a>
+        </p>
+        
+        <p>We'll automatically retry the payment in a few days. If you continue to experience issues, please contact our support team.</p>
+        
+        <p><strong>Subscription Details:</strong></p>
+        <ul>
+          <li><strong>Plan:</strong> <%= @subscription.plan.name %></li>
+          <li><strong>Amount:</strong> $<%= @subscription.plan.price_in_dollars %> / <%= @subscription.plan.interval %></li>
+          <li><strong>Status:</strong> <%= @subscription.status.titleize %></li>
+        </ul>
+        
+        <p>Thank you for your prompt attention to this matter.</p>
+        
+        <p>Best regards,<br>The Team</p>
+      </div>
+      
+      <div class="footer">
+        <p>This is an automated email. Please do not reply to this message.</p>
+        <p>If you need help, please contact our support team.</p>
+      </div>
+    </div>
+  </body>
+</html>

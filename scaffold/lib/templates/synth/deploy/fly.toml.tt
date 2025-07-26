@@ -1,0 +1,87 @@
+# Fly.io deployment configuration
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "<%= app_name %>"
+primary_region = "iad"
+
+[build]
+
+[deploy]
+  release_command = "bin/rails db:prepare"
+
+[env]
+  RAILS_ENV = "production"
+  RAILS_LOG_TO_STDOUT = "true"
+  RAILS_SERVE_STATIC_FILES = "true"
+  FORCE_SSL = "true"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 1024
+
+[[statics]]
+  guest_path = "/rails/public"
+  url_prefix = "/"
+
+# Postgres database
+[[services]]
+  protocol = "tcp"
+  internal_port = 5432
+
+  [[services.ports]]
+    handlers = ["pg_tls"]
+    port = 5432
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+# Redis for caching and Sidekiq
+[[services]]
+  protocol = "tcp"
+  internal_port = 6379
+
+  [[services.ports]]
+    port = 6379
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+# Sidekiq background job processor
+[processes]
+  app = "bin/rails server"
+  worker = "bin/sidekiq"
+
+[checks]
+  [checks.status]
+    port = 3000
+    type = "http"
+    interval = "10s"
+    timeout = "2s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/health"
