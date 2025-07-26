@@ -6,8 +6,9 @@
 
 say 'Installing Workspace module...'
 
-# Create domain-specific directories
-run 'mkdir -p app/domains/workspaces/app/{controllers,models,mailers,policies,views/invitations,views/memberships,views/workspaces,views/invitation_mailer}'
+# Create domain-specific directories (models stay in central app/models)
+run 'mkdir -p app/domains/workspaces/app/{controllers,mailers,policies,views/invitations,views/memberships,views/workspaces,views/invitation_mailer}'
+run 'mkdir -p app/models/concerns' # Ensure models directory exists
 run 'mkdir -p spec/domains/workspaces/{models,controllers,integration,fixtures}'
 
 # Check if Pundit is in Gemfile
@@ -21,19 +22,19 @@ end
 if File.exist?('app/models/workspace.rb')
   say 'Workspace model already exists, skipping generation...'
 else
-  generate :model, 'Workspace', 'name:string', 'slug:string:uniq', 'description:text', 'created_by:references', dir: 'app/domains/workspaces/app/models'
+  generate :model, 'Workspace', 'name:string', 'slug:string:uniq', 'description:text', 'created_by:references'
 end
 
 if File.exist?('app/models/membership.rb')
   say 'Membership model already exists, skipping generation...'
 else  
-  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references:user', 'joined_at:datetime', dir: 'app/domains/workspaces/app/models'
+  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references:user', 'joined_at:datetime'
 end
 
 if File.exist?('app/models/invitation.rb')
   say 'Invitation model already exists, skipping generation...'
 else
-  generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references:user', 'accepted_at:datetime', 'expires_at:datetime', dir: 'app/domains/workspaces/app/models'
+  generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references:user', 'accepted_at:datetime', 'expires_at:datetime'
 end
 
 # Generate controllers
@@ -91,9 +92,9 @@ end
 say 'Copying enhanced model files...'
 template_dir = File.expand_path('lib/templates/synth/workspace', Rails.root)
 
-copy_file File.join(template_dir, 'app/models/workspace.rb'), 'app/domains/workspaces/app/models/workspace.rb', force: true
-copy_file File.join(template_dir, 'app/models/membership.rb'), 'app/domains/workspaces/app/models/membership.rb', force: true  
-copy_file File.join(template_dir, 'app/models/invitation.rb'), 'app/domains/workspaces/app/models/invitation.rb', force: true
+copy_file File.join(template_dir, 'app/models/workspace.rb'), 'app/models/workspace.rb', force: true
+copy_file File.join(template_dir, 'app/models/membership.rb'), 'app/models/membership.rb', force: true  
+copy_file File.join(template_dir, 'app/models/invitation.rb'), 'app/models/invitation.rb', force: true
 
 # Copy controllers
 copy_file File.join(template_dir, 'app/controllers/workspaces_controller.rb'), 'app/domains/workspaces/app/controllers/workspaces_controller.rb', force: true
@@ -102,7 +103,7 @@ copy_file File.join(template_dir, 'app/controllers/invitations_controller.rb'), 
 
 # Copy concerns
 directory File.join(template_dir, 'app/controllers/concerns'), 'app/domains/workspaces/app/controllers/concerns'
-directory File.join(template_dir, 'app/models/concerns'), 'app/domains/workspaces/app/models/concerns'
+directory File.join(template_dir, 'app/models/concerns'), 'app/models/concerns'
 
 # Copy policies
 directory File.join(template_dir, 'app/policies'), 'app/domains/workspaces/app/policies'

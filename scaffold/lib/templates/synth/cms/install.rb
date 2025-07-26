@@ -7,7 +7,8 @@
 say_status :synth_cms, "Installing CMS/Blog Engine module"
 
 # Create domain-specific directories
-run 'mkdir -p app/domains/cms/app/{controllers/cms,controllers/admin,models,views/cms/posts,views/cms/pages,views/admin/posts,views/admin/pages,views/admin/categories,views/admin/tags,views/layouts}'
+run 'mkdir -p app/domains/cms/app/{controllers/cms,controllers/admin,views/cms/posts,views/cms/pages,views/admin/posts,views/admin/pages,views/admin/categories,views/admin/tags,views/layouts}'
+run 'mkdir -p app/models' # Ensure models directory exists
 run 'mkdir -p spec/domains/cms/{models,controllers,fixtures}'
 
 # Add required gems to the application's Gemfile
@@ -68,15 +69,13 @@ after_bundle do
            'meta_description:text',
            'parent:references',
            'position:integer',
-           'published:boolean:index',
-           dir: 'app/domains/cms/app/models'
+           'published:boolean:index'
 
   generate :model, 'Cms::Tag',
            'name:string:index',
            'slug:string:uniq',
            'description:text',
-           'color:string',
-           dir: 'app/domains/cms/app/models'
+           'color:string'
 
   generate :model, 'Cms::Post',
            'title:string:index',
@@ -90,8 +89,7 @@ after_bundle do
            'published_at:datetime:index',
            'author:references',
            'category:references',
-           'view_count:integer:index',
-           dir: 'app/domains/cms/app/models'
+           'view_count:integer:index'
 
   generate :model, 'Cms::Page',
            'title:string:index',
@@ -101,8 +99,7 @@ after_bundle do
            'meta_keywords:string',
            'published:boolean:index',
            'template:string',
-           'position:integer',
-           dir: 'app/domains/cms/app/models'
+           'position:integer'
 
   # Generate join table for posts and tags
   generate :migration, 'CreateCmsPostsTags', 'post:references', 'tag:references'

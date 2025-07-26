@@ -7,8 +7,9 @@
 
 say_status :synth_billing, "Installing Billing module"
 
-# Create domain-specific directories
-run 'mkdir -p app/domains/billing/app/{controllers,models,services,jobs,mailers,views/billing,views/billing_mailer}'
+# Create domain-specific directories (models stay in central app/models)
+run 'mkdir -p app/domains/billing/app/{controllers,services,jobs,mailers,views/billing,views/billing_mailer}'
+run 'mkdir -p app/models/concerns' # Ensure models and concerns directory exists
 run 'mkdir -p spec/domains/billing/{models,controllers,jobs,fixtures}'
 
 # Add billing specific gems to the application's Gemfile
@@ -31,8 +32,8 @@ after_bundle do
     Stripe.api_version = '2024-11-20.acacia'
   RUBY
 
-  # Create Plan model
-  create_file 'app/domains/billing/app/models/plan.rb', <<~'RUBY'
+  # Create Plan model in central models directory
+  create_file 'app/models/plan.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Plan < ApplicationRecord
@@ -72,7 +73,7 @@ after_bundle do
   RUBY
 
   # Create Subscription model
-  create_file 'app/domains/billing/app/models/subscription.rb', <<~'RUBY'
+  create_file 'app/models/subscription.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Subscription < ApplicationRecord
@@ -145,7 +146,7 @@ after_bundle do
   RUBY
 
   # Create Invoice model
-  create_file 'app/domains/billing/app/models/invoice.rb', <<~'RUBY'
+  create_file 'app/models/invoice.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Invoice < ApplicationRecord
@@ -183,7 +184,7 @@ after_bundle do
   RUBY
 
   # Create WebhookEvent model for idempotent webhook processing
-  create_file 'app/domains/billing/app/models/webhook_event.rb', <<~'RUBY'
+  create_file 'app/models/webhook_event.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class WebhookEvent < ApplicationRecord
@@ -205,7 +206,7 @@ after_bundle do
   RUBY
 
   # Create UsageRecord model for metered billing
-  create_file 'app/domains/billing/app/models/usage_record.rb', <<~'RUBY'
+  create_file 'app/models/usage_record.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class UsageRecord < ApplicationRecord
@@ -226,7 +227,7 @@ after_bundle do
       end
     end
   RUBY
-  create_file 'app/domains/billing/app/models/coupon.rb', <<~'RUBY'
+  create_file 'app/models/coupon.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Coupon < ApplicationRecord
@@ -257,7 +258,7 @@ after_bundle do
   RUBY
 
   # Add billing methods to User model
-  create_file 'app/domains/billing/app/models/concerns/billable.rb', <<~'RUBY'
+  create_file 'app/models/concerns/billable.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module Billable
