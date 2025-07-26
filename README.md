@@ -35,13 +35,17 @@ Most Rails templates are either toy examples or opinionated stacks that become b
    bin/synth remove cms      # Remove the CMS/blog engine
    bin/synth upgrade         # Pull in latest module versions
    bin/synth test ai         # Run AI tests
-   bin/synth doctor          # Validate your setup (keys, MCP fetchers)
+   bin/synth doctor          # Validate your setup (environment, database, Redis, keys)
    bin/synth scaffold agent chatbot_support
    ```
 
 4. **Configure your environment.**  Copy `.env.example` to `.env` and fill in secrets for Devise, OmniAuth providers, Stripe API keys, and LLM providers.  Configure your database (`config/database.yml`) and set up Redis.
 
-5. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+5. **Validate deployment setup.**  Run `rails deploy:validate_env` to check your configuration, then use `rails deploy:bootstrap` to set up a new environment.
+
+6. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+
+7. **Deploy to production.**  Choose from Fly.io, Render, or Kamal deployment platforms. See `DEPLOYMENT.md` for complete deployment guides and platform-specific instructions.
 
 ## Features
 
@@ -58,6 +62,7 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 * **CMS/blog engine** powered by ActionText with WYSIWYG editor, SEO metadata, and sitemap generation.
 * **Admin panel** with impersonation, audit logs, Sidekiq UI, and feature flag toggles.
 * **Internationalisation** (i18n) with locale detection, right‑to‑left support, and currency/date formatting.
+* **Deployment readiness** with configurations for Fly.io, Render, and Kamal, comprehensive environment management, health checks, and CI/CD workflows.
 * **CI/CD** templates for GitHub Actions, plus deployment configs for Fly.io, Render, and Kamal.
 
 ### AI system

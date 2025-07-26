@@ -275,6 +275,57 @@ say 'Run: rails deploy:validate_env to check configuration'
 Provides deployment configuration and environment management tools.
   MD
   
+  # Create comprehensive deployment documentation
+  create_file 'DEPLOYMENT.md', <<~MD
+# Deployment Guide
+
+This guide covers deploying your Rails SaaS Starter application to various platforms.
+
+## Quick Start
+
+1. **Configure environment**: Copy `.env.example` to `.env` and fill in your values
+2. **Validate setup**: Run `rails deploy:validate_env`
+3. **Choose platform**: Select from Fly.io, Render, or Kamal deployment
+4. **Deploy**: Follow platform-specific instructions below
+
+## Environment Configuration
+
+### Required Variables
+
+```bash
+# Core Rails configuration
+SECRET_KEY_BASE=your_secret_key_base
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+REDIS_URL=redis://host:6379/0
+
+# Application settings
+APP_HOST=your-domain.com
+FROM_EMAIL=noreply@your-domain.com
+```
+
+For complete configuration options, see `.env.example`.
+
+## Platform Deployment
+
+### Fly.io
+```bash
+fly launch
+fly secrets set SECRET_KEY_BASE=$(rails secret)
+fly deploy
+```
+
+### Render
+Connect your GitHub repository to Render and use Blueprint deployment.
+
+### Kamal
+```bash
+kamal setup
+kamal deploy
+```
+
+See the full deployment files in `lib/templates/` for complete configurations.
+  MD
+  
   # Create an example AI module skeleton
   run 'mkdir -p lib/templates/synth/ai'
   create_file 'lib/templates/synth/ai/install.rb', <<~RUBY
