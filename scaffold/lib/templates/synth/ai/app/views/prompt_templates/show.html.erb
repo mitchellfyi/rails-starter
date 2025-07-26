@@ -1,0 +1,394 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="lg:flex lg:items-center lg:justify-between">
+    <div class="min-w-0 flex-1">
+      <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+        <%= @prompt_template.name %>
+        <span class="text-lg font-normal text-gray-500">v<%= @prompt_template.version %></span>
+      </h2>
+      <div class="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
+        <div class="mt-2 flex items-center text-sm text-gray-500">
+          <span class="<%= @prompt_template.active? ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' %> inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+            <%= @prompt_template.active? ? 'Active' : 'Inactive' %>
+          </span>
+          <% if @prompt_template.published? %>
+            <span class="ml-2 bg-blue-100 text-blue-800 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+              Published
+            </span>
+          <% end %>
+          <span class="ml-4"><%= @prompt_template.output_format.humanize %></span>
+        </div>
+      </div>
+    </div>
+    <div class="mt-5 flex lg:mt-0 lg:ml-4 space-x-3">
+      <button id="preview-btn" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+        Preview
+      </button>
+      <% unless @prompt_template.published? %>
+        <button id="publish-btn" class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500">
+          Publish
+        </button>
+      <% end %>
+      <%= link_to 'Edit', edit_prompt_template_path(@prompt_template), class: 'inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500' %>
+    </div>
+  </div>
+
+  <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <!-- Main Content -->
+    <div class="lg:col-span-2">
+      <!-- Description -->
+      <% if @prompt_template.description.present? %>
+        <div class="bg-white shadow rounded-lg p-6 mb-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Description</h3>
+          <p class="text-gray-700"><%= simple_format(@prompt_template.description) %></p>
+        </div>
+      <% end %>
+
+      <!-- Prompt Body -->
+      <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Prompt Template</h3>
+        <pre class="bg-gray-50 p-4 rounded-md text-sm overflow-x-auto"><%= @prompt_template.prompt_body %></pre>
+      </div>
+
+      <!-- Preview Section -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Preview & Test</h3>
+        <div class="space-y-4">
+          <div>
+            <label for="preview-context" class="block text-sm font-medium text-gray-700">Context (JSON)</label>
+            <textarea id="preview-context" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder='{"variable_name": "value"}'></textarea>
+          </div>
+          <div class="flex space-x-3">
+            <button id="preview-only-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+              Preview
+            </button>
+            <button id="execute-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+              Execute with LLM
+            </button>
+          </div>
+        </div>
+        <div id="preview-result" class="mt-6 hidden">
+          <h4 class="text-sm font-medium text-gray-900 mb-2">Rendered Prompt:</h4>
+          <pre id="preview-output" class="bg-gray-50 p-4 rounded-md text-sm overflow-x-auto"></pre>
+          <div id="preview-errors" class="mt-2 hidden">
+            <p class="text-sm text-red-600"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Variables -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Variables</h3>
+        <% if @prompt_template.variable_names.any? %>
+          <ul class="space-y-2">
+            <% @prompt_template.variable_names.each do |var| %>
+              <li class="flex items-center">
+                <code class="bg-gray-100 px-2 py-1 rounded text-sm">{{<%= var %>}}</code>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-sm text-gray-500">No variables defined</p>
+        <% end %>
+      </div>
+
+      <!-- Tags -->
+      <% if @prompt_template.tags.any? %>
+        <div class="bg-white shadow rounded-lg p-6">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Tags</h3>
+          <div class="flex flex-wrap gap-2">
+            <% @prompt_template.tags.each do |tag| %>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <%= tag %>
+              </span>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Metadata -->
+      <div class="bg-white shadow rounded-lg p-6">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Metadata</h3>
+        <dl class="space-y-2 text-sm">
+          <div>
+            <dt class="font-medium text-gray-900">Created by</dt>
+            <dd class="text-gray-700"><%= @prompt_template.created_by&.email || 'System' %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-900">Created</dt>
+            <dd class="text-gray-700"><%= @prompt_template.created_at.strftime('%B %d, %Y at %I:%M %p') %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-900">Last updated</dt>
+            <dd class="text-gray-700"><%= @prompt_template.updated_at.strftime('%B %d, %Y at %I:%M %p') %></dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-900">Slug</dt>
+            <dd class="text-gray-700"><code><%= @prompt_template.slug %></code></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Executions -->
+  <% if @executions.any? %>
+    <div class="mt-8 bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Recent Executions</h3>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <% @executions.each do |execution| %>
+          <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <span class="<%= execution.status == 'completed' ? 'bg-green-100 text-green-800' : execution.status == 'failed' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800' %> inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                  <%= execution.status.humanize %>
+                </span>
+                <span class="ml-4 text-sm text-gray-500">
+                  by <%= execution.user&.email || 'System' %>
+                </span>
+              </div>
+              <span class="text-sm text-gray-500">
+                <%= time_ago_in_words(execution.created_at) %> ago
+              </span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Version History -->
+  <% if @versions.any? %>
+    <div class="mt-8 bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Version History</h3>
+      </div>
+      <div class="divide-y divide-gray-200">
+        <% @versions.each do |version| %>
+          <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-sm font-medium text-gray-900">Version <%= version.id %></span>
+                <span class="ml-2 text-sm text-gray-500"><%= version.event.humanize %></span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="showDiff(<%= version.id %>)" class="text-sm text-indigo-600 hover:text-indigo-900">
+                  View Diff
+                </button>
+                <span class="text-sm text-gray-500">
+                  <%= time_ago_in_words(version.created_at) %> ago
+                </span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Diff Modal -->
+<div id="diff-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+  <div class="relative top-20 mx-auto p-5 border w-11/12 lg:w-3/4 shadow-lg rounded-md bg-white">
+    <div class="mt-3">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Version Diff</h3>
+        <button onclick="closeDiff()" class="text-gray-400 hover:text-gray-600">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div id="diff-content" class="space-y-4">
+        <!-- Diff content will be loaded here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div id="preview-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+  <div class="relative top-20 mx-auto p-5 border w-11/12 lg:w-1/2 shadow-lg rounded-md bg-white">
+    <div class="mt-3">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Template Preview</h3>
+        <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600">
+          <span class="sr-only">Close</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div id="preview-modal-content">
+        <!-- Preview content will be loaded here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Preview functionality
+  document.getElementById('preview-only-btn').addEventListener('click', function() {
+    const context = document.getElementById('preview-context').value;
+    
+    fetch('<%= preview_prompt_template_path(@prompt_template) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ context: context })
+    })
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('preview-output').textContent = data.rendered_prompt;
+      document.getElementById('preview-result').classList.remove('hidden');
+      
+      const errorsDiv = document.getElementById('preview-errors');
+      if (data.validation_errors && data.validation_errors.length > 0) {
+        errorsDiv.querySelector('p').textContent = 'Missing variables: ' + data.validation_errors.join(', ');
+        errorsDiv.classList.remove('hidden');
+      } else {
+        errorsDiv.classList.add('hidden');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('preview-errors').querySelector('p').textContent = 'Error generating preview';
+      document.getElementById('preview-errors').classList.remove('hidden');
+    });
+  });
+
+  // Execute functionality
+  document.getElementById('execute-btn').addEventListener('click', function() {
+    const context = document.getElementById('preview-context').value;
+    
+    fetch('<%= prompt_template_prompt_executions_path(@prompt_template) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ context: context, execute: 'true' })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        alert('Error: ' + data.error);
+      } else {
+        alert('Execution queued successfully! ID: ' + data.execution_id);
+        // Refresh the page to show the new execution
+        window.location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error executing template');
+    });
+  });
+
+  // Quick preview button
+  document.getElementById('preview-btn').addEventListener('click', function() {
+    const variables = <%= raw @prompt_template.variable_names.to_json %>;
+    let sampleContext = {};
+    variables.forEach(function(variable) {
+      sampleContext[variable] = '[sample_' + variable + ']';
+    });
+    
+    document.getElementById('preview-context').value = JSON.stringify(sampleContext, null, 2);
+    document.getElementById('preview-only-btn').click();
+  });
+
+  // Publish functionality
+  <% unless @prompt_template.published? %>
+  document.getElementById('publish-btn').addEventListener('click', function() {
+    if (!confirm('Are you sure you want to publish this version? This will make it the active version.')) {
+      return;
+    }
+    
+    fetch('<%= publish_prompt_template_path(@prompt_template) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        alert('Error: ' + data.error);
+      } else {
+        alert('Template published successfully!');
+        window.location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error publishing template');
+    });
+  });
+  <% end %>
+
+  // Diff functionality
+  function showDiff(versionId) {
+    fetch('<%= diff_prompt_template_path(@prompt_template) %>?version_id=' + versionId)
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        alert('Error loading diff: ' + data.error);
+        return;
+      }
+      
+      const diffContent = document.getElementById('diff-content');
+      diffContent.innerHTML = `
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <h4 class="font-medium text-gray-900 mb-2">Previous Version</h4>
+            <div class="space-y-2">
+              <div>
+                <label class="text-sm text-gray-600">Name:</label>
+                <p class="bg-red-50 p-2 rounded text-sm">${data.previous.name || ''}</p>
+              </div>
+              <div>
+                <label class="text-sm text-gray-600">Prompt:</label>
+                <pre class="bg-red-50 p-2 rounded text-sm overflow-x-auto max-h-40">${data.previous.prompt_body || ''}</pre>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 class="font-medium text-gray-900 mb-2">Current Version</h4>
+            <div class="space-y-2">
+              <div>
+                <label class="text-sm text-gray-600">Name:</label>
+                <p class="bg-green-50 p-2 rounded text-sm">${data.current.name}</p>
+              </div>
+              <div>
+                <label class="text-sm text-gray-600">Prompt:</label>
+                <pre class="bg-green-50 p-2 rounded text-sm overflow-x-auto max-h-40">${data.current.prompt_body}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('diff-modal').classList.remove('hidden');
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error loading diff');
+    });
+  }
+
+  function closeDiff() {
+    document.getElementById('diff-modal').classList.add('hidden');
+  }
+
+  function closePreview() {
+    document.getElementById('preview-modal').classList.add('hidden');
+  }
+</script>

@@ -1,29 +1,46 @@
-# AI Module - LLM Job System
+# AI Module - Enhanced LLM Job System with PromptTemplate Versioning
 
-This module adds first‑class AI integration to your Rails app with versioned prompt templates, variable interpolation, audit history, and a comprehensive management interface.
+This module adds first‑class AI integration to your Rails app with **versioned prompt templates**, variable interpolation, comprehensive audit history, preview functionality, and a management interface with safety features.
 
 ## Features
 
-### PromptTemplate Model
+### 🎯 Enhanced PromptTemplate System
 
-The `PromptTemplate` model provides a comprehensive system for managing AI prompts with the following capabilities:
+The `PromptTemplate` model provides a comprehensive system for managing AI prompts with advanced versioning capabilities:
 
-- **Versioned prompt templates** - Track changes over time using PaperTrail
-- **Variable interpolation** - Use `{{variable_name}}` syntax for dynamic content
-- **Multiple output formats** - Support for JSON, Markdown, HTML partial, and text
+#### Core Features
+- **Versioned prompt templates** - Full version tracking using PaperTrail with semantic versioning
+- **Variable interpolation** - Use `{{variable_name}}` syntax for dynamic content  
+- **Multiple output formats** - Support for JSON, Markdown, HTML, and text
 - **Tagging system** - Organize templates with tags for easy filtering
 - **Slug-based referencing** - API-friendly identifiers for templates
-- **Preview functionality** - Test templates with sample data before use
-- **Diff viewer** - Compare versions to see what changed
+- **Preview functionality** - Test templates with sample data before publishing
+- **Publishing workflow** - Draft → Preview → Publish lifecycle for safety
 
-### PromptExecution Model
+#### Versioning & Safety Features  
+- **Version history tracking** - Complete audit trail of all changes
+- **Side-by-side diff viewer** - Compare versions to see exactly what changed
+- **Publishing controls** - Prevent accidental deployment of untested templates
+- **Rollback capability** - Revert to previous versions when needed
+- **Version branching** - Create new versions from any existing version
+- **Latest version detection** - Automatically identify current active versions
 
-The `PromptExecution` model provides comprehensive audit history:
+#### Preview & Testing
+- **Live preview system** - Test templates with custom context data before execution
+- **Variable validation** - Real-time feedback on missing or invalid variables  
+- **Sample context generation** - Automatic test data for quick previews
+- **Execution simulation** - Preview rendered output without calling LLM APIs
+- **Error handling preview** - See validation errors before deployment
+
+### 📋 PromptExecution Model
+
+Enhanced execution tracking with comprehensive audit capabilities:
 - **Input context tracking** - Store the variables passed to templates
-- **Rendered prompt storage** - Keep the final prompt sent to the LLM
+- **Rendered prompt storage** - Keep the final prompt sent to the LLM  
 - **Execution metadata** - Track status, duration, tokens used, and model
-- **Error handling** - Capture and display execution errors
+- **Error handling** - Capture and display execution errors with context
 - **User association** - Link executions to users for accountability
+- **Preview executions** - Track template testing separately from live runs
 This module adds a comprehensive asynchronous LLM job system to your Rails app with Sidekiq, featuring retry/backoff, structured logging, output storage, and user feedback controls.
 
 ## Features

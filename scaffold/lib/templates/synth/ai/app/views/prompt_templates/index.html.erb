@@ -1,0 +1,103 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="sm:flex sm:items-center">
+    <div class="sm:flex-auto">
+      <h1 class="text-2xl font-semibold text-gray-900">Prompt Templates</h1>
+      <p class="mt-2 text-sm text-gray-700">Manage your AI prompt templates with versioning and variable interpolation.</p>
+    </div>
+    <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+      <%= link_to 'New Template', new_prompt_template_path, class: 'inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600' %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="mt-6 flex space-x-4">
+    <div class="flex-1">
+      <%= form_with url: prompt_templates_path, method: :get, local: true, class: 'flex space-x-4' do |form| %>
+        <%= form.select :output_format, options_for_select([['All Formats', '']] + %w[text json markdown html].map { |f| [f.humanize, f] }, params[:output_format]), {}, { class: 'rounded-md border-gray-300 text-sm' } %>
+        <%= form.text_field :tag, placeholder: 'Filter by tag', value: params[:tag], class: 'rounded-md border-gray-300 text-sm' %>
+        <%= form.submit 'Filter', class: 'rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50' %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Templates Grid -->
+  <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <% @prompt_templates.each do |template| %>
+      <div class="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-gray-400">
+        <div class="flex justify-between items-start">
+          <div class="flex-1 min-w-0">
+            <h3 class="text-lg font-medium text-gray-900 truncate">
+              <%= link_to template.name, prompt_template_path(template), class: 'hover:text-indigo-600' %>
+            </h3>
+            <p class="text-sm text-gray-500 mt-1">
+              <%= template.output_format.humanize %> 
+              <span class="text-gray-400">•</span> 
+              v<%= template.version %>
+            </p>
+            <% if template.description.present? %>
+              <p class="text-sm text-gray-600 mt-2 line-clamp-2"><%= template.description %></p>
+            <% end %>
+          </div>
+          <div class="flex flex-col space-y-1">
+            <span class="<%= template.active? ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' %> inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+              <%= template.active? ? 'Active' : 'Inactive' %>
+            </span>
+            <% if template.published? %>
+              <span class="bg-blue-100 text-blue-800 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                Published
+              </span>
+            <% end %>
+          </div>
+        </div>
+        
+        <div class="mt-4">
+          <div class="flex items-center text-sm text-gray-500">
+            <span>Variables: <%= template.variable_names.join(', ') if template.variable_names.any? %></span>
+          </div>
+          <% if template.tags.any? %>
+            <div class="mt-2 flex flex-wrap gap-1">
+              <% template.tags.each do |tag| %>
+                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                  <%= tag %>
+                </span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        
+        <div class="mt-4 flex justify-between items-center text-xs text-gray-500">
+          <span>by <%= template.created_by&.email || 'System' %></span>
+          <span><%= time_ago_in_words(template.updated_at) %> ago</span>
+        </div>
+
+        <!-- Version indicator -->
+        <% if template.versions.count > 0 %>
+          <div class="absolute top-2 right-2">
+            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+              <%= template.versions.count %> versions
+            </span>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @prompt_templates.empty? %>
+    <div class="text-center py-12">
+      <h3 class="mt-2 text-sm font-semibold text-gray-900">No prompt templates</h3>
+      <p class="mt-1 text-sm text-gray-500">Get started by creating a new prompt template.</p>
+      <div class="mt-6">
+        <%= link_to 'New Template', new_prompt_template_path, class: 'inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500' %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
