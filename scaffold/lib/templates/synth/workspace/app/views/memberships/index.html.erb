@@ -1,115 +1,225 @@
 <% content_for :title, "#{@workspace.name} - Members" %>
 
-<div class="flex justify-between items-center mb-6">
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
   <div>
-    <h1 class="text-3xl font-bold text-gray-900"><%= @workspace.name %> Members</h1>
-    <p class="mt-2 text-sm text-gray-600">
-      <%= link_to @workspace.name, @workspace, class: "text-blue-600 hover:text-blue-900" %> /
-      Members
-    </p>
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900"><%= @workspace.name %> Members</h1>
+    <nav class="mt-2 text-sm text-gray-600" aria-label="Breadcrumb">
+      <%= link_to @workspace.name, @workspace, class: "text-blue-600 hover:text-blue-800 transition-colors" %> /
+      <span class="text-gray-900">Members</span>
+    </nav>
   </div>
 </div>
 
 <!-- Invite Form -->
 <% if policy(@workspace).manage_members? %>
-  <div class="bg-white shadow rounded-lg p-6 mb-6">
+  <div class="bg-white shadow-sm rounded-lg p-4 sm:p-6 mb-6 border border-gray-200">
     <h2 class="text-lg font-medium text-gray-900 mb-4">Invite New Member</h2>
     
-    <%= form_with url: workspace_invitations_path(@workspace), method: :post, class: "flex space-x-4" do |form| %>
+    <%= form_with url: workspace_invitations_path(@workspace), method: :post, class: "flex flex-col sm:flex-row gap-4" do |form| %>
       <div class="flex-1">
-        <%= form.email_field :email, placeholder: "email@example.com", 
-                            class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+        <%= form.label :email, "Email Address", class: "sr-only" %>
+        <%= form.email_field :email, 
+            placeholder: "email@example.com", 
+            required: true,
+            class: "block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      </div>
+      <div class="sm:w-32">
+        <%= form.label :role, "Role", class: "sr-only" %>
+        <%= form.select :role, 
+            options_for_select([['Member', 'member'], ['Admin', 'admin'], ['Guest', 'guest']], 'member'),
+            {}, 
+            { class: "block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
       </div>
       <div>
-        <%= form.select :role, options_for_select([['Member', 'member'], ['Admin', 'admin'], ['Guest', 'guest']], 'member'),
-                       {}, { class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
-      </div>
-      <div>
-        <%= form.submit "Send Invitation", class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+        <%= form.submit "Send Invitation", class: "w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" %>
       </div>
     <% end %>
   </div>
 <% end %>
 
 <!-- Members List -->
-<div class="bg-white shadow rounded-lg">
+<div class="bg-white shadow-sm rounded-lg border border-gray-200">
   <div class="px-4 py-5 sm:p-6">
-    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <svg class="w-5 h-5 mr-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
+      </svg>
       Team Members (<%= @memberships.count %>)
     </h3>
     
     <% if @memberships.any? %>
-      <div class="divide-y divide-gray-200">
+      <!-- Mobile Card Layout (hidden on larger screens) -->
+      <div class="block sm:hidden space-y-4">
         <% @memberships.each do |membership| %>
-          <div class="py-4 flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                  <span class="text-sm font-medium text-gray-700">
-                    <%= membership.user.email.first.upcase %>
-                  </span>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center min-w-0 flex-1">
+                <div class="flex-shrink-0">
+                  <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span class="text-sm font-medium text-gray-700">
+                      <%= membership.user.email.first.upcase %>
+                    </span>
+                  </div>
+                </div>
+                <div class="ml-3 min-w-0 flex-1">
+                  <div class="text-sm font-medium text-gray-900 break-all">
+                    <%= membership.user.email %>
+                  </div>
                 </div>
               </div>
-              <div class="ml-4">
-                <div class="text-sm font-medium text-gray-900">
-                  <%= membership.user.email %>
-                </div>
-                <div class="text-sm text-gray-500">
-                  Joined <%= membership.joined_at&.strftime("%B %d, %Y") %>
-                  <% if membership.invited_by.present? %>
-                    • Invited by <%= membership.invited_by.email %>
-                  <% end %>
-                </div>
-              </div>
-            </div>
-            
-            <div class="flex items-center space-x-3">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
                          <%= membership.role == 'admin' ? 'bg-purple-100 text-purple-800' : 
                              membership.role == 'member' ? 'bg-green-100 text-green-800' :
                              'bg-gray-100 text-gray-800' %>">
                 <%= membership.role %>
               </span>
-              
-              <% if policy(membership).update? || policy(membership).destroy? %>
-                <div class="flex space-x-2">
-                  <% if policy(membership).update? && membership.user != current_user %>
-                    <%= form_with model: [membership.workspace, membership], method: :patch, class: "inline" do |form| %>
-                      <%= form.select :role, options_for_select([['Admin', 'admin'], ['Member', 'member'], ['Guest', 'guest']], membership.role),
-                                     {}, { class: "text-xs border-gray-300 rounded", onchange: "this.form.submit();" } %>
-                    <% end %>
-                  <% end %>
-                  
-                  <% if policy(membership).destroy? %>
-                    <%= link_to "Remove", [membership.workspace, membership], method: :delete,
-                                data: { confirm: "Are you sure?" },
-                                class: "text-red-600 hover:text-red-900 text-sm" %>
-                  <% end %>
-                </div>
+            </div>
+            
+            <div class="text-sm text-gray-500 mb-3">
+              Joined <%= membership.joined_at&.strftime("%B %d, %Y") %>
+              <% if membership.invited_by.present? %>
+                <br>Invited by <%= membership.invited_by.email %>
               <% end %>
             </div>
+
+            <% if policy(membership).update? || policy(membership).destroy? %>
+              <div class="flex flex-col gap-2">
+                <% if policy(membership).update? && membership.user != current_user %>
+                  <%= form_with model: [membership.workspace, membership], method: :patch, class: "flex items-center gap-2" do |form| %>
+                    <%= form.label :role, "Change Role:", class: "text-xs text-gray-600" %>
+                    <%= form.select :role, 
+                        options_for_select([['Admin', 'admin'], ['Member', 'member'], ['Guest', 'guest']], membership.role),
+                        {}, 
+                        { class: "text-xs border-gray-300 rounded flex-1", onchange: "this.form.submit();" } %>
+                  <% end %>
+                <% end %>
+                
+                <% if policy(membership).destroy? %>
+                  <%= link_to [membership.workspace, membership], 
+                      method: :delete,
+                      data: { confirm: "Are you sure you want to remove this member?" },
+                      class: "text-red-600 hover:text-red-800 text-sm font-medium" do %>
+                    Remove Member
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
           </div>
         <% end %>
       </div>
+
+      <!-- Desktop Table Layout (hidden on mobile) -->
+      <div class="hidden sm:block overflow-hidden">
+        <div class="divide-y divide-gray-200">
+          <% @memberships.each do |membership| %>
+            <div class="py-4 flex items-center justify-between">
+              <div class="flex items-center min-w-0 flex-1">
+                <div class="flex-shrink-0">
+                  <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                    <span class="text-sm font-medium text-gray-700">
+                      <%= membership.user.email.first.upcase %>
+                    </span>
+                  </div>
+                </div>
+                <div class="ml-4 min-w-0 flex-1">
+                  <div class="text-sm font-medium text-gray-900 truncate">
+                    <%= membership.user.email %>
+                  </div>
+                  <div class="text-sm text-gray-500">
+                    Joined <%= membership.joined_at&.strftime("%B %d, %Y") %>
+                    <% if membership.invited_by.present? %>
+                      • Invited by <%= membership.invited_by.email %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
+                           <%= membership.role == 'admin' ? 'bg-purple-100 text-purple-800' : 
+                               membership.role == 'member' ? 'bg-green-100 text-green-800' :
+                               'bg-gray-100 text-gray-800' %>">
+                  <%= membership.role %>
+                </span>
+                
+                <% if policy(membership).update? || policy(membership).destroy? %>
+                  <div class="flex space-x-2">
+                    <% if policy(membership).update? && membership.user != current_user %>
+                      <%= form_with model: [membership.workspace, membership], method: :patch, class: "inline" do |form| %>
+                        <%= form.select :role, 
+                            options_for_select([['Admin', 'admin'], ['Member', 'member'], ['Guest', 'guest']], membership.role),
+                            {}, 
+                            { class: "text-xs border-gray-300 rounded", onchange: "this.form.submit();" } %>
+                      <% end %>
+                    <% end %>
+                    
+                    <% if policy(membership).destroy? %>
+                      <%= link_to [membership.workspace, membership], 
+                          method: :delete,
+                          data: { confirm: "Are you sure?" },
+                          class: "text-red-600 hover:text-red-900 text-sm" do %>
+                        Remove
+                      <% end %>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
     <% else %>
-      <p class="text-gray-500">No members yet.</p>
+      <div class="text-center py-8">
+        <svg class="mx-auto w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        <p class="mt-2 text-gray-500">No members yet.</p>
+      </div>
     <% end %>
   </div>
 </div>
 
 <!-- Pending Invitations -->
 <% if policy(@workspace).manage_members? && @workspace.invitations.pending.any? %>
-  <div class="bg-white shadow rounded-lg mt-6">
+  <div class="bg-white shadow-sm rounded-lg mt-6 border border-gray-200">
     <div class="px-4 py-5 sm:p-6">
-      <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+      <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+        </svg>
         Pending Invitations (<%= @workspace.invitations.pending.count %>)
       </h3>
       
-      <div class="divide-y divide-gray-200">
+      <!-- Mobile Card Layout -->
+      <div class="block sm:hidden space-y-4">
+        <% @workspace.invitations.pending.includes(:invited_by).each do |invitation| %>
+          <div class="border border-gray-200 rounded-lg p-4">
+            <div class="text-sm font-medium text-gray-900 break-all mb-2">
+              <%= invitation.email %>
+            </div>
+            <div class="text-sm text-gray-500 mb-3">
+              Invited by <%= invitation.invited_by.email %><br>
+              on <%= invitation.created_at.strftime("%B %d, %Y") %><br>
+              Expires <%= invitation.expires_at.strftime("%B %d, %Y") %>
+            </div>
+            <div class="flex gap-2">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 capitalize">
+                <%= invitation.role %>
+              </span>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                Pending
+              </span>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Desktop Layout -->
+      <div class="hidden sm:block divide-y divide-gray-200">
         <% @workspace.invitations.pending.includes(:invited_by).each do |invitation| %>
           <div class="py-4 flex items-center justify-between">
-            <div>
-              <div class="text-sm font-medium text-gray-900">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900 truncate">
                 <%= invitation.email %>
               </div>
               <div class="text-sm text-gray-500">
@@ -118,7 +228,7 @@
               </div>
             </div>
             
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-3 ml-4">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 capitalize">
                 <%= invitation.role %>
               </span>
