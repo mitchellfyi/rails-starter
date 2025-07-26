@@ -890,10 +890,26 @@ after_bundle do
           end
         end
 
-        desc 'add MODULE', 'Add a module (e.g. billing, ai)'
+        desc 'add MODULE', 'Add a module (e.g. ai, workspace, billing)'
         def add(module_name)
-          puts "[stub] Add module: #{module_name}"
-          # TODO: implement installer loading lib/templates/synth/<module>/install.rb
+          modules_path = File.expand_path('../templates/synth', __dir__)
+          module_path = File.join(modules_path, module_name)
+          
+          unless Dir.exist?(module_path)
+            puts "Error: Module '#{module_name}' not found"
+            puts "Available modules: #{Dir.exist?(modules_path) ? Dir.children(modules_path).join(', ') : 'none'}"
+            return
+          end
+
+          installer_path = File.join(module_path, 'install.rb')
+          
+          if File.exist?(installer_path)
+            puts "Installing #{module_name} module..."
+            load installer_path
+            puts "#{module_name.capitalize} module installed successfully!"
+          else
+            puts "Error: No installer found for #{module_name} module"
+          end
         end
 
         desc 'remove MODULE', 'Remove a module'
