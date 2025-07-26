@@ -17,10 +17,12 @@ say "🪝 Setting up Rails SaaS Starter Template..."
 
 # Add gems to the Gemfile
 gem 'pg', '~> 1.5'
+gem 'pgvector', '~> 0.5'
 gem 'pgvector', '~> 0.3.2'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
 gem 'devise', '~> 4.9'
+
 gem 'omniauth', '~> 2.1'
 gem 'stripe', '~> 15.3'
 gem 'pundit', '~> 2.1'
@@ -84,7 +86,9 @@ after_bundle do
         def list
           modules_path = File.expand_path('../templates/synth', __dir__)
           puts 'Installed modules:'
+
           if Dir.exist?(modules_path)
+
             Dir.children(modules_path).each { |m| puts "  - #{m}" }
           else
             puts '  (none)'
@@ -118,12 +122,14 @@ after_bundle do
           puts '[stub] Run diagnostics'
         end
 
+
         desc 'scaffold agent NAME', 'Scaffold a new AI agent'
         def scaffold(name)
           puts "[stub] Scaffold agent: #{name}"
         end
       end
     end
+
   RUBY
 
   # Create an example AI module skeleton
