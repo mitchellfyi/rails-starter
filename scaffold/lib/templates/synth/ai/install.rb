@@ -56,7 +56,11 @@ after_bundle do
     copy_file 'spec/services/mcp/registry_spec.rb', 'spec/services/mcp/registry_spec.rb'
     copy_file 'spec/services/mcp/context_spec.rb', 'spec/services/mcp/context_spec.rb'
     copy_file 'spec/services/mcp/fetcher/database_spec.rb', 'spec/services/mcp/fetcher/database_spec.rb'
+    copy_file 'spec/integration/mcp_integration_spec.rb', 'spec/integration/mcp_integration_spec.rb'
   end
+  
+  # Copy example usage file
+  copy_file 'examples/mcp_usage_examples.rb', 'lib/examples/mcp_usage_examples.rb'
 
   say_status :synth_ai, "MCP system installed successfully"
   say_status :synth_ai, "Run 'rails db:migrate' to create vector embeddings table"
