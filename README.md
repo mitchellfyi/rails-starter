@@ -17,8 +17,6 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 1. **Install prerequisites.**  You’ll need a recent Ruby (matching Rails Edge), Node.js/Yarn, PostgreSQL (with the `pgvector` extension), Redis, and Fly.io or Render CLI if you plan to deploy.
 2. **Create your app.**  Run:
 
-   ```sh
-   rails new myapp --dev -m https://example.com/template.rb
    cd myapp
    
    # Boot the application
