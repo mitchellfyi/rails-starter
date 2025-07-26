@@ -10,7 +10,75 @@ generate 'rspec:install'
 
 # Create directories for test files
 run 'mkdir -p spec/{support,factories,models,requests,system}'
-run 'mkdir -p spec/{models/ai,requests/api/v1,system/ai}'
+run 'mkdir -p spec/{models/{ai,billing,admin},requests/api/v1,system/{ai,billing,admin}}'
+
+# Remove default rails_helper and replace with our comprehensive version
+remove_file 'spec/rails_helper.rb'
+create_file 'spec/rails_helper.rb', <<~RUBY
+  # frozen_string_literal: true
+
+  require 'spec_helper'
+  require 'rspec/rails'
+  require 'factory_bot_rails'
+  require 'capybara/rspec'
+  require 'webmock/rspec'
+
+  ENV['RAILS_ENV'] ||= 'test'
+  require_relative '../config/environment'
+
+  # Prevent database truncation if the environment is production
+  abort("The Rails environment is running in production mode!") if Rails.env.production?
+
+  # Load support files
+  Dir[Rails.root.join('spec', 'support', '**', '*.rb')].sort.each { |f| require f }
+
+  # Checks for pending migrations and applies them before tests are run.
+  begin
+    ActiveRecord::Migration.maintain_test_schema!
+  rescue ActiveRecord::PendingMigrationError => e
+    abort e.to_s.strip
+  end
+
+  RSpec.configure do |config|
+    # Database setup
+    config.use_transactional_fixtures = true
+    config.infer_spec_type_from_file_location!
+    config.filter_rails_from_backtrace!
+
+    # Ensure tests run in random order
+    config.order = :random
+    Kernel.srand config.seed
+
+    # Include helper modules
+    config.include FactoryBot::Syntax::Methods
+    config.include Devise::Test::ControllerHelpers, type: :controller
+    config.include Devise::Test::IntegrationHelpers, type: :request
+    config.include Devise::Test::IntegrationHelpers, type: :system
+
+    # Clean up uploaded files in test
+    config.after(:each) do
+      FileUtils.rm_rf(Dir["\#{Rails.root}/tmp/storage"])
+    end
+
+    # Reset ActionMailer deliveries
+    config.before(:each) do
+      ActionMailer::Base.deliveries.clear
+    end
+
+    # Configure WebMock to allow localhost
+    config.before(:suite) do
+      WebMock.disable_net_connect!(allow_localhost: true)
+    end
+  end
+
+  # Shoulda Matchers configuration
+  Shoulda::Matchers.configure do |config|
+    config.integrate do |with|
+      with.test_framework :rspec
+      with.library :rails
+    end
+  end
+RUBY
 
 # Support files
 create_file 'spec/support/database_cleaner.rb', <<~RUBY
@@ -67,16 +135,19 @@ create_file 'spec/support/external_service_mocks.rb', <<~RUBY
   RSpec.configure do |config|
     config.before(:each) do
       # Mock OpenAI API
-      allow_any_instance_of(OpenAI::Client).to receive(:completions) do |args|
-        {
-          'choices' => [
-            {
-              'text' => 'Mocked OpenAI response',
-              'finish_reason' => 'stop'
-            }
-          ]
-        }
-      end
+      stub_request(:post, /api\\.openai\\.com/)
+        .to_return(
+          status: 200,
+          body: {
+            choices: [
+              {
+                message: { content: 'Mocked OpenAI response' },
+                finish_reason: 'stop'
+              }
+            ]
+          }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
 
       # Mock Anthropic/Claude API
       stub_request(:post, /api\\.anthropic\\.com/)
@@ -90,12 +161,12 @@ create_file 'spec/support/external_service_mocks.rb', <<~RUBY
         )
 
       # Mock Stripe API
-      allow(Stripe::Customer).to receive(:create).and_return(
-        double('customer', id: 'cus_test123', email: 'test@example.com')
-      )
-      allow(Stripe::Subscription).to receive(:create).and_return(
-        double('subscription', id: 'sub_test123', status: 'active')
-      )
+      stub_request(:any, /api\\.stripe\\.com/)
+        .to_return(
+          status: 200,
+          body: { id: 'mocked_stripe_object' }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
 
       # Mock GitHub API
       stub_request(:get, /api\\.github\\.com/)
@@ -188,28 +259,5 @@ create_file 'spec/support/auth_helpers.rb', <<~RUBY
   end
 RUBY
 
-# Update rails_helper.rb to load all support files
-rails_helper_path = 'spec/rails_helper.rb'
-if File.exist?(rails_helper_path)
-  insert_into_file rails_helper_path, after: "# Add additional requires below this line. Rails is not loaded until this point!\n" do
-    <<~RUBY
-
-      # Load all support files
-      Dir[Rails.root.join('spec', 'support', '**', '*.rb')].sort.each { |f| require f }
-
-      # Configure RSpec
-      RSpec.configure do |config|
-        # Database setup
-        config.use_transactional_fixtures = true
-        config.infer_spec_type_from_file_location!
-        config.filter_rails_from_backtrace!
-
-        # Ensure tests run in random order
-        config.order = :random
-        Kernel.srand config.seed
-      end
-    RUBY
-  end
-end
-
-say 'Testing module support files installed successfully!'
+say 'Testing module configuration files created successfully!'
+say 'Run "bundle exec rspec" to execute the test suite'

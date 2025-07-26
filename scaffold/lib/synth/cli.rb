@@ -44,11 +44,19 @@ module Synth
           run_command('bundle exec rspec spec/models/user_spec.rb spec/system/authentication_spec.rb')
         when 'workspaces'
           run_command('bundle exec rspec spec/models/workspace_spec.rb spec/models/membership_spec.rb spec/system/workspace_management_spec.rb')
+        when 'billing'
+          run_command('bundle exec rspec spec/models/billing spec/requests/billing spec/system/billing')
+        when 'admin'
+          run_command('bundle exec rspec spec/models/admin spec/system/admin')
         when 'api'
           run_command('bundle exec rspec spec/requests/api')
+        when 'system'
+          run_command('bundle exec rspec spec/system')
+        when 'models'
+          run_command('bundle exec rspec spec/models')
         else
           puts "Unknown module: #{feature}"
-          puts "Available modules: ai, auth, workspaces, api"
+          puts "Available modules: ai, auth, workspaces, billing, admin, api, system, models"
         end
       end
     end

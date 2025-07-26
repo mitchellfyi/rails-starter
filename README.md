@@ -74,6 +74,47 @@ The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/temp
 
 The template encourages full test coverage.  Every module ships with unit, integration, and system tests.  External services (OpenAI, Claude, Stripe, GitHub) are stubbed to ensure deterministic runs.  The GitHub Actions workflow (`.github/workflows/test.yml`) installs the template into a fresh app and runs the full suite across a matrix of Ruby and PostgreSQL versions.
 
+**Test Infrastructure:**
+- **RSpec** with comprehensive configuration and helpers
+- **FactoryBot** for test data generation with realistic factories
+- **Capybara** for system/integration testing with Selenium support
+- **WebMock** for HTTP request stubbing and offline testing
+- **Database Cleaner** for proper test isolation
+- **Shoulda Matchers** for concise model testing
+
+**Test Coverage:**
+- **Model tests** - Validations, associations, scopes, business logic
+- **Request tests** - API endpoints with JSON:API compliance
+- **System tests** - End-to-end user workflows with Capybara
+- **External service mocks** - OpenAI, Claude, Stripe, GitHub APIs
+- **AI module tests** - Prompt templates, LLM jobs, MCP fetchers
+- **Billing tests** - Subscription management, payment flows
+- **Admin tests** - User management, audit logs, feature flags
+
+**Running Tests:**
+```sh
+# Full test suite
+bundle exec rspec
+
+# Module-specific tests
+bin/synth test ai          # AI system tests
+bin/synth test auth        # Authentication tests
+bin/synth test billing     # Billing and subscription tests
+bin/synth test admin       # Admin panel tests
+bin/synth test api         # API endpoint tests
+
+# Test types
+bundle exec rspec spec/models    # Unit tests
+bundle exec rspec spec/requests  # Integration tests
+bundle exec rspec spec/system    # System tests
+```
+
+**Continuous Integration:**
+- Tests across Ruby 3.2, 3.3 and PostgreSQL 14, 15, 16
+- Template generation and installation verification
+- Security scanning with Brakeman and bundle-audit
+- Code coverage reporting with SimpleCov
+
 ### Seeding
 
 Seed data sets up a demo organisation with a user, example prompt templates, example LLM jobs and outputs, dummy Stripe plans, and a sample blog post.  Seeds are idempotent, meaning you can run them multiple times without duplicating data.

@@ -42,6 +42,7 @@ gem_group :development, :test do
   gem 'webmock', '~> 3.18'
   gem 'capybara', '~> 3.39'
   gem 'selenium-webdriver', '~> 4.10'
+  gem 'shoulda-matchers', '~> 5.3'
 end
 
 after_bundle do
