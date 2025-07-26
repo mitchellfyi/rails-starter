@@ -1,6 +1,6 @@
 # Admin Panel Module
 
-This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for user management, system monitoring, and feature control.
+This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for user management, system monitoring, feature control, and user activity tracking.
 
 ## Features
 
@@ -9,10 +9,19 @@ This module adds a comprehensive admin panel to your Rails SaaS application with
 - **Session management:** Clear sign-out and revert-to-admin safeguards
 - **Audit trail:** All impersonation activities are logged
 
-### 📊 Audit Logs
+### 📊 Enhanced Audit Logs
 - **Comprehensive tracking:** Records changes to critical resources (users, billing, content, prompts)
-- **Searchable interface:** Filter and search logs by actor, resource, timestamp
+- **Advanced filtering:** Filter by resource type, event type, admin user, workspace, and date range
+- **Search functionality:** Full-text search across audit log data
+- **Export capabilities:** CSV and JSON export with applied filters
 - **Detailed metadata:** Captures before/after states, IP addresses, user agents
+
+### 📈 User Activity Feed
+- **Personal activity tracking:** Each user has their own activity timeline
+- **Timeline UI:** Beautiful, chronological display of user actions
+- **Rich filtering:** Filter by workspace, date range, event type, and resource type
+- **Activity types:** Tracks invitations, subscriptions, blog posts, logins, and more
+- **Admin oversight:** Admins can view all user activities across the platform
 
 ### 🔧 Sidekiq Management
 - **Integrated UI:** Sidekiq Web UI mounted within the admin panel
@@ -35,11 +44,12 @@ bin/synth add admin
 This command will:
 - Add necessary gems to your Gemfile
 - Generate admin controllers and views
-- Create audit log models and migrations
+- Create audit log and user activity models with migrations
 - Set up authentication and authorization
 - Configure Sidekiq UI mounting
 - Install Flipper for feature flag management
 - Add comprehensive test coverage
+- Create user activity feed for end users
 
 ## Configuration
 
@@ -48,12 +58,37 @@ After installation, configure admin access by:
 1. **Setting admin roles:** Update your User model to include admin privileges
 2. **Configuring feature flags:** Set up initial feature flags in the Flipper dashboard
 3. **Customizing audit rules:** Define which models and actions should be audited
+4. **Activity tracking:** Include the `ActivityTrackable` concern in models you want to track
 
 ## Usage
 
 ### Accessing the Admin Panel
 
 Navigate to `/admin` to access the admin dashboard. Only users with admin privileges can access this area.
+
+### User Activity Feed
+
+Regular users can access their personal activity feed at `/activity`. This shows:
+- Recent actions and events
+- Chronological timeline view
+- Filtering by workspace, date range, and activity type
+- Beautiful icons and color coding for different activity types
+
+### Enhanced Audit Logs
+
+Admins can access comprehensive audit logs with:
+- Advanced filtering options (resource type, event type, workspace, date range)
+- Full-text search capabilities
+- CSV export functionality for reporting
+- Detailed change tracking with before/after values
+
+### User Activities Dashboard
+
+Admins can monitor all user activities at `/admin/user_activities` with:
+- Cross-user activity monitoring
+- Advanced filtering and search
+- Timeline view of all platform activities
+- Export capabilities for compliance and reporting
 
 ### Impersonating Users
 
@@ -68,17 +103,52 @@ Navigate to `/admin` to access the admin dashboard. Only users with admin privil
 2. Toggle features on/off for different environments
 3. Set up user-specific feature access
 
-### Viewing Audit Logs
+## Activity Tracking
 
-1. Access the Audit Logs section
-2. Use filters to search by user, resource type, or date range
-3. View detailed information about each logged action
+To track activities for your models, include the `ActivityTrackable` concern:
+
+```ruby
+class YourModel < ApplicationRecord
+  include ActivityTrackable
+  
+  # Override these methods to customize activity tracking
+  private
+  
+  def activity_user
+    # Return the user who performed the action
+    current_user
+  end
+  
+  def activity_workspace
+    # Return the associated workspace
+    self.workspace
+  end
+  
+  def create_activity_description
+    "Created #{self.class.name.humanize.downcase}: #{self.name}"
+  end
+end
+```
+
+You can also manually log activities:
+
+```ruby
+UserActivity.log_user_activity(
+  user: current_user,
+  action: 'subscription_created',
+  description: 'Upgraded to Pro plan',
+  resource: subscription,
+  workspace: current_workspace,
+  metadata: { plan: 'pro', amount: 29.99 }
+)
+```
 
 ## Security
 
 - **Role-based access:** Only authorized admin users can access the panel
 - **Session management:** Secure impersonation with automatic timeouts
 - **Audit trail:** All admin actions are logged for accountability
+- **Activity isolation:** Users can only see their own activities
 - **CSRF protection:** All forms include CSRF tokens
 
 ## Testing
@@ -96,6 +166,8 @@ The admin panel is designed for extension. You can:
 - Customize audit rules by updating the `Auditable` concern
 - Add new feature flag categories in the Flipper dashboard
 - Extend the impersonation system with additional safeguards
+- Customize activity tracking by overriding methods in `ActivityTrackable`
+- Add new activity types to `UserActivity::ACTIVITY_TYPES`
 
 ## Dependencies
 
