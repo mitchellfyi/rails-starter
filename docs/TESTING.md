@@ -1,403 +1,321 @@
-# Testing Strategy
+# Testing Guide
 
-This document outlines the comprehensive testing approach for the Rails SaaS Starter Template and its modules.
+This document outlines testing practices and conventions for the Rails SaaS Starter Template.
 
-## Testing Framework
+## Overview
 
-The template supports both **RSpec** and **Minitest**. Choose your preferred framework during setup:
+The template provides comprehensive test coverage using RSpec with the following components:
 
-```bash
-# RSpec (recommended)
-gem 'rspec-rails', group: [:development, :test]
-
-# Minitest (Rails default)
-# Already included with Rails
-```
+- **Unit tests** for models, services, and utilities
+- **Integration tests** for API endpoints and controllers  
+- **System tests** for end-to-end user flows
+- **External service mocks** for deterministic testing
+- **Factory definitions** for test data generation
 
 ## Test Structure
 
-### Core Application Tests
-- **Unit Tests**: Models, services, helpers, and utilities
-- **Integration Tests**: Controllers, API endpoints, and business workflows  
-- **System Tests**: End-to-end user flows with browser automation
-- **Component Tests**: UI components and JavaScript functionality
-
-### Module-Specific Tests
-Each module includes its own test suite:
 ```
-lib/templates/synth/ai/
-├── spec/               # RSpec tests
-│   ├── models/
-│   ├── jobs/
-│   ├── services/
-│   └── system/
-├── test/               # Minitest tests (alternative)
-└── README.md
+spec/
+├── factories/          # FactoryBot definitions
+├── models/             # Unit tests for models
+│   └── ai/            # AI-specific models
+├── requests/           # API integration tests
+│   └── api/v1/        # JSON:API endpoint tests
+├── system/             # End-to-end system tests
+├── support/            # Test configuration and helpers
+└── rails_helper.rb    # RSpec configuration
 ```
 
 ## Running Tests
 
 ### Full Test Suite
 ```bash
-# RSpec
 bundle exec rspec
-
-# Minitest
-bin/rails test
-
-# Via Synth CLI
-bin/synth test
 ```
 
-### Module-Specific Tests
-```bash
-# Test specific module
-bin/synth test ai
-bin/synth test billing
-bin/synth test cms
-
-# Test specific file
-bundle exec rspec spec/models/prompt_template_spec.rb
-bin/rails test test/models/workspace_test.rb
-```
-
-### Test Categories
+### Specific Test Types
 ```bash
 # Unit tests only
-bundle exec rspec spec/models spec/services
-bin/rails test test/models test/services
+bundle exec rspec spec/models
 
 # Integration tests
 bundle exec rspec spec/requests
-bin/rails test test/integration
 
-# System tests (browser automation)
+# System tests
 bundle exec rspec spec/system
-bin/rails test:system
+
+# AI module tests
+bin/synth test ai
+
+# Authentication tests
+bin/synth test auth
 ```
 
-## Test Configuration
+### Test Coverage
+```bash
+COVERAGE=true bundle exec rspec
+open coverage/index.html
+```
 
-### Environment Setup
+## Writing Tests
+
+### Model Tests
+
+Follow these patterns for model testing:
+
 ```ruby
-# config/environments/test.rb
-config.cache_classes = true
-config.eager_load = false
-config.serve_static_files = true
-config.static_cache_control = "public, max-age=3600"
+RSpec.describe User, type: :model do
+  describe 'validations' do
+    it { should validate_presence_of(:email) }
+    it { should validate_uniqueness_of(:email).case_insensitive }
+  end
 
-# Disable request forgery protection in test environment
-config.action_controller.allow_forgery_protection = false
+  describe 'associations' do
+    it { should have_many(:workspaces).through(:memberships) }
+  end
 
-# Test adapter for Active Job
-config.active_job.queue_adapter = :test
-
-# Disable action mailer delivery
-config.action_mailer.delivery_method = :test
-```
-
-### Database Configuration
-```yaml
-# config/database.yml
-test:
-  adapter: postgresql
-  encoding: unicode
-  database: myapp_test
-  pool: 5
-  username: <%= ENV.fetch("DATABASE_USERNAME", "postgres") %>
-  password: <%= ENV.fetch("DATABASE_PASSWORD", "") %>
-  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
-```
-
-## Mocking External Services
-
-### API Mocking Strategy
-All external services are mocked to ensure:
-- Deterministic test results
-- Fast test execution
-- No dependency on external services
-- Cost-effective testing (no API charges)
-
-### Common Service Mocks
-
-**OpenAI API:**
-```ruby
-# spec/support/openai_mock.rb
-RSpec.configure do |config|
-  config.before(:each) do
-    stub_request(:post, "https://api.openai.com/v1/chat/completions")
-      .to_return(
-        status: 200,
-        body: {
-          choices: [{ message: { content: "Mocked response" } }]
-        }.to_json,
-        headers: { 'Content-Type' => 'application/json' }
-      )
+  describe 'instance methods' do
+    let(:user) { create(:user) }
+    
+    describe '#full_name' do
+      it 'combines first and last name' do
+        user.update(first_name: 'John', last_name: 'Doe')
+        expect(user.full_name).to eq('John Doe')
+      end
+    end
   end
 end
 ```
 
-**Stripe API:**
-```ruby
-# spec/support/stripe_mock.rb
-require 'stripe_mock'
+### Request Tests
 
-RSpec.configure do |config|
-  config.before(:each) { StripeMock.start }
-  config.after(:each) { StripeMock.stop }
+Test API endpoints using JSON:API helpers:
+
+```ruby
+RSpec.describe 'API::V1::Users', type: :request do
+  let(:user) { create(:user) }
+  
+  describe 'GET /api/v1/users/:id' do
+    before do
+      get "/api/v1/users/#{user.id}", 
+          headers: json_api_headers.merge(auth_headers(user))
+    end
+
+    it 'returns user data' do
+      expect_json_api_resource(
+        type: 'users',
+        attributes: { email: user.email }
+      )
+    end
+  end
 end
 ```
 
-**Background Jobs:**
+### System Tests
+
+Test complete user workflows:
+
 ```ruby
-# Clear job queue between tests
-RSpec.configure do |config|
-  config.before(:each) do
-    ActiveJob::Base.queue_adapter = :test
-    ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+RSpec.describe 'User Registration', type: :system do
+  scenario 'user signs up successfully' do
+    visit new_user_registration_path
+    
+    fill_in 'Email', with: 'test@example.com'
+    fill_in 'Password', with: 'password123'
+    click_button 'Sign up'
+    
+    expect(page).to have_content('Welcome!')
+  end
+end
+```
+
+## Factories
+
+Use FactoryBot for test data generation:
+
+```ruby
+# Define factories
+FactoryBot.define do
+  factory :user do
+    email { Faker::Internet.email }
+    password { 'password123' }
+    
+    trait :admin do
+      admin { true }
+    end
+  end
+end
+
+# Use in tests
+let(:user) { create(:user) }
+let(:admin) { create(:user, :admin) }
+let(:users) { create_list(:user, 3) }
+```
+
+## External Service Mocking
+
+All external services are automatically mocked in tests:
+
+### OpenAI/Claude APIs
+```ruby
+# Automatically mocked to return consistent responses
+allow_any_instance_of(OpenAI::Client).to receive(:completions)
+  .and_return('choices' => [{ 'text' => 'Mocked response' }])
+```
+
+### Stripe API
+```ruby
+# Stripe objects are mocked
+allow(Stripe::Customer).to receive(:create)
+  .and_return(double('customer', id: 'cus_test123'))
+```
+
+### HTTP Requests
+```ruby
+# WebMock stubs external HTTP calls
+stub_request(:get, 'https://api.github.com/user')
+  .to_return(status: 200, body: { login: 'testuser' }.to_json)
+```
+
+## Test Helpers
+
+### Authentication Helpers
+```ruby
+# Sign in a user for system tests
+sign_in_user
+
+# Create user with workspace
+user, workspace = create_user_with_workspace
+
+# Generate auth headers for API tests
+headers = auth_headers(user)
+```
+
+### JSON:API Helpers
+```ruby
+# Parse JSON response
+json_data
+json_errors
+
+# Assert JSON:API responses
+expect_json_api_resource(type: 'users', attributes: { email: 'test@example.com' })
+expect_json_api_error(status: :not_found, detail: 'User not found')
+```
+
+## AI Module Testing
+
+### Prompt Templates
+Test prompt rendering and validation:
+
+```ruby
+RSpec.describe PromptTemplate do
+  describe '#render' do
+    let(:template) { create(:prompt_template, content: 'Hello {{name}}!') }
+    
+    it 'renders with context' do
+      result = template.render(name: 'John')
+      expect(result).to eq('Hello John!')
+    end
+  end
+end
+```
+
+### LLM Jobs
+Test asynchronous job execution:
+
+```ruby
+RSpec.describe LlmJob do
+  describe '#execute!' do
+    let(:job) { create(:llm_job, :pending) }
+    
+    it 'processes job and creates output' do
+      expect { job.execute! }.to change { job.llm_outputs.count }.by(1)
+      expect(job.reload.status).to eq('completed')
+    end
+  end
+end
+```
+
+### MCP Fetchers
+Test context fetching and data binding:
+
+```ruby
+RSpec.describe McpFetcher do
+  describe '#fetch' do
+    let(:fetcher) { create(:mcp_fetcher, :http) }
+    
+    it 'fetches data from external API' do
+      result = fetcher.fetch(username: 'testuser')
+      expect(result['login']).to eq('testuser')
+    end
   end
 end
 ```
 
 ## Continuous Integration
 
-### GitHub Actions Workflow
-```yaml
-# .github/workflows/test.yml
-name: Test Suite
+The CI pipeline runs:
 
-on: [push, pull_request]
+1. **Linting** - RuboCop, security checks
+2. **Unit tests** - Model and service tests
+3. **Integration tests** - API endpoint tests  
+4. **System tests** - End-to-end workflows
+5. **Template test** - Fresh app generation and test run
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.2
-          bundler-cache: true
-      
-      - name: Set up database
-        run: |
-          bin/rails db:create db:migrate
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
-      
-      - name: Run tests
-        run: bundle exec rspec
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/myapp_test
-          REDIS_URL: redis://localhost:6379/0
-```
+### CI Configuration
 
-## Running CI Locally
+The GitHub Actions workflow tests across:
+- Ruby versions: 3.2, 3.3
+- PostgreSQL versions: 14, 15, 16
+- Template generation and test execution
 
-### Using Docker Compose
-```yaml
-# docker-compose.test.yml
-version: '3.8'
-services:
-  app:
-    build: .
-    command: bundle exec rspec
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgres://postgres:password@db:5432/myapp_test
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - db
-      - redis
-  
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      - POSTGRES_PASSWORD=password
-  
-  redis:
-    image: redis:7
-```
+## Adding New Tests
 
-```bash
-# Run tests in Docker
-docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
-```
+When extending the template with new modules:
 
-### Using Local Services
-```bash
-# Start services
-brew services start postgresql
-brew services start redis
-
-# Setup test database
-createdb myapp_test
-bin/rails db:test:prepare
-
-# Run tests
-bundle exec rspec
-```
-
-## Test Data Management
-
-### Factories
-```ruby
-# spec/factories/users.rb
-FactoryBot.define do
-  factory :user do
-    email { Faker::Internet.email }
-    password { "password123" }
-    confirmed_at { Time.current }
-  end
-end
-```
-
-### Test Seeds
-```ruby
-# db/seeds/test.rb
-if Rails.env.test?
-  # Create test data that all tests can rely on
-  test_user = User.create!(
-    email: "test@example.com",
-    password: "password123"
-  )
-end
-```
-
-## Performance Testing
-
-### Load Testing
-```ruby
-# spec/performance/load_spec.rb
-RSpec.describe "API Performance", type: :request do
-  it "handles concurrent requests" do
-    threads = 10.times.map do
-      Thread.new do
-        get "/api/v1/prompt_templates"
-        expect(response).to have_http_status(:ok)
-      end
-    end
-    
-    threads.each(&:join)
-  end
-end
-```
-
-### Memory Testing
-```bash
-# Use memory_profiler gem
-gem 'memory_profiler', group: :test
-
-# Profile memory usage
-report = MemoryProfiler.report do
-  # Your code here
-end
-
-report.pretty_print
-```
-
-## Test Coverage
-
-### SimpleCov Configuration
-```ruby
-# spec/spec_helper.rb
-require 'simplecov'
-
-SimpleCov.start 'rails' do
-  add_filter '/vendor/'
-  add_filter '/spec/'
-  
-  minimum_coverage 90
-end
-```
-
-### Coverage Reports
-```bash
-# Generate coverage report
-COVERAGE=true bundle exec rspec
-
-# View report
-open coverage/index.html
-```
+1. **Create factory definitions** in `spec/factories/`
+2. **Add model tests** in `spec/models/`
+3. **Write integration tests** for APIs in `spec/requests/`
+4. **Create system tests** for user flows in `spec/system/`
+5. **Update CLI test command** to include new module
+6. **Mock external services** in `spec/support/external_service_mocks.rb`
 
 ## Best Practices
 
-### Test Organization
-1. **Arrange, Act, Assert** pattern for clear test structure
-2. **One assertion per test** for focused testing
-3. **Descriptive test names** that explain the behavior being tested
-4. **Shared examples** for common behavior across modules
+### Do
+- Write tests for all new features
+- Use factories instead of fixtures
+- Mock external service calls
+- Test both happy and error paths
+- Keep tests focused and readable
+- Use descriptive test names
 
-### Mock Guidelines
-1. **Mock at the boundary** - external services only
-2. **Verify behavior, not implementation** 
-3. **Use real objects** for internal application code
-4. **Keep mocks simple** and close to real API responses
+### Don't
+- Make real API calls in tests
+- Use hardcoded data in tests
+- Write overly complex test setup
+- Test Rails framework functionality
+- Skip edge case testing
 
-### Performance Guidelines
-1. **Parallel execution** for faster test runs
-2. **Database cleanup** between tests using DatabaseCleaner
-3. **Minimal test data** - create only what you need
-4. **Selective testing** during development using focus/tags
-
-## Troubleshooting Tests
+## Debugging Tests
 
 ### Common Issues
 
-**Database connection errors:**
+1. **Flaky tests** - Usually caused by unmocked external calls
+2. **Slow tests** - Often due to missing database cleanup
+3. **Failing CI** - Check for environment-specific dependencies
+
+### Debug Commands
 ```bash
-# Reset test database
-bin/rails db:test:prepare
+# Run specific test with full output
+bundle exec rspec spec/models/user_spec.rb:15 --format documentation
+
+# Debug with binding.pry
+# Add `binding.pry` in test and run with:
+bundle exec rspec spec/models/user_spec.rb:15
+
+# Check test coverage
+COVERAGE=true bundle exec rspec
 ```
 
-**Flaky system tests:**
-```ruby
-# Increase wait times for CI
-Capybara.default_max_wait_time = 10
-```
-
-**Memory issues:**
-```bash
-# Increase test timeout
-export RSPEC_TIMEOUT=300
-```
-
-**Stuck background jobs:**
-```ruby
-# Clear job queues
-ActiveJob::Base.queue_adapter.enqueued_jobs.clear
-ActiveJob::Base.queue_adapter.performed_jobs.clear
-```
-
-## Contributing Tests
-
-When adding new features:
-
-1. **Write tests first** (TDD approach)
-2. **Test happy path and edge cases**
-3. **Include integration tests** for user-facing features
-4. **Add system tests** for critical user flows
-5. **Update test documentation** for new patterns
-
-For more information, see the main [contributing guide](../AGENTS.md).
+This comprehensive testing approach ensures the generated Rails application is reliable, maintainable, and thoroughly tested from day one.
