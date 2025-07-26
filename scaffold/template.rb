@@ -158,7 +158,6 @@ after_bundle do
   RUBY
 
   # Configure Sidekiq as the Active Job backend
-  environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
 
   # Mount Sidekiq web UI behind authentication (requires admin? method on User)
   route "require 'sidekiq/web'\nauthenticate :user, lambda { |u| u.respond_to?(:admin?) && u.admin? } do\n  mount Sidekiq::Web => '/admin/sidekiq'\nend"
