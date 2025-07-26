@@ -109,6 +109,11 @@ after_bundle do
     require 'support/authentication_helpers'
     require 'support/llm_stubs'
     require 'support/billing_stubs'
+
+    # Require shared contexts
+    require 'support/authentication_helpers'
+    require 'support/llm_stubs'
+    require 'support/billing_stubs'
       RUBY
     end
   end
