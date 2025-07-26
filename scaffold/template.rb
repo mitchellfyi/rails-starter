@@ -110,37 +110,17 @@ after_bundle do
 
   # Create README with setup instructions
   create_file 'README_SETUP.md', <<~MD
-    # Rails SaaS Starter - Setup Complete! 
+    # Rails SaaS Starter - Setup Complete! 🎉
 
-    Your Rails SaaS application has been successfully generated with the following features:
+    Your Rails SaaS application has been successfully generated with the core foundation.
 
-    ## 
- Features Included
+    ## 🚀 Features Included (Core Foundation)
 
-    ### Authentication & Authorization
-    - **Devise** for user authentication with email/password
-    - **OmniAuth** providers (Google, GitHub, Slack)
-    - User confirmations, account lockout, and 2FA ready
-    - **Pundit** for authorization
+    - **Rails 8/Edge** with Hotwire (Turbo + Stimulus) and TailwindCSS.
+    - **PostgreSQL** with `pgvector` extension for vector embeddings.
+    - Basic `bin/setup` and `bin/dev` scripts.
 
-    ### Database & Background Jobs
-    - **PostgreSQL** with pgvector extension for vector embeddings
-    - **Sidekiq** + **Redis** for background job processing
-    - Database migrations for users, workspaces, memberships, and invitations
-
-    ### Frontend
-    - **TailwindCSS** for styling
-    - **Hotwire** (Turbo + Stimulus) for modern frontend interactions
-    - Responsive design ready
-
-    ### API & Team Management
-    - **JSON:API** compliant REST API
-    - Workspace/team models with role-based permissions
-    - Invitation system for team collaboration
-    - Slug-based routing with FriendlyId
-
-    ## 
- Getting Started
+    ## 🛠️ Getting Started
 
     1. **Install dependencies:**
        ```bash
@@ -160,73 +140,42 @@ after_bundle do
 
     4. **Visit your application:**
        - Web interface: http://localhost:3000
-       - Sidekiq dashboard: http://localhost:3000/admin/sidekiq (admin users only)
 
-    ## 
- Configuration
+    ## 🧩 Extend Your Application with Modules
 
-    ### Database
-    Make sure PostgreSQL is running and the pgvector extension is available:
-    ```sql
-    CREATE EXTENSION IF NOT EXISTS vector;
-    ```
+    This template is designed to be modular. You can add powerful features using the `bin/synth` CLI tool.
 
-    ### Redis
-    Ensure Redis is running for Sidekiq background jobs:
-    ```bash
-    redis-server
-    ```
+    **Available Modules:**
 
-    ### OmniAuth Providers
-    Configure your OAuth applications and update `.env`:
-    - Google: https://console.developers.google.com/
-    - GitHub: https://github.com/settings/developers
-    - Slack: https://api.slack.com/apps
+    - **Auth**: Comprehensive authentication with Devise, OmniAuth, and 2FA.
+    - **Workspace**: Team and workspace management with slug routing, roles, and invitations.
+    - **API**: JSON:API compliant endpoints and OpenAPI (Swagger) documentation.
+    - **Deploy**: Deployment configurations for Fly.io, Render, and Kamal.
+    - **AI**: Prompt templates, asynchronous LLM jobs, and Multi-Context Provider (MCP).
+    - **Billing**: Stripe integration for subscriptions, invoices, and payments.
+    - **CMS**: Content management system for blogs and static pages.
+    - **I18n**: Internationalization and localization support.
+    - **Admin**: Admin panel with user management, audit logs, and feature flags.
+    - **Testing**: Comprehensive testing utilities and best practices.
 
-    ## 
- Running Tests
+    **To install a module:**
 
     ```bash
-    # Run all tests
-    bin/rails test
-
-    # Or with RSpec (if installed)
-    bundle exec rspec
+    bin/synth add <module_name>
+    # Example: bin/synth add auth
+    # Example: bin/synth add billing
     ```
 
-    ## 
- API Usage
+    After installing a module, remember to run `rails db:migrate` if new migrations were added.
 
-    The application provides a JSON:API compliant REST API at `/api/v1/`:
+    ## 🎯 Next Steps
 
-    ```bash
-    # Get user's workspaces
-    curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3000/api/v1/workspaces
+    1. Explore the available modules using `bin/synth list`.
+    2. Install modules relevant to your application's needs.
+    3. Customize the installed modules and core foundation.
+    4. Set up monitoring and error tracking.
 
-    # Create a new workspace
-    curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_TOKEN" \
-         -d '{"workspace":{"name":"My Workspace","description":"A new workspace"}}' \
-         http://localhost:3000/api/v1/workspaces
-    ```
-
-    ## 
- Next Steps
-
-    1. Customize the design and branding
-    2. Add your business-specific models and features
-    3. Configure deployment (Fly.io, Render, Heroku, etc.)
-    4. Set up monitoring and error tracking
-    5. Add more OAuth providers as needed
-
-    ## 
- Team Management
-
-    - **Owners** can manage all aspects of a workspace
-    - **Admins** can invite/remove members and manage settings
-    - **Members** have standard access to workspace features
-    - Use the invitation system to add team members via email
-
-    Enjoy building your SaaS application! 
+    Enjoy building your SaaS application! 🚀
   MD
 
   say ""
