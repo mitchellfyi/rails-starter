@@ -1,24 +1,13 @@
 # frozen_string_literal: true
 
-# Synth AI module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the AI module.
-# It is intentionally minimal; extend it to install generators, migrations, and configuration as needed.
+# AI module installer
+puts 'Installing AI module...'
 
-say_status :synth_ai, "Installing AI module"
+# In a real implementation, this would:
+# - Add AI gems to Gemfile (ruby-openai, anthropic-sdk, etc.)
+# - Generate models for PromptTemplate, LLMJob, LLMOutput
+# - Create controllers for managing prompts and jobs
+# - Add configuration files for AI providers
+# - Create database migrations
 
-# Add AI specific gems to the application's Gemfile
-add_gem 'ruby-openai'
-
-# Run bundle install and set up AI configuration after gems are installed
-after_bundle do
-  # Create an initializer for AI configuration
-  initializer 'ai.rb', <<~'RUBY'
-    # AI module configuration
-    # Set your default model and any other AI related settings here
-    Rails.application.config.ai = ActiveSupport::OrderedOptions.new
-    Rails.application.config.ai.default_model = 'gpt-4'
-  RUBY
-
-  # TODO: generate models, migrations, and other scaffolding for prompt templates and LLM outputs
-  say_status :synth_ai, "AI module installed. Please run migrations and configure your API keys."
-end
+puts 'AI module installed! Configure your API keys in .env'
