@@ -18,16 +18,19 @@ say "🪝 Setting up Rails SaaS Starter Template..."
 # Add gems to the Gemfile
 gem 'pg', '~> 1.5'
 gem 'pgvector', '~> 0.5'
-gem 'pgvector', '~> 0.3.2'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
 gem 'devise', '~> 4.9'
+gem 'devise-two-factor', '~> 5.1'
 
 gem 'omniauth', '~> 2.1'
+gem 'omniauth-google-oauth2', '~> 1.2'
+gem 'omniauth-github', '~> 2.0'
+gem 'omniauth-slack', '~> 2.5'
 gem 'stripe', '~> 15.3'
 gem 'pundit', '~> 2.1'
-gem 'turbo-rails', '~> 1.5'
-gem 'stimulus-rails', '~> 1.2'
+gem 'friendly_id', '~> 5.5'
+gem 'rolify', '~> 6.0'
 gem 'tailwindcss-rails', '~> 4.3'
 gem 'jsonapi-serializer', '~> 3.2'
 
@@ -50,12 +53,101 @@ after_bundle do
   generate 'devise:install'
   generate 'devise', 'User'
 
+  # Generate FriendlyId and Rolify setups
+  generate 'friendly_id'
+  generate 'rolify', 'Role', 'User'
+
   # Configure Sidekiq as the Active Job backend
   environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
 
   # Scaffold workspace/team models
   generate :model, 'Workspace', 'name:string', 'slug:string'
   generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string'
+
+  # Generate Invitation model for workspace invitations
+  generate :model, 'Invitation', 'sender:references', 'recipient_email:string', 'token:string', 'workspace:references', 'status:string'
+
+  # Configure models with enhanced functionality
+  inject_into_file 'app/models/workspace.rb', after: "class Workspace < ApplicationRecord\n" do
+    <<~RUBY
+      extend FriendlyId
+      friendly_id :name, use: :slugged
+      
+      has_many :memberships, dependent: :destroy
+      has_many :users, through: :memberships
+      has_many :invitations, dependent: :destroy
+      
+      validates :name, presence: true, uniqueness: true
+    RUBY
+  end
+
+  inject_into_file 'app/models/membership.rb', after: "class Membership < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :workspace
+      belongs_to :user
+      
+      validates :role, presence: true, inclusion: { in: %w[admin member viewer] }
+      validates :user_id, uniqueness: { scope: :workspace_id }
+    RUBY
+  end
+
+  inject_into_file 'app/models/invitation.rb', after: "class Invitation < ApplicationRecord\n" do
+    <<~RUBY
+      belongs_to :sender, class_name: 'User'
+      belongs_to :workspace
+      
+      validates :recipient_email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+      validates :token, presence: true, uniqueness: true
+      validates :status, presence: true, inclusion: { in: %w[pending accepted rejected] }
+      
+      before_validation :generate_token, on: :create
+      
+      scope :pending, -> { where(status: 'pending') }
+      
+      def accept!
+        update!(status: 'accepted')
+      end
+      
+      def reject!
+        update!(status: 'rejected')
+      end
+      
+      private
+      
+      def generate_token
+        self.token = SecureRandom.urlsafe_base64(32) if token.blank?
+      end
+    RUBY
+  end
+
+  inject_into_file 'app/models/user.rb', after: "class User < ApplicationRecord\n" do
+    <<~RUBY
+      rolify
+      
+      has_many :memberships, dependent: :destroy
+      has_many :workspaces, through: :memberships
+      has_many :sent_invitations, class_name: 'Invitation', foreign_key: 'sender_id', dependent: :destroy
+      
+      def admin?
+        has_role?(:admin)
+      end
+    RUBY
+  end
+
+  # Configure routes for slug-based workspace routing
+  route "resources :workspaces, param: :slug do\n    resources :memberships\n    resources :invitations\n  end"
+
+  # Configure Devise for 2FA and OmniAuth providers
+  inject_into_file 'config/initializers/devise.rb', after: "# config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'\n" do
+    <<~RUBY
+      config.omniauth :google_oauth2, Rails.application.credentials.dig(:google, :client_id), Rails.application.credentials.dig(:google, :client_secret)
+      config.omniauth :github, Rails.application.credentials.dig(:github, :client_id), Rails.application.credentials.dig(:github, :client_secret), scope: 'user:email'
+      config.omniauth :slack, Rails.application.credentials.dig(:slack, :client_id), Rails.application.credentials.dig(:slack, :client_secret)
+    RUBY
+  end
+
+  # Configure Sidekiq as the Active Job backend
+  environment "config.active_job.queue_adapter = :sidekiq", env: %w[development production test]
 
   # Mount Sidekiq web UI behind authentication (requires admin? method on User)
   route "require 'sidekiq/web'\nauthenticate :user, lambda { |u| u.respond_to?(:admin?) && u.admin? } do\n  mount Sidekiq::Web => '/admin/sidekiq'\nend"
