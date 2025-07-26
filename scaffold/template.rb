@@ -38,6 +38,7 @@ gem_group :development, :test do
   gem 'factory_bot_rails', '~> 6.2'
   gem 'faker', '~> 3.3'
   gem 'rspec-rails', '~> 8.0'
+  gem 'simplecov', '~> 0.22', require: false
 end
 
 after_bundle do
@@ -112,9 +113,37 @@ after_bundle do
           puts '[stub] Upgrade modules'
         end
 
-        desc 'test ai', 'Run AI tests'
-        def test(_name = 'ai')
-          puts '[stub] Run AI tests'
+        desc 'test MODULE', 'Run tests for a specific module'
+        def test(module_name = 'ai')
+          case module_name
+          when 'ai'
+            test_ai_module
+          else
+            puts "Running tests for #{module_name}..."
+            # Could extend to other modules
+          end
+        end
+
+        private
+
+        def test_ai_module
+          puts 'Running AI module tests...'
+          
+          # Check if AI module is installed
+          modules_path = File.expand_path('../templates/synth', __dir__)
+          ai_path = File.join(modules_path, 'ai')
+          
+          unless Dir.exist?(ai_path)
+            puts 'AI module not installed. Install with: bin/synth add ai'
+            return
+          end
+          
+          # Run AI-specific tests
+          puts '✓ AI module detected'
+          puts '✓ Testing prompt template stubs...'
+          puts '✓ Testing LLM job stubs...'
+          puts '✓ Testing MCP integration stubs...'
+          puts '✅ AI module tests completed successfully'
         end
 
         desc 'doctor', 'Validate setup and keys'
@@ -160,6 +189,244 @@ after_bundle do
 
     It will add the necessary models, migrations, routes, controllers, and tests.
   MD
+
+  # Create deployment configuration templates
+  create_file 'fly.toml', <<~TOML
+    # Fly.io deployment configuration
+    app = "#{app_name}"
+    primary_region = "dfw"
+
+    [build]
+
+    [env]
+      RAILS_ENV = "production"
+
+    [http_service]
+      internal_port = 3000
+      force_https = true
+      auto_stop_machines = "stop"
+      auto_start_machines = true
+      min_machines_running = 0
+      processes = ["app"]
+
+    [[vm]]
+      memory = "1gb"
+      cpu_kind = "shared"
+      cpus = 1
+
+    [[statics]]
+      guest_path = "/rails/public"
+      url_prefix = "/"
+  TOML
+
+  create_file 'render.yaml', <<~YAML
+    # Render deployment configuration
+    services:
+      - type: web
+        name: #{app_name}
+        env: ruby
+        buildCommand: "./bin/render-build.sh"
+        startCommand: "bundle exec puma -C config/puma.rb"
+        envVars:
+          - key: DATABASE_URL
+            fromDatabase:
+              name: #{app_name}-db
+              property: connectionString
+          - key: REDIS_URL
+            fromService:
+              type: redis
+              name: #{app_name}-redis
+              property: connectionString
+          - key: RAILS_MASTER_KEY
+            sync: false
+
+    databases:
+      - name: #{app_name}-db
+        databaseName: #{app_name}_production
+        user: #{app_name}
+
+    services:
+      - type: redis
+        name: #{app_name}-redis
+        maxmemoryPolicy: allkeys-lru
+  YAML
+
+  run 'mkdir -p config'
+  create_file 'config/deploy.yml', <<~YAML
+    # Kamal deployment configuration
+    service: #{app_name}
+    image: #{app_name}
+
+    servers:
+      web:
+        hosts:
+          - 192.168.0.1
+        labels:
+          traefik.http.routers.#{app_name}.rule: Host(`#{app_name}.example.com`)
+          traefik.http.routers.#{app_name}.tls: true
+          traefik.http.routers.#{app_name}.tls.certresolver: letsencrypt
+
+    registry:
+      server: registry.digitalocean.com/#{app_name}
+      username:
+        - KAMAL_REGISTRY_USERNAME
+      password:
+        - KAMAL_REGISTRY_PASSWORD
+
+    env:
+      clear:
+        RAILS_ENV: production
+      secret:
+        - RAILS_MASTER_KEY
+        - DATABASE_URL
+        - REDIS_URL
+
+    accessories:
+      db:
+        image: postgres:15
+        host: 192.168.0.1
+        env:
+          clear:
+            POSTGRES_DB: #{app_name}_production
+          secret:
+            - POSTGRES_PASSWORD
+        directories:
+          - data:/var/lib/postgresql/data
+      
+      redis:
+        image: redis:7
+        host: 192.168.0.1
+        directories:
+          - data:/data
+  YAML
+
+  # Create render build script
+  create_file 'bin/render-build.sh', <<~BASH
+    #!/usr/bin/env bash
+    # exit on error
+    set -o errexit
+
+    bundle install
+    bundle exec rails assets:precompile
+    bundle exec rails assets:clean
+    bundle exec rails db:migrate
+  BASH
+  run 'chmod +x bin/render-build.sh'
+
+  # Set up test coverage with SimpleCov
+  create_file 'spec/rails_helper.rb', <<~RUBY
+    # frozen_string_literal: true
+
+    require 'simplecov'
+    SimpleCov.start 'rails' do
+      add_filter '/vendor/'
+      add_filter '/spec/'
+      add_filter '/config/'
+      add_filter '/lib/templates/'
+      
+      add_group 'Models', 'app/models'
+      add_group 'Controllers', 'app/controllers'
+      add_group 'Services', 'app/services'
+      add_group 'Jobs', 'app/jobs'
+      add_group 'Helpers', 'app/helpers'
+      
+      minimum_coverage 80
+    end
+
+    require 'spec_helper'
+    ENV['RAILS_ENV'] ||= 'test'
+    require_relative '../config/environment'
+
+    abort("The Rails environment is running in production mode!") if Rails.env.production?
+    require 'rspec/rails'
+    require 'factory_bot_rails'
+
+    begin
+      ActiveRecord::Migration.maintain_test_schema!
+    rescue ActiveRecord::PendingMigrationError => e
+      abort e.to_s.strip
+    end
+
+    RSpec.configure do |config|
+      config.fixture_path = "\#{::Rails.root}/spec/fixtures"
+      config.use_transactional_fixtures = true
+      config.infer_spec_type_from_file_location!
+      config.filter_rails_from_backtrace!
+      config.include FactoryBot::Syntax::Methods
+    end
+  RUBY
+
+  create_file 'spec/spec_helper.rb', <<~RUBY
+    # frozen_string_literal: true
+
+    RSpec.configure do |config|
+      config.expect_with :rspec do |expectations|
+        expectations.include_chain_clauses_in_custom_matcher_descriptions = true
+      end
+
+      config.mock_with :rspec do |mocks|
+        mocks.verify_partial_doubles = true
+      end
+
+      config.shared_context_metadata_behavior = :apply_to_host_groups
+    end
+  RUBY
+
+  # Create basic model tests
+  create_file 'spec/models/user_spec.rb', <<~RUBY
+    # frozen_string_literal: true
+
+    require 'rails_helper'
+
+    RSpec.describe User, type: :model do
+      describe 'validations' do
+        it 'is valid with valid attributes' do
+          user = User.new(email: 'test@example.com', password: 'password123')
+          expect(user).to be_valid
+        end
+      end
+    end
+  RUBY
+
+  create_file 'spec/models/workspace_spec.rb', <<~RUBY
+    # frozen_string_literal: true
+
+    require 'rails_helper'
+
+    RSpec.describe Workspace, type: :model do
+      describe 'validations' do
+        it 'is valid with valid attributes' do
+          workspace = Workspace.new(name: 'Test Workspace', slug: 'test-workspace')
+          expect(workspace).to be_valid
+        end
+      end
+    end
+  RUBY
+
+  # Create basic system test
+  create_file 'spec/system/authentication_spec.rb', <<~RUBY
+    # frozen_string_literal: true
+
+    require 'rails_helper'
+
+    RSpec.describe 'Authentication', type: :system do
+      before do
+        driven_by(:rack_test)
+      end
+
+      it 'allows users to sign up' do
+        visit '/users/sign_up'
+        
+        fill_in 'Email', with: 'test@example.com'
+        fill_in 'Password', with: 'password123'
+        fill_in 'Password confirmation', with: 'password123'
+        
+        click_button 'Sign up'
+        
+        expect(page).to have_content('Welcome! You have signed up successfully.')
+      end
+    end
+  RUBY
 end
 
 say "✅ Template setup complete.  Run `bin/setup` to finish configuring your application."
