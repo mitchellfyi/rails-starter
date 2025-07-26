@@ -38,6 +38,7 @@ after_bundle do
  Installing core modules..."
   run 'bin/synth add auth'
   run 'bin/synth add workspace'
+  run 'bin/synth add onboarding'
   run 'bin/synth add api'
   run 'bin/synth add deploy'
   run 'bin/synth add ai'

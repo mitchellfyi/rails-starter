@@ -1,0 +1,138 @@
+<%= form_with url: onboarding_step_path(@step), method: :post, local: true, class: "space-y-6" do |form| %>
+  <div>
+    <div class="flex items-center mb-4">
+      <div class="flex-shrink-0">
+        <svg class="h-8 w-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+        </svg>
+      </div>
+      <div class="ml-4">
+        <h3 class="text-lg font-medium text-gray-900">Invite Your Team</h3>
+        <p class="text-sm text-gray-600">Get your colleagues on board to start collaborating.</p>
+      </div>
+    </div>
+
+    <% if step_data[:available_workspaces].any? %>
+      <div class="mb-6">
+        <%= form.label :workspace_id, "Select Workspace", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.select :workspace_id, 
+            options_from_collection_for_select(step_data[:available_workspaces], :id, :name),
+            { prompt: "Choose a workspace..." },
+            { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" } %>
+        <p class="mt-1 text-xs text-gray-500">Choose which workspace to invite people to.</p>
+      </div>
+
+      <div id="invitation-fields" class="space-y-4">
+        <h4 class="text-sm font-medium text-gray-900">Team Member Invitations</h4>
+        
+        <div class="invitation-row space-y-2">
+          <div class="flex space-x-2">
+            <div class="flex-1">
+              <%= text_field_tag "invitations[][email]", "", 
+                  placeholder: "colleague@example.com",
+                  class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+            </div>
+            <div class="w-32">
+              <%= select_tag "invitations[][role]", 
+                  options_for_select([['Member', 'member'], ['Admin', 'admin']], 'member'),
+                  class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+            </div>
+            <button type="button" onclick="removeInvitationRow(this)" class="text-red-600 hover:text-red-500 p-2">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="invitation-row space-y-2">
+          <div class="flex space-x-2">
+            <div class="flex-1">
+              <%= text_field_tag "invitations[][email]", "", 
+                  placeholder: "another@example.com",
+                  class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+            </div>
+            <div class="w-32">
+              <%= select_tag "invitations[][role]", 
+                  options_for_select([['Member', 'member'], ['Admin', 'admin']], 'member'),
+                  class: "block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" %>
+            </div>
+            <button type="button" onclick="removeInvitationRow(this)" class="text-red-600 hover:text-red-500 p-2">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" onclick="addInvitationRow()" class="text-sm text-indigo-600 hover:text-indigo-500">
+          + Add another invitation
+        </button>
+      </div>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-sm font-medium text-blue-800">Note</h4>
+            <p class="text-sm text-blue-700">
+              Invitations will be sent via email. You can always invite more people later from your workspace settings.
+            </p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h4 class="text-sm font-medium text-yellow-800">No workspaces available</h4>
+            <p class="text-sm text-yellow-700">You'll need to create a workspace first before you can invite team members.</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <script>
+    function addInvitationRow() {
+      const container = document.getElementById('invitation-fields');
+      const newRow = document.createElement('div');
+      newRow.className = 'invitation-row space-y-2';
+      newRow.innerHTML = `
+        <div class="flex space-x-2">
+          <div class="flex-1">
+            <input type="text" name="invitations[][email]" placeholder="email@example.com" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+          </div>
+          <div class="w-32">
+            <select name="invitations[][role]" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button type="button" onclick="removeInvitationRow(this)" class="text-red-600 hover:text-red-500 p-2">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+      container.appendChild(newRow);
+    }
+
+    function removeInvitationRow(button) {
+      const rows = document.querySelectorAll('.invitation-row');
+      if (rows.length > 1) {
+        button.closest('.invitation-row').remove();
+      }
+    }
+  </script>
+<% end %>
