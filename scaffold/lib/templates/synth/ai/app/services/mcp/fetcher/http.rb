@@ -180,13 +180,26 @@ module Mcp
         }
       end
 
+      # Class-level attribute for default rate limit
+      @default_rate_limit = 100
+
+      # Set default rate limit
+      def self.default_rate_limit=(limit)
+        @default_rate_limit = limit
+      end
+
+      # Get default rate limit
+      def self.default_rate_limit
+        @default_rate_limit
+      end
+
       # Check if rate limited
       def self.rate_limited?(rate_limit_key)
         return false unless Rails.cache # No caching available
 
         cache_key = "mcp_http_rate_limit:#{rate_limit_key}"
         count = Rails.cache.read(cache_key) || 0
-        count >= 100 # 100 requests per hour default
+        count >= @default_rate_limit # Use configurable rate limit
       end
 
       # Update rate limit counter
