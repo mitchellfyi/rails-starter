@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Script to test the Rails SaaS Starter Template generation and test suite
+# This script creates a new Rails application using the template and runs tests
+
+require 'fileutils'
+require 'tmpdir'
+
+class TemplateTestRunner
+  def initialize
+    @template_path = File.expand_path('../scaffold/template.rb', __dir__)
+    @test_dir = Dir.mktmpdir('rails-starter-test')
+    @app_dir = File.join(@test_dir, 'test_app')
+  end
+
+  def run
+    puts "🧪 Testing Rails SaaS Starter Template"
+    puts "Template: #{@template_path}"
+    puts "Test directory: #{@test_dir}"
+    
+    begin
+      create_test_app
+      setup_test_environment
+      run_tests
+      puts "✅ Template test completed successfully!"
+    rescue => e
+      puts "❌ Template test failed: #{e.message}"
+      puts e.backtrace if ENV['DEBUG']
+      exit 1
+    ensure
+      cleanup unless ENV['KEEP_TEST_APP']
+    end
+  end
+
+  private
+
+  def create_test_app
+    puts "\n📦 Creating test Rails application..."
+    Dir.chdir(@test_dir) do
+      system("rails new test_app --dev -m #{@template_path} --skip-git") or raise "Failed to create Rails app"
+    end
+  end
+
+  def setup_test_environment
+    puts "\n⚙️  Setting up test environment..."
+    Dir.chdir(@app_dir) do
+      # Create basic .env file
+      File.write('.env', <<~ENV)
+        DATABASE_URL=sqlite3:test.db
+        REDIS_URL=redis://localhost:6379/0
+        SECRET_KEY_BASE=test_secret_key_base_for_template_testing_only
+      ENV
+
+      # Install gems
+      system('bundle install') or raise "Failed to install gems"
+      
+      # Setup database
+      system('bin/rails db:create db:migrate') or raise "Failed to setup database"
+    end
+  end
+
+  def run_tests
+    puts "\n🧪 Running test suite..."
+    Dir.chdir(@app_dir) do
+      # Run RSpec tests
+      system('bundle exec rspec --format progress') or raise "Tests failed"
+      
+      # Test CLI functionality
+      puts "\n🔧 Testing CLI functionality..."
+      system('bin/synth list') or raise "CLI list command failed"
+      system('bin/synth doctor') or raise "CLI doctor command failed"
+    end
+  end
+
+  def cleanup
+    puts "\n🧹 Cleaning up test directory..."
+    FileUtils.rm_rf(@test_dir)
+  end
+end
+
+if __FILE__ == $0
+  TemplateTestRunner.new.run
+end

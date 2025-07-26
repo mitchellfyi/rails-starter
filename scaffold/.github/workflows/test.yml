@@ -1,0 +1,207 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        ruby-version: ['3.2', '3.3']
+        postgres-version: ['14', '15', '16']
+    
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install PostgreSQL extensions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS pgvector;"
+
+      - name: Install dependencies
+        run: |
+          bundle install
+          yarn install
+
+      - name: Set up database
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          bin/rails db:create
+          bin/rails db:migrate
+
+      - name: Run RuboCop
+        run: bundle exec rubocop
+
+      - name: Run security checks
+        run: |
+          bundle exec brakeman --quiet --no-pager
+          bundle exec bundle-audit check --update
+
+      - name: Run tests
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          COVERAGE: true
+        run: |
+          bundle exec rspec --format progress --format RspecJunitFormatter --out tmp/rspec_results.xml
+
+      - name: Upload coverage reports
+        if: matrix.ruby-version == '3.3' && matrix.postgres-version == '16'
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/coverage.xml
+          fail_ci_if_error: false
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-ruby-${{ matrix.ruby-version }}-pg-${{ matrix.postgres-version }}
+          path: |
+            tmp/rspec_results.xml
+            coverage/
+            log/test.log
+
+  template_test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: template_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install PostgreSQL extensions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -d template_test_db -c "CREATE EXTENSION IF NOT EXISTS pgvector;"
+
+      - name: Test template installation
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/template_test_db
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          # Create a new Rails app using the template
+          cd /tmp
+          rails new test_app --dev -m ${{ github.workspace }}/scaffold/template.rb --skip-git
+          cd test_app
+          
+          # Set up test environment
+          cp .env.example .env
+          echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/template_test_db" >> .env
+          echo "REDIS_URL=redis://localhost:6379/0" >> .env
+          
+          # Install dependencies and setup
+          bundle install
+          yarn install
+          bin/rails db:create db:migrate
+          
+          # Run the test suite
+          bundle exec rspec --format progress
+          
+          # Test CLI functionality
+          bin/synth list
+          bin/synth doctor
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Run RuboCop on template files
+        run: |
+          bundle install
+          find scaffold -name "*.rb" -exec bundle exec rubocop {} +
+
+      - name: Check YAML syntax
+        run: |
+          find . -name "*.yml" -o -name "*.yaml" | xargs -I {} ruby -c {}
+
+      - name: Validate template syntax
+        run: |
+          ruby -c scaffold/template.rb
