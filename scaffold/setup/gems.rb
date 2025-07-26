@@ -50,4 +50,7 @@ gem_group :development do
   gem 'web-console', '~> 4.2'
   gem 'listen', '~> 3.8'
   gem 'spring', '~> 4.1'
+  gem 'bullet', '~> 7.0'
+  gem 'brakeman', '~> 6.0'
+  gem 'rubocop', '~> 1.60'
 end
