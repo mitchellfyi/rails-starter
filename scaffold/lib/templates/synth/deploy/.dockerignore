@@ -1,0 +1,61 @@
+# Docker ignore file for Rails SaaS Starter Template
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+CHANGELOG.md
+AGENTS.md
+
+# Environment files
+.env*
+!.env.production.example
+
+# Logs
+log/*
+!log/.keep
+*.log
+
+# Temporary files
+tmp/*
+!tmp/.keep
+
+# Node modules and build artifacts
+node_modules/
+yarn-error.log
+.yarn-integrity
+
+# Asset compilation artifacts
+/public/assets/*
+/public/packs/*
+
+# Storage
+storage/*
+!storage/.keep
+
+# Test files
+test/
+spec/
+coverage/
+
+# Development and test gems
+vendor/bundle/
+.bundle/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment files that shouldn't be in the container
+fly.toml
+render.yaml
+config/deploy.yml
+.github/
