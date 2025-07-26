@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= @notification.title %></title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #374151;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background: #f9fafb;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+      .notification-type {
+        display: inline-block;
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+      }
+      .title {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 10px 0;
+        color: #111827;
+      }
+      .message {
+        font-size: 16px;
+        margin: 20px 0;
+      }
+      .footer {
+        border-top: 1px solid #e5e7eb;
+        padding-top: 20px;
+        margin-top: 30px;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .btn {
+        display: inline-block;
+        background: #3b82f6;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        margin: 10px 0;
+      }
+      .btn:hover {
+        background: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <span class="notification-type"><%= @notification.notification_type.humanize %></span>
+      <h1 class="title"><%= @notification.title %></h1>
+    </div>
+
+    <div class="message">
+      <%= simple_format(@notification.message) %>
+    </div>
+
+    <% if @data && @data.any? %>
+      <!-- Custom content based on notification type -->
+      <% case @notification.notification_type %>
+      <% when 'invitation_received' %>
+        <% if @data['workspace_name'] %>
+          <p><strong>Workspace:</strong> <%= @data['workspace_name'] %></p>
+        <% end %>
+        <% if @data['invited_by_name'] %>
+          <p><strong>Invited by:</strong> <%= @data['invited_by_name'] %></p>
+        <% end %>
+        
+      <% when /^billing_/ %>
+        <% if @data['amount'] && @data['currency'] %>
+          <p><strong>Amount:</strong> <%= @data['amount'] %> <%= @data['currency'] %></p>
+        <% end %>
+        <% if @data['reason'] %>
+          <p><strong>Reason:</strong> <%= @data['reason'] %></p>
+        <% end %>
+        
+      <% when /^job_/ %>
+        <% if @data['job_name'] %>
+          <p><strong>Job:</strong> <%= @data['job_name'] %></p>
+        <% end %>
+        <% if @data['error'] %>
+          <p><strong>Error:</strong> <%= @data['error'] %></p>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <div class="footer">
+      <p>
+        This notification was sent to <%= @user.email %> because you have email notifications enabled.
+        <a href="<%= notification_preferences_url %>">Manage your notification preferences</a>.
+      </p>
+      <p>
+        <a href="<%= root_url %>">Visit your dashboard</a> to take action on this notification.
+      </p>
+    </div>
+  </body>
+</html>

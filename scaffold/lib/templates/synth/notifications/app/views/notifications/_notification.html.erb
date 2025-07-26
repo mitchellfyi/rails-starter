@@ -1,0 +1,48 @@
+<div class="<%= notification.css_classes %>" id="notification_<%= notification.id %>">
+  <div class="flex items-start space-x-3">
+    <!-- Icon -->
+    <div class="flex-shrink-0">
+      <div class="notification-icon priority-<%= notification.priority %> type-<%= notification.notification_type.dasherize %>">
+        <!-- This would use your icon system - Heroicons, FontAwesome, etc. -->
+        <span class="icon-<%= notification.icon %>">📢</span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between">
+        <h4 class="text-sm font-medium text-gray-900 truncate">
+          <%= notification.title %>
+        </h4>
+        <div class="flex items-center space-x-2">
+          <% unless notification.read? %>
+            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+          <% end %>
+          <time class="text-xs text-gray-500" datetime="<%= notification.created_at.iso8601 %>">
+            <%= time_ago_in_words(notification.created_at) %> ago
+          </time>
+        </div>
+      </div>
+      
+      <p class="text-sm text-gray-600 mt-1">
+        <%= notification.message %>
+      </p>
+
+      <!-- Actions -->
+      <div class="flex items-center space-x-3 mt-3">
+        <% unless notification.read? %>
+          <%= link_to "Mark as read", read_notification_path(notification), 
+              method: :patch,
+              remote: true,
+              class: "text-xs text-blue-600 hover:text-blue-500" %>
+        <% end %>
+        
+        <%= link_to "Dismiss", dismiss_notification_path(notification), 
+            method: :patch,
+            remote: true,
+            confirm: "Are you sure?",
+            class: "text-xs text-gray-500 hover:text-gray-400" %>
+      </div>
+    </div>
+  </div>
+</div>
