@@ -18,24 +18,26 @@ say "🪝 Setting up Rails SaaS Starter Template..."
 # Add gems to the Gemfile
 gem 'pg', '~> 1.5'
 gem 'pgvector', '~> 0.5'
-gem 'redis', '~> 4.8'
-gem 'sidekiq', '~> 7.0'
-
+gem 'pgvector', '~> 0.3.2'
+gem 'redis', '~> 5.4'
+gem 'sidekiq', '~> 8.0'
 gem 'devise', '~> 4.9'
 
 gem 'omniauth', '~> 2.1'
-gem 'stripe', '~> 8.0'
+gem 'stripe', '~> 15.3'
 gem 'pundit', '~> 2.1'
 gem 'turbo-rails', '~> 1.5'
 gem 'stimulus-rails', '~> 1.2'
-gem 'tailwindcss-rails', '~> 0.8'
+gem 'tailwindcss-rails', '~> 4.3'
 gem 'jsonapi-serializer', '~> 3.2'
+
 gem 'rswag', '~> 2.14'
+
 gem_group :development, :test do
   gem 'dotenv-rails', '~> 3.1'
   gem 'factory_bot_rails', '~> 6.2'
   gem 'faker', '~> 3.3'
-  gem 'rspec-rails', '~> 6.0'
+  gem 'rspec-rails', '~> 8.0'
 end
 
 after_bundle do
@@ -103,6 +105,7 @@ after_bundle do
         def remove(module_name)
           puts "[stub] Remove module: #{module_name}"
         end
+        
 
         desc 'upgrade', 'Upgrade installed modules'
         def upgrade

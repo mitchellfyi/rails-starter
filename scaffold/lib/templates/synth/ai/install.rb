@@ -8,7 +8,6 @@ say_status :synth_ai, "Installing AI module"
 
 # Add AI specific gems to the application's Gemfile
 add_gem 'ruby-openai'
-add_gem 'pgvector'
 
 # Run bundle install and set up AI configuration after gems are installed
 after_bundle do
