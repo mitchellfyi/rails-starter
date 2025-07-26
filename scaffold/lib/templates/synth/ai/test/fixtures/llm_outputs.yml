@@ -1,0 +1,53 @@
+# Test fixtures for LLMOutput model
+
+one:
+  template_name: "Welcome template {{name}}"
+  model_name: "gpt-4"
+  context: { name: "Alice" }
+  format: "text"
+  status: "completed"
+  job_id: "job-123-abc"
+  prompt: "Welcome template Alice"
+  raw_response: "Welcome Alice! It's great to meet you."
+  parsed_output: "Welcome Alice! It's great to meet you."
+  feedback: 0
+  user: one
+
+two:
+  template_name: "Analysis template {{topic}}"
+  model_name: "gpt-3.5-turbo"
+  context: { topic: "Ruby on Rails" }
+  format: "markdown"
+  status: "completed"
+  job_id: "job-456-def"
+  prompt: "Analysis template Ruby on Rails"
+  raw_response: "# Ruby on Rails Analysis\n\nRails is a powerful web framework..."
+  parsed_output: "# Ruby on Rails Analysis\n\nRails is a powerful web framework..."
+  feedback: 1
+  feedback_at: <%= 1.day.ago %>
+  user: two
+
+failed:
+  template_name: "Failed template"
+  model_name: "gpt-4"
+  context: {}
+  format: "text"
+  status: "failed"
+  job_id: "job-789-ghi"
+  prompt: "Failed template"
+  raw_response: "Job failed: API error"
+  parsed_output: nil
+  feedback: 0
+
+pending:
+  template_name: "Pending template {{message}}"
+  model_name: "gpt-4"
+  context: { message: "hello" }
+  format: "json"
+  status: "pending"
+  job_id: "job-pending-123"
+  prompt: null
+  raw_response: null
+  parsed_output: null
+  feedback: 0
+  user: one
