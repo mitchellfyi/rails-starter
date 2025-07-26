@@ -10,11 +10,42 @@ Provides comprehensive workspace/team management with slug routing, invitation s
 - **Integration** with Devise authentication and OmniAuth logins
 - **Policy-based authorization** using Pundit
 
+## Installation
+
+1. Install the workspace module:
+   ```bash
+   bin/synth add workspace
+   ```
+
+2. Run the migrations:
+   ```bash
+   rails db:migrate
+   ```
+
+3. Configure email delivery in your environment files:
+   ```ruby
+   # config/environments/development.rb
+   config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+   
+   # config/environments/production.rb  
+   config.action_mailer.default_url_options = { host: 'your-domain.com' }
+   ```
+
+4. Add workspace navigation to your layout (optional):
+   ```erb
+   <!-- app/views/layouts/application.html.erb -->
+   <% if user_signed_in? && current_user.workspaces.any? %>
+     <nav class="workspace-nav">
+       <%= link_to "Workspaces", workspaces_path %>
+     </nav>
+   <% end %>
+   ```
+
 ## Models
 
 ### Workspace
 - `name`: The display name of the workspace
-- `slug`: URL-friendly identifier (auto-generated from name)
+- `slug`: URL-friendly identifier (auto-generated from name)  
 - `description`: Optional description of the workspace
 - `created_by`: Reference to the user who created the workspace
 
@@ -82,24 +113,27 @@ authorize @membership
 <% end %>
 ```
 
-## Installation
+## User Model Integration
 
-Run the workspace module installer:
-
-```bash
-bin/synth add workspace
-rails db:migrate
-```
-
-## Configuration
-
-Configure your mailer for invitation emails in `config/environments/*.rb`:
+The workspace module automatically extends your User model with workspace-related associations and methods:
 
 ```ruby
-config.action_mailer.default_url_options = { host: 'your-domain.com' }
+# Available methods on User instances
+user.workspaces              # All workspaces user belongs to
+user.admin_workspaces        # Workspaces where user is admin
+user.member_workspaces       # Workspaces where user is member  
+user.guest_workspaces        # Workspaces where user is guest
+user.created_workspaces      # Workspaces created by user
+user.pending_invitations     # Valid pending invitations for user
+
+user.admin_of?(workspace)    # Check if user is admin of workspace
+user.member_of?(workspace)   # Check if user is member of workspace
+user.workspace_role(workspace) # Get user's role in workspace
 ```
 
 ## Routes
+
+The module provides these routes:
 
 - `GET /workspaces` - List user's workspaces
 - `GET /workspaces/:slug` - Show workspace
@@ -110,7 +144,60 @@ config.action_mailer.default_url_options = { host: 'your-domain.com' }
 - `POST /workspaces/:slug/memberships` - Add member
 - `PATCH /workspaces/:slug/memberships/:id` - Update membership
 - `DELETE /workspaces/:slug/memberships/:id` - Remove member
-- `GET /workspaces/:slug/invitations/:id` - Show invitation
+- `GET /invitations/:token` - Show invitation (public)
 - `POST /workspaces/:slug/invitations` - Send invitation
-- `PATCH /workspaces/:slug/invitations/:id/accept` - Accept invitation
-- `PATCH /workspaces/:slug/invitations/:id/decline` - Decline invitation
+- `PATCH /invitations/:token/accept` - Accept invitation (public)
+- `PATCH /invitations/:token/decline` - Decline invitation (public)
+
+## Testing
+
+The module includes comprehensive tests:
+
+- **Model tests**: Workspace, Membership, Invitation models
+- **Controller tests**: All CRUD operations and authorization
+- **Integration tests**: Complete invitation flow
+- **Fixtures**: Test data for workspaces, memberships, invitations
+
+Run tests:
+```bash
+rails test test/models/workspace_test.rb
+rails test test/controllers/workspaces_controller_test.rb
+rails test test/integration/workspace_invitation_flow_test.rb
+```
+
+## Customization
+
+### Views
+All views use Tailwind CSS classes and can be customized by editing files in `app/views/`:
+- `workspaces/` - Workspace CRUD views
+- `memberships/` - Member management views  
+- `invitations/` - Invitation acceptance views
+- `invitation_mailer/` - Email templates
+
+### Policies
+Authorization policies can be customized in `app/policies/`:
+- `workspace_policy.rb` - Workspace access control
+- `membership_policy.rb` - Membership management control
+
+### Models
+Extend the models with additional functionality by reopening classes or using concerns.
+
+## Security Considerations
+
+- All workspace actions require proper authorization via Pundit policies
+- Invitation tokens are cryptographically secure and expire after 7 days
+- Email validation prevents invitation spam
+- Unique constraints prevent duplicate memberships
+- Admin permissions required for workspace management
+
+## Multi-tenancy Ready
+
+This workspace module provides the foundation for multi-tenant SaaS applications:
+
+- Slug-based routing for clean URLs
+- Role-based access control
+- Secure invitation system
+- Scalable team management
+- Integration with existing authentication
+
+Perfect for building team-based applications, project management tools, or any SaaS that needs workspace organization.

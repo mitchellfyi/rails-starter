@@ -6,209 +6,125 @@
 
 say 'Installing Workspace module...'
 
-# Generate enhanced models
-generate :model, 'Workspace', 'name:string', 'slug:string:uniq', 'description:text', 'created_by:references'
-generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references', 'joined_at:datetime'
-generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references', 'accepted_at:datetime', 'expires_at:datetime'
+# Check if Pundit is in Gemfile
+unless File.read('Gemfile').include?('pundit')
+  say 'Adding Pundit gem for authorization...'
+  gem 'pundit', '~> 2.1'
+  run 'bundle install'
+end
+
+# Generate enhanced models (skip if they already exist)
+if File.exist?('app/models/workspace.rb')
+  say 'Workspace model already exists, skipping generation...'
+else
+  generate :model, 'Workspace', 'name:string', 'slug:string:uniq', 'description:text', 'created_by:references'
+end
+
+if File.exist?('app/models/membership.rb')
+  say 'Membership model already exists, skipping generation...'
+else  
+  generate :model, 'Membership', 'workspace:references', 'user:references', 'role:string', 'invited_by:references', 'joined_at:datetime'
+end
+
+if File.exist?('app/models/invitation.rb')
+  say 'Invitation model already exists, skipping generation...'
+else
+  generate :model, 'Invitation', 'workspace:references', 'email:string', 'role:string', 'token:string:uniq', 'invited_by:references', 'accepted_at:datetime', 'expires_at:datetime'
+end
 
 # Generate controllers
-generate :controller, 'Workspaces', 'index', 'show', 'new', 'create', 'edit', 'update', 'destroy'
-generate :controller, 'Memberships', 'index', 'create', 'update', 'destroy'
-generate :controller, 'Invitations', 'show', 'create', 'accept', 'decline'
+generate :controller, 'Workspaces', 'index', 'show', 'new', 'create', 'edit', 'update', 'destroy' unless File.exist?('app/controllers/workspaces_controller.rb')
+generate :controller, 'Memberships', 'index', 'create', 'update', 'destroy' unless File.exist?('app/controllers/memberships_controller.rb')
+generate :controller, 'Invitations', 'show', 'create', 'accept', 'decline' unless File.exist?('app/controllers/invitations_controller.rb')
 
-# Add routes
-route <<~ROUTES
-  resources :workspaces, param: :slug do
-    resources :memberships, except: [:show, :new, :edit]
-    resources :invitations, only: [:show, :create, :accept, :decline] do
-      member do
-        patch :accept
-        patch :decline
-      end
-    end
-  end
-  
-  # Root workspace redirect
-  root 'workspaces#index'
-ROUTES
+# Generate mailer for invitations
+generate :mailer, 'InvitationMailer', 'invite_user' unless File.exist?('app/mailers/invitation_mailer.rb')
 
-# Generate mailers for invitations
-generate :mailer, 'InvitationMailer', 'invite_user'
-
-# Create policy files for authorization
-create_file 'app/policies/application_policy.rb', <<~RUBY
-  # frozen_string_literal: true
-  
-  class ApplicationPolicy
-    attr_reader :user, :record
-  
-    def initialize(user, record)
-      @user = user
-      @record = record
-    end
-  
-    def index?
-      false
-    end
-  
-    def show?
-      false
-    end
-  
-    def create?
-      false
-    end
-  
-    def new?
-      create?
-    end
-  
-    def update?
-      false
-    end
-  
-    def edit?
-      update?
-    end
-  
-    def destroy?
-      false
-    end
-  
-    class Scope
-      def initialize(user, scope)
-        @user = user
-        @scope = scope
-      end
-  
-      def resolve
-        raise NotImplementedError, "You must define #resolve in #{self.class}"
-      end
-  
+# Install Pundit if not already configured
+unless File.exist?('app/controllers/application_controller.rb') && File.read('app/controllers/application_controller.rb').include?('include Pundit')
+  say 'Configuring Pundit authorization...'
+  inject_into_class 'app/controllers/application_controller.rb', 'ApplicationController' do
+    <<~RUBY
+      include Pundit::Authorization
+      
+      # Pundit authorization
+      rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
+      
       private
-  
-      attr_reader :user, :scope
-    end
+      
+      def user_not_authorized
+        flash[:alert] = "You are not authorized to perform this action."
+        redirect_to(request.referrer || root_path)
+      end
+    RUBY
   end
-RUBY
+end
 
-create_file 'app/policies/workspace_policy.rb', <<~RUBY
-  # frozen_string_literal: true
-  
-  class WorkspacePolicy < ApplicationPolicy
-    def index?
-      user.present?
-    end
-  
-    def show?
-      user.present? && (workspace_member? || workspace_admin?)
-    end
-  
-    def create?
-      user.present?
-    end
-  
-    def update?
-      workspace_admin?
-    end
-  
-    def destroy?
-      workspace_admin?
-    end
-  
-    def manage_members?
-      workspace_admin?
-    end
-  
-    private
-  
-    def workspace_member?
-      record.memberships.exists?(user: user)
-    end
-  
-    def workspace_admin?
-      record.memberships.exists?(user: user, role: 'admin')
-    end
-  
-    class Scope < Scope
-      def resolve
-        return scope.none unless user
-        
-        scope.joins(:memberships).where(memberships: { user: user })
+# Add routes (check if routes don't already exist)
+routes_content = File.read('config/routes.rb')
+unless routes_content.include?('resources :workspaces')
+  route <<~ROUTES
+    resources :workspaces, param: :slug do
+      resources :memberships, except: [:show, :new, :edit]
+      resources :invitations, only: [:show, :create] do
+        member do
+          patch :accept
+          patch :decline
+        end
       end
     end
-  end
-RUBY
+    
+    # Public invitation routes
+    get '/invitations/:id', to: 'invitations#show', as: 'invitation'
+    patch '/invitations/:id/accept', to: 'invitations#accept', as: 'accept_invitation'
+    patch '/invitations/:id/decline', to: 'invitations#decline', as: 'decline_invitation'
+  ROUTES
+end
 
-create_file 'app/policies/membership_policy.rb', <<~RUBY
-  # frozen_string_literal: true
-  
-  class MembershipPolicy < ApplicationPolicy
-    def index?
-      workspace_member?
-    end
-  
-    def create?
-      workspace_admin?
-    end
-  
-    def update?
-      workspace_admin? || own_membership?
-    end
-  
-    def destroy?
-      workspace_admin? || own_membership?
-    end
-  
-    private
-  
-    def workspace_member?
-      record.workspace.memberships.exists?(user: user)
-    end
-  
-    def workspace_admin?
-      record.workspace.memberships.exists?(user: user, role: 'admin')
-    end
-  
-    def own_membership?
-      record.user == user
-    end
-  end
-RUBY
+# Copy enhanced model files
+say 'Copying enhanced model files...'
+template_dir = File.expand_path('lib/templates/synth/workspace', Rails.root)
 
-# Add application controller concern for workspace handling
-create_file 'app/controllers/concerns/workspace_scoped.rb', <<~RUBY
-  # frozen_string_literal: true
-  
-  module WorkspaceScoped
-    extend ActiveSupport::Concern
-  
-    included do
-      before_action :set_current_workspace, if: :workspace_param_present?
-      before_action :ensure_workspace_access, if: :workspace_param_present?
+copy_file File.join(template_dir, 'app/models/workspace.rb'), 'app/models/workspace.rb', force: true
+copy_file File.join(template_dir, 'app/models/membership.rb'), 'app/models/membership.rb', force: true  
+copy_file File.join(template_dir, 'app/models/invitation.rb'), 'app/models/invitation.rb', force: true
+
+# Copy controllers
+copy_file File.join(template_dir, 'app/controllers/workspaces_controller.rb'), 'app/controllers/workspaces_controller.rb', force: true
+copy_file File.join(template_dir, 'app/controllers/memberships_controller.rb'), 'app/controllers/memberships_controller.rb', force: true
+copy_file File.join(template_dir, 'app/controllers/invitations_controller.rb'), 'app/controllers/invitations_controller.rb', force: true
+
+# Copy concerns
+directory File.join(template_dir, 'app/controllers/concerns'), 'app/controllers/concerns'
+directory File.join(template_dir, 'app/models/concerns'), 'app/models/concerns'
+
+# Copy policies
+directory File.join(template_dir, 'app/policies'), 'app/policies'
+
+# Copy mailer
+copy_file File.join(template_dir, 'app/mailers/invitation_mailer.rb'), 'app/mailers/invitation_mailer.rb', force: true
+
+# Copy views
+directory File.join(template_dir, 'app/views'), 'app/views'
+
+# Update User model to include workspace extensions
+user_model_path = 'app/models/user.rb'
+if File.exist?(user_model_path)
+  user_content = File.read(user_model_path)
+  unless user_content.include?('UserWorkspaceExtensions')
+    say 'Adding workspace extensions to User model...'
+    inject_into_class user_model_path, 'User' do
+      "  include UserWorkspaceExtensions\n"
     end
-  
-    private
-  
-    def set_current_workspace
-      @current_workspace = Workspace.find_by!(slug: params[:workspace_slug] || params[:slug])
-    end
-  
-    def ensure_workspace_access
-      authorize @current_workspace if defined?(@current_workspace)
-    end
-  
-    def workspace_param_present?
-      params[:workspace_slug].present? || (params[:slug].present? && controller_name == 'workspaces')
-    end
-  
-    def current_workspace
-      @current_workspace
-    end
-    helper_method :current_workspace
   end
-RUBY
+end
 
 say 'Workspace module installation complete!'
-say 'Remember to run: rails db:migrate'
-say 'Configure your environment variables for email delivery.'
+say ''
+say 'Next steps:'
+say '1. Run: rails db:migrate'
+say '2. Configure email delivery in your environment files'
+say '3. Add workspace navigation to your layout'
+say '4. Customize the workspace views to match your design'
+say ''
+say 'For more information, see: lib/templates/synth/workspace/README.md'
