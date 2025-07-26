@@ -230,14 +230,14 @@ module Mcp
 
       # Extract text from PDF files (would use gem like 'pdf-reader')
       def self.extract_pdf_text(file_path)
-        Rails.logger.warn("MCP File: PDF extraction not implemented, treating as binary")
-        "PDF content extraction not implemented for #{file_path}"
+        # TODO: Implement PDF text extraction using a library like 'pdf-reader'
+        raise NotImplementedError, "PDF content extraction not implemented for #{file_path}"
       end
 
       # Extract text from Word documents (would use gem like 'docx' or 'yomu')
       def self.extract_word_text(file_path)
-        Rails.logger.warn("MCP File: Word document extraction not implemented, treating as binary")
-        "Word document extraction not implemented for #{file_path}"
+        # TODO: Implement Word document text extraction using a library like 'docx' or 'yomu'
+        raise NotImplementedError, "Word document extraction not implemented for #{file_path}"
       end
 
       # Strip markdown formatting to get plain text
