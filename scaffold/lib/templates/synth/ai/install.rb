@@ -404,7 +404,7 @@ after_bundle do
       <div class="mt-6 flex space-x-4">
         <div class="flex-1">
           <%= form_with url: prompt_templates_path, method: :get, local: true, class: 'flex space-x-4' do |form| %>
-            <%= form.select :output_format, options_for_select([['All Formats', '']] + Rails.application.config.ai.output_formats.map { |f| [f.humanize, f] }, params[:output_format]), {}, { class: 'rounded-md border-gray-300 text-sm' } %>
+            <%= form.select :output_format, options_for_select([['All Formats', '']] + ai_output_formats.map { |f| [f.humanize, f] }, params[:output_format]), {}, { class: 'rounded-md border-gray-300 text-sm' } %>
             <%= form.text_field :tag, placeholder: 'Filter by tag', value: params[:tag], class: 'rounded-md border-gray-300 text-sm' %>
             <%= form.submit 'Filter', class: 'rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50' %>
           <% end %>
