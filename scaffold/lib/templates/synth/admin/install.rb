@@ -12,10 +12,14 @@ gem 'flipper-ui', '~> 1.3'
 gem 'flipper-active_record', '~> 1.3'
 gem 'paper_trail', '~> 15.0'
 gem 'pundit', '~> 2.4'
+gem 'request_store' # Moved from end of file
+gem 'kaminari' # Moved from end of file
 
 # Run bundle install and set up admin configuration after gems are installed
 after_bundle do
-  
+  # Create domain-specific directories
+  run 'mkdir -p app/domains/admin/app/{controllers/admin,models/concerns,policies,views/admin/dashboard,views/admin/users,views/admin/audit_logs,views/admin/feature_flags,views/layouts}'
+
   # ==========================================
   # CONFIGURATION AND INITIALIZERS
   # ==========================================
@@ -79,7 +83,7 @@ after_bundle do
   # ==========================================
 
   # Create Admin User concern
-  create_file 'app/models/concerns/admin_user.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/models/concerns/admin_user.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module AdminUser
@@ -105,7 +109,7 @@ after_bundle do
   RUBY
 
   # Create Auditable concern for models
-  create_file 'app/models/concerns/auditable.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/models/concerns/auditable.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module Auditable
@@ -138,7 +142,7 @@ after_bundle do
   RUBY
 
   # Create AuditLog model for easier querying
-  create_file 'app/models/audit_log.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/models/audit_log.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class AuditLog < ApplicationRecord
@@ -181,7 +185,7 @@ after_bundle do
   # ==========================================
 
   # Create base admin controller
-  create_file 'app/controllers/admin/base_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/base_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::BaseController < ApplicationController
@@ -213,7 +217,7 @@ after_bundle do
   RUBY
 
   # Create admin dashboard controller
-  create_file 'app/controllers/admin/dashboard_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/dashboard_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::DashboardController < Admin::BaseController
@@ -226,7 +230,7 @@ after_bundle do
   RUBY
 
   # Create users management controller
-  create_file 'app/controllers/admin/users_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/users_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::UsersController < Admin::BaseController
@@ -295,7 +299,7 @@ after_bundle do
   RUBY
 
   # Create audit logs controller
-  create_file 'app/controllers/admin/audit_logs_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/audit_logs_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::AuditLogsController < Admin::BaseController
@@ -327,7 +331,7 @@ after_bundle do
   RUBY
 
   # Create feature flags controller
-  create_file 'app/controllers/admin/feature_flags_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/feature_flags_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::FeatureFlagsController < Admin::BaseController
@@ -366,7 +370,7 @@ after_bundle do
   RUBY
 
   # Create Sidekiq controller for authentication
-  create_file 'app/controllers/admin/sidekiq_controller.rb', <<~'RUBY'
+  create_file 'app/domains/admin/app/controllers/admin/sidekiq_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::SidekiqController < Admin::BaseController
@@ -381,7 +385,7 @@ after_bundle do
   # ==========================================
 
   # Create admin layout
-  create_file 'app/views/layouts/admin.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/layouts/admin.html.erb', <<~'ERB'
     <!DOCTYPE html>
     <html>
       <head>
@@ -446,7 +450,7 @@ after_bundle do
   ERB
 
   # Create dashboard view
-  create_file 'app/views/admin/dashboard/index.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/dashboard/index.html.erb', <<~'ERB'
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
       <p class="text-gray-600">Manage users, monitor system activity, and control feature flags.</p>
@@ -539,7 +543,7 @@ after_bundle do
   ERB
 
   # Create users management views
-  create_file 'app/views/admin/users/index.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/users/index.html.erb', <<~'ERB'
     <div class="mb-8">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
@@ -567,8 +571,9 @@ after_bundle do
                   <div class="text-sm text-gray-500">
                     <% if user.admin? %>
                       <span class="bg-red-100 text-red-800 px-2 py-1 text-xs rounded">Admin</span>
+                    <% else %>
+                      <span class="bg-gray-100 text-gray-800 px-2 py-1 text-xs rounded">Regular User</span>
                     <% end %>
-                    Joined <%= time_ago_in_words(user.created_at) %> ago
                   </div>
                 </div>
               </div>
@@ -589,7 +594,7 @@ after_bundle do
   ERB
 
   # Create user show view  
-  create_file 'app/views/admin/users/show.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/users/show.html.erb', <<~'ERB'
     <div class="mb-8">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900">User Details</h1>
@@ -654,7 +659,7 @@ after_bundle do
   ERB
 
   # Create audit logs index view
-  create_file 'app/views/admin/audit_logs/index.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/audit_logs/index.html.erb', <<~'ERB'
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-4">Audit Logs</h1>
       
@@ -730,7 +735,7 @@ after_bundle do
   ERB
 
   # Create feature flags index view
-  create_file 'app/views/admin/feature_flags/index.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/feature_flags/index.html.erb', <<~'ERB'
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">Feature Flags</h1>
       <p class="text-gray-600">Control experimental features and rollout new functionality.</p>
@@ -783,7 +788,7 @@ after_bundle do
   ERB
 
   # Create user edit view
-  create_file 'app/views/admin/users/edit.html.erb', <<~'ERB'
+  create_file 'app/domains/admin/app/views/admin/users/edit.html.erb', <<~'ERB'
     <div class="mb-8">
       <div class="flex justify-between items-center">
         <h1 class="text-3xl font-bold text-gray-900">Edit User</h1>
@@ -829,24 +834,26 @@ after_bundle do
 
   # Add admin routes
   route <<~'RUBY'
-    namespace :admin do
-      root 'dashboard#index'
-      get 'dashboard', to: 'dashboard#index'
-      
-      resources :users do
-        member do
-          post :impersonate
+    scope module: :admin do
+      namespace :admin do
+        root 'dashboard#index'
+        get 'dashboard', to: 'dashboard#index'
+        
+        resources :users do
+          member do
+            post :impersonate
+          end
         end
-      end
-      
-      delete 'stop_impersonation', to: 'users#stop_impersonation'
-      
-      resources :audit_logs, only: [:index, :show]
-      
-      resources :feature_flags, only: [:index, :show] do
-        member do
-          patch :toggle
-          patch :update_percentage
+        
+        delete 'stop_impersonation', to: 'users#stop_impersonation'
+        
+        resources :audit_logs, only: [:index, :show]
+        
+        resources :feature_flags, only: [:index, :show] do
+          member do
+            patch :toggle
+            patch :update_percentage
+          end
         end
       end
     end
@@ -899,36 +906,45 @@ after_bundle do
   # ==========================================
 
   # Create admin controller tests
-  create_file 'test/controllers/admin/dashboard_controller_test.rb', <<~'RUBY'
-    require 'test_helper'
+  create_file 'spec/domains/admin/controllers/dashboard_controller_spec.rb', <<~'RUBY'
+    require 'rails_helper'
 
-    class Admin::DashboardControllerTest < ActionDispatch::IntegrationTest
-      def setup
-        @admin_user = users(:admin_user)
-        @regular_user = users(:regular_user)
+    RSpec.describe Admin::DashboardController, type: :controller do
+      before do
+        @admin_user = create(:user, :admin)
+        @regular_user = create(:user)
       end
 
-      test 'admin can access dashboard' do
-        sign_in @admin_user
-        get admin_dashboard_path
-        assert_response :success
+      context 'admin user' do
+        before { sign_in @admin_user }
+
+        it 'can access dashboard' do
+          get :index
+          expect(response).to be_successful
+        end
       end
 
-      test 'regular user cannot access dashboard' do
-        sign_in @regular_user
-        get admin_dashboard_path
-        assert_redirected_to root_path
+      context 'regular user' do
+        before { sign_in @regular_user }
+
+        it 'cannot access dashboard' do
+          get :index
+          expect(response).to redirect_to(root_path)
+          expect(flash[:alert]).to eq('Access denied.')
+        end
       end
 
-      test 'guest cannot access dashboard' do
-        get admin_dashboard_path
-        assert_redirected_to new_user_session_path
+      context 'guest user' do
+        it 'cannot access dashboard' do
+          get :index
+          expect(response).to redirect_to(new_user_session_path)
+        end
       end
     end
   RUBY
 
   # Create fixtures for testing
-  create_file 'test/fixtures/users.yml', <<~'YAML'
+  create_file 'spec/domains/admin/fixtures/users.yml', <<~'YAML'
     admin_user:
       email: admin@example.com
       admin: true
@@ -943,10 +959,10 @@ after_bundle do
   # ==========================================
 
   # Add RequestStore gem for tracking request metadata
-  gem 'request_store'
+  # gem 'request_store' # Moved to top
 
   # Add kaminari for pagination
-  gem 'kaminari'
+  # gem 'kaminari' # Moved to top
 
   say_status :synth_admin, "Admin panel installed successfully!"
   say_status :synth_admin, "Next steps:"

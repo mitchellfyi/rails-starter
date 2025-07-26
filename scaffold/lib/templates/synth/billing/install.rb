@@ -7,6 +7,10 @@
 
 say_status :synth_billing, "Installing Billing module"
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/billing/app/{controllers,models,services,jobs,mailers,views/billing,views/billing_mailer}'
+run 'mkdir -p spec/domains/billing/{models,controllers,jobs,fixtures}'
+
 # Add billing specific gems to the application's Gemfile
 add_gem 'stripe', '~> 15.3'
 add_gem 'prawn', '~> 2.5' # For PDF invoice generation
@@ -28,7 +32,7 @@ after_bundle do
   RUBY
 
   # Create Plan model
-  create_file 'app/models/plan.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/plan.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Plan < ApplicationRecord
@@ -68,7 +72,7 @@ after_bundle do
   RUBY
 
   # Create Subscription model
-  create_file 'app/models/subscription.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/subscription.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Subscription < ApplicationRecord
@@ -141,7 +145,7 @@ after_bundle do
   RUBY
 
   # Create Invoice model
-  create_file 'app/models/invoice.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/invoice.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Invoice < ApplicationRecord
@@ -179,7 +183,7 @@ after_bundle do
   RUBY
 
   # Create WebhookEvent model for idempotent webhook processing
-  create_file 'app/models/webhook_event.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/webhook_event.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class WebhookEvent < ApplicationRecord
@@ -201,7 +205,7 @@ after_bundle do
   RUBY
 
   # Create UsageRecord model for metered billing
-  create_file 'app/models/usage_record.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/usage_record.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class UsageRecord < ApplicationRecord
@@ -222,7 +226,7 @@ after_bundle do
       end
     end
   RUBY
-  create_file 'app/models/coupon.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/coupon.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Coupon < ApplicationRecord
@@ -253,7 +257,7 @@ after_bundle do
   RUBY
 
   # Add billing methods to User model
-  create_file 'app/models/concerns/billable.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/models/concerns/billable.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module Billable
@@ -360,7 +364,7 @@ after_bundle do
   RUBY
 
   # Create billing controllers
-  create_file 'app/controllers/billing_controller.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/controllers/billing_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class BillingController < ApplicationController
@@ -452,7 +456,7 @@ after_bundle do
   RUBY
 
   # Create webhook controller
-  create_file 'app/controllers/webhooks/stripe_controller.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/controllers/webhooks/stripe_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module Webhooks
@@ -594,7 +598,7 @@ after_bundle do
   RUBY
 
   # Create services for Stripe integration
-  create_file 'app/services/billing_service.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/services/billing_service.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class BillingService
@@ -664,7 +668,7 @@ after_bundle do
   RUBY
 
   # Create PDF service for invoice generation
-  create_file 'app/services/invoice_pdf_service.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/services/invoice_pdf_service.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class InvoicePdfService
@@ -712,7 +716,7 @@ after_bundle do
   RUBY
 
   # Create billing mailer
-  create_file 'app/mailers/billing_mailer.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/mailers/billing_mailer.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class BillingMailer < ApplicationMailer
@@ -749,7 +753,7 @@ after_bundle do
   RUBY
 
   # Create Sidekiq job for webhook retries
-  create_file 'app/jobs/stripe_webhook_retry_job.rb', <<~'RUBY'
+  create_file 'app/domains/billing/app/jobs/stripe_webhook_retry_job.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class StripeWebhookRetryJob < ApplicationJob
@@ -859,17 +863,19 @@ after_bundle do
 
   # Add routes
   route <<~'RUBY'
-    # Billing routes
-    get '/billing', to: 'billing#index'
-    get '/billing/plans', to: 'billing#plans'
-    get '/billing/portal', to: 'billing#portal'
-    post '/billing/subscribe', to: 'billing#subscribe'
-    delete '/billing/cancel', to: 'billing#cancel_subscription'
-    patch '/billing/change_plan', to: 'billing#change_plan'
-    get '/billing/invoices/:id/download', to: 'billing#download_invoice', as: 'download_invoice'
-    
-    # Stripe webhooks
-    post '/webhooks/stripe', to: 'webhooks/stripe#handle'
+    scope module: :billing do
+      # Billing routes
+      get '/billing', to: 'billing#index'
+      get '/billing/plans', to: 'billing#plans'
+      get '/billing/portal', to: 'billing#portal'
+      post '/billing/subscribe', to: 'billing#subscribe'
+      delete '/billing/cancel', to: 'billing#cancel_subscription'
+      patch '/billing/change_plan', to: 'billing#change_plan'
+      get '/billing/invoices/:id/download', to: 'billing#download_invoice', as: 'download_invoice'
+      
+      # Stripe webhooks
+      post '/webhooks/stripe', to: 'webhooks/stripe#handle'
+    end
   RUBY
 
   # Update User model to include Billable concern
@@ -958,18 +964,18 @@ after_bundle do
   RUBY
 
   # Create view directories and files
-  empty_directory 'app/views/billing'
-  empty_directory 'app/views/billing_mailer'
+  empty_directory 'app/domains/billing/app/views/billing'
+  empty_directory 'app/domains/billing/app/views/billing_mailer'
 
   # Copy view templates
-  template 'billing/index.html.erb', 'app/views/billing/index.html.erb'
-  template 'billing/plans.html.erb', 'app/views/billing/plans.html.erb'
-  template 'billing_mailer/invoice_paid.html.erb', 'app/views/billing_mailer/invoice_paid.html.erb'
-  template 'billing_mailer/payment_failed.html.erb', 'app/views/billing_mailer/payment_failed.html.erb'
-  template 'billing_mailer/trial_will_end.html.erb', 'app/views/billing_mailer/trial_will_end.html.erb'
+  template 'billing/index.html.erb', 'app/domains/billing/app/views/billing/index.html.erb'
+  template 'billing/plans.html.erb', 'app/domains/billing/app/views/billing/plans.html.erb'
+  template 'billing_mailer/invoice_paid.html.erb', 'app/domains/billing/app/views/billing_mailer/invoice_paid.html.erb'
+  template 'billing_mailer/payment_failed.html.erb', 'app/domains/billing/app/views/billing_mailer/payment_failed.html.erb'
+  template 'billing_mailer/trial_will_end.html.erb', 'app/domains/billing/app/views/billing_mailer/trial_will_end.html.erb'
 
   # Copy JavaScript assets
-  copy_file 'billing.js', 'app/assets/javascripts/billing.js'
+  copy_file 'billing.js', 'app/domains/billing/app/assets/javascripts/billing.js'
 
   # Add Stripe script tag to application layout
   inject_into_file 'app/views/layouts/application.html.erb', before: '</head>' do

@@ -5,6 +5,9 @@
 
 say_status :synth_deploy, "Installing deploy module..."
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/deploy/app/controllers'
+
 # Template directory path
 template_dir = File.dirname(__FILE__)
 
@@ -30,10 +33,14 @@ copy_file File.join(template_dir, '.github/workflows/fly-deploy.yml'), '.github/
 copy_file File.join(template_dir, '.github/workflows/kamal-deploy.yml'), '.github/workflows/kamal-deploy.yml'
 
 # Create health check endpoint
-route "get '/health', to: 'health#show'"
+route <<~RUBY
+  scope module: :deploy do
+    get '/health', to: 'health#show'
+  end
+RUBY
 
 # Create health controller
-create_file 'app/controllers/health_controller.rb', <<~RUBY
+create_file 'app/domains/deploy/app/controllers/health_controller.rb', <<~RUBY
   # frozen_string_literal: true
 
   class HealthController < ApplicationController

@@ -95,6 +95,23 @@ after_bundle do
 
   # Set up RSpec if included
   generate 'rspec:install' if gem_exists?('rspec-rails')
+
+  if gem_exists?('rspec-rails')
+    inject_into_file 'spec/rails_helper.rb', after: "require 'rspec/rails'\n" do
+      <<~RUBY
+
+    # Add additional requires below this line. Rails is not loaded until this point!
+
+    # Require all files in spec/domains
+    Dir[Rails.root.join('spec/domains/**/*.rb')].each { |f| require f }
+
+    # Require shared contexts
+    require 'support/authentication_helpers'
+    require 'support/llm_stubs'
+    require 'support/billing_stubs'
+      RUBY
+    end
+  end
   
   # Configure Shoulda Matchers if present
   if gem_exists?('shoulda-matchers')
@@ -258,12 +275,14 @@ after_bundle do
       resources :invitations, only: [:show, :create, :update]
     end
     
-    # Devise routes with OmniAuth
-    devise_for :users, controllers: {
-      omniauth_callbacks: 'users/omniauth_callbacks',
-      registrations: 'users/registrations'
-    }
-  RUBY
+    # Auth domain routes
+    scope module: :auth do
+      devise_for :users, controllers: {
+        sessions: 'sessions',
+        omniauth_callbacks: 'sessions'
+      }
+      resource :two_factor, only: [:show, :enable, :disable]
+    end
 
   # Mount Sidekiq web UI behind authentication
   route "require 'sidekiq/web'\nauthenticate :user, lambda { |u| u.respond_to?(:admin?) && u.admin? } do\n  mount Sidekiq::Web => '/admin/sidekiq'\nend"
@@ -609,7 +628,7 @@ after_bundle do
   say "🧪 Setting up test configuration..."
   
   if gem_exists?('rspec-rails')
-    create_file 'spec/models/user_spec.rb', <<~RUBY
+    create_file 'spec/domains/auth/models/user_spec.rb', <<~RUBY
       # frozen_string_literal: true
 
       require 'rails_helper'
@@ -654,7 +673,7 @@ after_bundle do
       end
     RUBY
 
-    create_file 'spec/factories/users.rb', <<~RUBY
+    create_file 'spec/domains/auth/factories/users.rb', <<~RUBY
       # frozen_string_literal: true
 
       FactoryBot.define do
@@ -672,7 +691,7 @@ after_bundle do
       end
     RUBY
 
-    create_file 'spec/factories/workspaces.rb', <<~RUBY
+    create_file 'spec/domains/workspaces/factories/workspaces.rb', <<~RUBY
       # frozen_string_literal: true
 
       FactoryBot.define do

@@ -15,6 +15,9 @@ add_gem 'rotp', '~> 6.3' # For 2FA
 add_gem 'rqrcode', '~> 2.2' # For QR codes
 
 after_bundle do
+  # Create domain-specific directories
+  run 'mkdir -p app/domains/auth/app/{controllers,models/concerns,services,jobs,mailers,policies,queries}'
+
   # Set up Devise
   generate 'devise:install'
   generate 'devise', 'User'
@@ -52,9 +55,16 @@ after_bundle do
 
   # Create Identity model for OAuth providers
   generate 'model', 'Identity', 'user:references', 'provider:string', 'uid:string', 'email:string', 'name:string', 'image_url:string'
+  # Move generated Identity model to domain-specific path
+  # This assumes the model file is created in app/models/identity.rb
+  # and needs to be moved to app/domains/auth/app/models/identity.rb
+  # The migration will remain in db/migrate
+  if File.exist?('app/models/identity.rb')
+    FileUtils.mv 'app/models/identity.rb', 'app/domains/auth/app/models/identity.rb'
+  end
 
-  # Create sessions controller
-  create_file 'app/controllers/sessions_controller.rb', <<~'RUBY'
+  # Create sessions controller in domain-specific path
+  create_file 'app/domains/auth/app/controllers/sessions_controller.rb', <<~'RUBY'
     class SessionsController < Devise::SessionsController
       def omniauth
         identity = Identity.find_or_create_by(
@@ -85,7 +95,7 @@ after_bundle do
       private
 
       def auth_params
-        request.env['omniauth.auth']
+        request.env['omniaiauth.auth']
       end
 
       def create_user_from_oauth(identity)
@@ -101,8 +111,8 @@ after_bundle do
     end
   RUBY
 
-  # Create 2FA controller
-  create_file 'app/controllers/two_factor_controller.rb', <<~'RUBY'
+  # Create 2FA controller in domain-specific path
+  create_file 'app/domains/auth/app/controllers/two_factor_controller.rb', <<~'RUBY'
     class TwoFactorController < ApplicationController
       before_action :authenticate_user!
 
@@ -164,8 +174,8 @@ after_bundle do
     end
   RUBY
 
-  # Create User model enhancements
-  create_file 'app/models/concerns/user_authentication.rb', <<~'RUBY'
+  # Create User model enhancements in domain-specific path
+  create_file 'app/domains/auth/app/models/concerns/user_authentication.rb', <<~'RUBY'
     module UserAuthentication
       extend ActiveSupport::Concern
 
@@ -239,9 +249,27 @@ after_bundle do
     end
   RUBY
 
+  # Include UserAuthentication concern in the main User model
+  inject_into_file 'app/models/user.rb', after: "class User < ApplicationRecord\n" do
+    <<~RUBY
+      include UserAuthentication
+    RUBY
+  end
+
+  # Add authentication routes
+  route <<~'RUBY'
+    # Auth domain routes
+    scope module: :auth do
+      devise_for :users, controllers: {
+        sessions: 'sessions',
+        omniauth_callbacks: 'sessions'
+      }
+      resource :two_factor, only: [:show, :enable, :disable]
+    end
+  RUBY
+
   say_status :auth, "Authentication module installed. Next steps:"
   say_status :auth, "1. Run rails db:migrate"
   say_status :auth, "2. Configure OAuth credentials in Rails credentials"
-  say_status :auth, "3. Add authentication routes"
-  say_status :auth, "4. Include UserAuthentication concern in User model"
+  say_status :auth, "3. Review and adjust routes in config/routes.rb if needed"
 end

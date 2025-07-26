@@ -5,6 +5,9 @@
 
 say_status :testing, "Installing testing module with RSpec, factories, and mocks"
 
+# Create domain-specific directories
+run 'mkdir -p spec/domains/testing/{support,factories}'
+
 # Add testing gems
 add_gem 'rspec-rails', '~> 7.1', group: [:development, :test]
 add_gem 'factory_bot_rails', '~> 6.4', group: [:development, :test]
@@ -20,14 +23,14 @@ after_bundle do
   generate 'rspec:install'
 
   # Create factory_bot configuration
-  create_file 'spec/support/factory_bot.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/factory_bot.rb', <<~'RUBY'
     RSpec.configure do |config|
       config.include FactoryBot::Syntax::Methods
     end
   RUBY
 
   # Create webmock configuration
-  create_file 'spec/support/webmock.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/webmock.rb', <<~'RUBY'
     require 'webmock/rspec'
 
     RSpec.configure do |config|
@@ -76,7 +79,7 @@ after_bundle do
   RUBY
 
   # Create VCR configuration
-  create_file 'spec/support/vcr.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/vcr.rb', <<~'RUBY'
     require 'vcr'
 
     VCR.configure do |config|
@@ -93,7 +96,7 @@ after_bundle do
   RUBY
 
   # Create Capybara configuration
-  create_file 'spec/support/capybara.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/capybara.rb', <<~'RUBY'
     require 'capybara/rails'
     require 'capybara/rspec'
     require 'selenium-webdriver'
@@ -119,7 +122,7 @@ after_bundle do
   RUBY
 
   # Create database cleaner configuration
-  create_file 'spec/support/database_cleaner.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/database_cleaner.rb', <<~'RUBY'
     require 'database_cleaner/active_record'
 
     RSpec.configure do |config|
@@ -137,7 +140,7 @@ after_bundle do
   RUBY
 
   # Create shared examples
-  create_file 'spec/support/shared_examples.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/shared_examples.rb', <<~'RUBY'
     RSpec.shared_examples 'authenticated endpoint' do
       context 'when not authenticated' do
         it 'returns 401 unauthorized' do
@@ -172,7 +175,7 @@ after_bundle do
   RUBY
 
   # Create test factories
-  create_file 'spec/factories/users.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/factories/users.rb', <<~'RUBY'
     FactoryBot.define do
       factory :user do
         first_name { Faker::Name.first_name }
@@ -195,7 +198,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'spec/factories/api_tokens.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/factories/api_tokens.rb', <<~'RUBY'
     FactoryBot.define do
       factory :api_token do
         user
@@ -210,7 +213,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'spec/factories/prompt_templates.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/factories/prompt_templates.rb', <<~'RUBY'
     FactoryBot.define do
       factory :prompt_template do
         name { Faker::Lorem.words(number: 3).join(' ').titleize }
@@ -233,7 +236,7 @@ after_bundle do
   RUBY
 
   # Create test helpers
-  create_file 'spec/support/auth_helpers.rb', <<~'RUBY'
+  create_file 'spec/domains/testing/support/auth_helpers.rb', <<~'RUBY'
     module AuthHelpers
       def sign_in_user(user = nil)
         user ||= create(:user)

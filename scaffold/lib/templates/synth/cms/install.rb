@@ -6,6 +6,10 @@
 
 say_status :synth_cms, "Installing CMS/Blog Engine module"
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/cms/app/{controllers/cms,controllers/admin,models,views/cms/posts,views/cms/pages,views/admin/posts,views/admin/pages,views/admin/categories,views/admin/tags,views/layouts}'
+run 'mkdir -p spec/domains/cms/{models,controllers,fixtures}'
+
 # Add required gems to the application's Gemfile
 gem 'friendly_id', '~> 5.5'
 gem 'meta-tags', '~> 2.19'
@@ -64,13 +68,15 @@ after_bundle do
            'meta_description:text',
            'parent:references',
            'position:integer',
-           'published:boolean:index'
+           'published:boolean:index',
+           dir: 'app/domains/cms/app/models'
 
   generate :model, 'Cms::Tag',
            'name:string:index',
            'slug:string:uniq',
            'description:text',
-           'color:string'
+           'color:string',
+           dir: 'app/domains/cms/app/models'
 
   generate :model, 'Cms::Post',
            'title:string:index',
@@ -84,7 +90,8 @@ after_bundle do
            'published_at:datetime:index',
            'author:references',
            'category:references',
-           'view_count:integer:index'
+           'view_count:integer:index',
+           dir: 'app/domains/cms/app/models'
 
   generate :model, 'Cms::Page',
            'title:string:index',
@@ -94,7 +101,8 @@ after_bundle do
            'meta_keywords:string',
            'published:boolean:index',
            'template:string',
-           'position:integer'
+           'position:integer',
+           dir: 'app/domains/cms/app/models'
 
   # Generate join table for posts and tags
   generate :migration, 'CreateCmsPostsTags', 'post:references', 'tag:references'
@@ -104,7 +112,7 @@ after_bundle do
   run 'mkdir -p app/controllers/admin'
 
   # Generate admin controllers
-  create_file 'app/controllers/admin/cms_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/admin/cms_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::CmsController < ApplicationController
@@ -120,7 +128,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/admin/posts_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/admin/posts_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::PostsController < Admin::CmsController
@@ -181,7 +189,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/admin/pages_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/admin/pages_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::PagesController < Admin::CmsController
@@ -239,7 +247,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/admin/categories_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/admin/categories_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::CategoriesController < Admin::CmsController
@@ -298,7 +306,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/admin/tags_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/admin/tags_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Admin::TagsController < Admin::CmsController
@@ -355,7 +363,7 @@ after_bundle do
   RUBY
 
   # Generate public controllers
-  create_file 'app/controllers/cms/posts_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/cms/posts_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Cms::PostsController < ApplicationController
@@ -405,7 +413,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/cms/pages_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/cms/pages_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Cms::PagesController < ApplicationController
@@ -434,7 +442,7 @@ after_bundle do
   RUBY
 
   # Generate sitemap controller
-  create_file 'app/controllers/sitemaps_controller.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/controllers/sitemaps_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class SitemapsController < ApplicationController
@@ -452,23 +460,25 @@ after_bundle do
 
   # Add CMS routes
   route <<~'RUBY'
-    # CMS routes
-    namespace :cms do
-      resources :posts, only: [:index, :show], path: 'blog'
-      resources :pages, only: [:show], path: ''
-    end
+    scope module: :cms do
+      # CMS routes
+      namespace :cms do
+        resources :posts, only: [:index, :show], path: 'blog'
+        resources :pages, only: [:show], path: ''
+      end
 
-    # Admin CMS routes
-    namespace :admin do
-      resources :posts, :pages, :categories, :tags
-      get 'cms', to: 'posts#index'
-    end
+      # Admin CMS routes
+      namespace :admin do
+        resources :posts, :pages, :categories, :tags
+        get 'cms', to: 'posts#index'
+      end
 
-    # SEO routes
-    get 'sitemap.xml', to: 'sitemaps#show', defaults: { format: 'xml' }
-    get 'blog', to: 'cms/posts#index'
-    get 'blog/category/:category', to: 'cms/posts#index', as: :blog_category
-    get 'blog/tag/:tag', to: 'cms/posts#index', as: :blog_tag
+      # SEO routes
+      get 'sitemap.xml', to: 'sitemaps#show', defaults: { format: 'xml' }
+      get 'blog', to: 'cms/posts#index'
+      get 'blog/category/:category', to: 'cms/posts#index', as: :blog_category
+      get 'blog/tag/:tag', to: 'cms/posts#index', as: :blog_tag
+    end
   RUBY
 
   say_status :synth_cms, "Generated models, controllers, and routes"
@@ -476,7 +486,7 @@ after_bundle do
   # Create model concerns and update models
   run 'mkdir -p app/models/concerns'
   
-  create_file 'app/models/concerns/seo_meta.rb', <<~'RUBY'
+  create_file 'app/domains/cms/app/models/concerns/seo_meta.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     module SeoMeta
@@ -497,7 +507,7 @@ after_bundle do
   RUBY
 
   # Update generated models
-  gsub_file 'app/models/cms/category.rb', /class Cms::Category.*/, <<~'RUBY'
+  gsub_file 'app/domains/cms/app/models/cms/category.rb', /class Cms::Category.*/, <<~'RUBY'
     class Cms::Category < ApplicationRecord
       include SeoMeta
       
@@ -525,7 +535,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/models/cms/tag.rb', /class Cms::Tag.*/, <<~'RUBY'
+  gsub_file 'app/domains/cms/app/models/cms/tag.rb', /class Cms::Tag.*/, <<~'RUBY'
     class Cms::Tag < ApplicationRecord
       extend FriendlyId
       friendly_id :name, use: :slugged
@@ -547,7 +557,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/models/cms/post.rb', /class Cms::Post.*/, <<~'RUBY'
+  gsub_file 'app/domains/cms/app/models/cms/post.rb', /class Cms::Post.*/, <<~'RUBY'
     class Cms::Post < ApplicationRecord
       include SeoMeta
       
@@ -595,7 +605,7 @@ after_bundle do
     end
   RUBY
 
-  gsub_file 'app/models/cms/page.rb', /class Cms::Page.*/, <<~'RUBY'
+  gsub_file 'app/domains/cms/app/models/cms/page.rb', /class Cms::Page.*/, <<~'RUBY'
     class Cms::Page < ApplicationRecord
       include SeoMeta
       
@@ -638,25 +648,25 @@ after_bundle do
   say_status :synth_cms, "Updated models with associations and validations"
 
   # Generate views directory structure
-  run 'mkdir -p app/views/cms/posts'
-  run 'mkdir -p app/views/cms/pages'
-  run 'mkdir -p app/views/admin/posts'
-  run 'mkdir -p app/views/admin/pages'
-  run 'mkdir -p app/views/admin/categories'
-  run 'mkdir -p app/views/admin/tags'
-  run 'mkdir -p app/views/layouts'
-  run 'mkdir -p app/views/sitemaps'
+  run 'mkdir -p app/domains/cms/app/views/cms/posts'
+  run 'mkdir -p app/domains/cms/app/views/cms/pages'
+  run 'mkdir -p app/domains/cms/app/views/admin/posts'
+  run 'mkdir -p app/domains/cms/app/views/admin/pages'
+  run 'mkdir -p app/domains/cms/app/views/admin/categories'
+  run 'mkdir -p app/domains/cms/app/views/admin/tags'
+  run 'mkdir -p app/domains/cms/app/views/layouts'
+  run 'mkdir -p app/domains/cms/app/views/sitemaps'
 
   # Load view templates
   require_relative 'views'
 
   # Create admin layout
-  create_file 'app/views/layouts/admin.html.erb', CmsViews::ADMIN_LAYOUT
+  create_file 'app/domains/cms/app/views/layouts/admin.html.erb', CmsViews::ADMIN_LAYOUT
 
   # Create admin views
-  create_file 'app/views/admin/posts/index.html.erb', CmsViews::POSTS_INDEX
-  create_file 'app/views/admin/posts/_form.html.erb', CmsViews::POST_FORM
-  create_file 'app/views/admin/posts/new.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/posts/index.html.erb', CmsViews::POSTS_INDEX
+  create_file 'app/domains/cms/app/views/admin/posts/_form.html.erb', CmsViews::POST_FORM
+  create_file 'app/domains/cms/app/views/admin/posts/new.html.erb', <<~'ERB'
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -668,7 +678,7 @@ after_bundle do
     <%= render 'form', post: @post %>
   ERB
 
-  create_file 'app/views/admin/posts/edit.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/posts/edit.html.erb', <<~'ERB'
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -685,7 +695,7 @@ after_bundle do
     <%= render 'form', post: @post %>
   ERB
 
-  create_file 'app/views/admin/posts/show.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/posts/show.html.erb', <<~'ERB'
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -724,14 +734,14 @@ after_bundle do
   ERB
 
   # Create public views
-  create_file 'app/views/cms/posts/index.html.erb', CmsViews::BLOG_INDEX
-  create_file 'app/views/cms/posts/show.html.erb', CmsViews::BLOG_POST
+  create_file 'app/domains/cms/app/views/cms/posts/index.html.erb', CmsViews::BLOG_INDEX
+  create_file 'app/domains/cms/app/views/cms/posts/show.html.erb', CmsViews::BLOG_POST
 
   # Create sitemap view
-  create_file 'app/views/sitemaps/show.xml.erb', CmsViews::SITEMAP_XML
+  create_file 'app/domains/cms/app/views/sitemaps/show.xml.erb', CmsViews::SITEMAP_XML
 
   # Create basic page views (similar structure to posts)
-  create_file 'app/views/admin/pages/index.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/pages/index.html.erb', <<~'ERB'
     <div class="sm:flex sm:items-center">
       <div class="sm:flex-auto">
         <h1 class="text-base font-semibold leading-6 text-gray-900">Pages</h1>
@@ -791,7 +801,7 @@ after_bundle do
   ERB
 
   # Similar forms for pages (reusing post form structure)
-  create_file 'app/views/admin/pages/_form.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/pages/_form.html.erb', <<~'ERB'
     <%= form_with(model: [:admin, @page], local: true, class: "space-y-6") do |form| %>
       <% if @page.errors.any? %>
         <div class="rounded-md bg-red-50 p-4">
@@ -884,7 +894,7 @@ after_bundle do
     <% end %>
   ERB
 
-  create_file 'app/views/admin/pages/new.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/pages/new.html.erb', <<~'ERB'
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -896,7 +906,7 @@ after_bundle do
     <%= render 'form', page: @page %>
   ERB
 
-  create_file 'app/views/admin/pages/edit.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/admin/pages/edit.html.erb', <<~'ERB'
     <div class="md:flex md:items-center md:justify-between mb-8">
       <div class="min-w-0 flex-1">
         <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -913,7 +923,7 @@ after_bundle do
     <%= render 'form', page: @page %>
   ERB
 
-  create_file 'app/views/cms/pages/show.html.erb', <<~'ERB'
+  create_file 'app/domains/cms/app/views/cms/pages/show.html.erb', <<~'ERB'
     <article class="mx-auto max-w-3xl px-6 py-24 lg:px-8">
       <div class="mx-auto max-w-2xl lg:mx-0">
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">

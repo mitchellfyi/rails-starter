@@ -5,6 +5,10 @@
 
 say_status :mcp, "Installing Multi-Context Provider system"
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/mcp/app/{controllers,models,services/context_providers}'
+run 'mkdir -p spec/domains/mcp/{models,services,controllers}'
+
 # Add MCP-specific gems
 add_gem 'httparty', '~> 0.22'
 add_gem 'faraday', '~> 2.7'
@@ -24,66 +28,10 @@ after_bundle do
   generate 'model', 'ContextCache', 'key:string', 'data:json', 'expires_at:datetime', 'provider:string'
 
   # Create base context provider
-  create_file 'app/services/context_providers/base_provider.rb', <<~'RUBY'
-    module ContextProviders
-      class BaseProvider
-        attr_reader :config, :params
-
-        def initialize(config = {}, params = {})
-          @config = config.with_indifferent_access
-          @params = params.with_indifferent_access
-        end
-
-        def fetch
-          cache_key = generate_cache_key
-          
-          if cached_data = get_cached_data(cache_key)
-            return cached_data
-          end
-
-          data = fetch_data
-          cache_data(cache_key, data) if data
-          data
-        rescue => e
-          Rails.logger.error "Context provider error: #{e.message}"
-          handle_error(e)
-        end
-
-        private
-
-        def fetch_data
-          raise NotImplementedError, "Subclasses must implement fetch_data"
-        end
-
-        def generate_cache_key
-          "mcp:#{self.class.name.demodulize.underscore}:#{params.to_query}"
-        end
-
-        def get_cached_data(key)
-          cache_record = ContextCache.find_by(key: key)
-          return nil unless cache_record
-          return nil if cache_record.expires_at < Time.current
-
-          cache_record.data
-        end
-
-        def cache_data(key, data)
-          ContextCache.find_or_create_by(key: key) do |record|
-            record.data = data
-            record.expires_at = Rails.application.config.mcp.cache_ttl.from_now
-            record.provider = self.class.name
-          end
-        end
-
-        def handle_error(error)
-          { error: error.message, provider: self.class.name }
-        end
-      end
-    end
-  RUBY
+  create_file 'app/domains/mcp/app/services/context_providers/base_provider.rb', <<~'RUBY'
 
   # Create database context provider
-  create_file 'app/services/context_providers/database_provider.rb', <<~'RUBY'
+  create_file 'app/domains/mcp/app/services/context_providers/database_provider.rb', <<~'RUBY'
     module ContextProviders
       class DatabaseProvider < BaseProvider
         def fetch_data
@@ -126,7 +74,7 @@ after_bundle do
   RUBY
 
   # Create API context provider
-  create_file 'app/services/context_providers/api_provider.rb', <<~'RUBY'
+  create_file 'app/domains/mcp/app/services/context_providers/api_provider.rb', <<~'RUBY'
     module ContextProviders
       class ApiProvider < BaseProvider
         include HTTParty
@@ -208,7 +156,7 @@ after_bundle do
   RUBY
 
   # Create MCP service
-  create_file 'app/services/mcp_service.rb', <<~'RUBY'
+  create_file 'app/domains/mcp/app/services/mcp_service.rb', <<~'RUBY'
     class McpService
       attr_reader :context
 
@@ -256,7 +204,7 @@ after_bundle do
   RUBY
 
   # Create MCP controller
-  create_file 'app/controllers/mcp_controller.rb', <<~'RUBY'
+  create_file 'app/domains/mcp/app/controllers/mcp_controller.rb', <<~'RUBY'
     class McpController < ApplicationController
       before_action :authenticate_user!
 
@@ -284,9 +232,8 @@ after_bundle do
     end
   RUBY
 
-  say_status :mcp, "MCP module installed. Next steps:"
-  say_status :mcp, "1. Run rails db:migrate"
-  say_status :mcp, "2. Add MCP routes"
-  say_status :mcp, "3. Configure context providers"
-  say_status :mcp, "4. Test with bin/synth test mcp"
-end
+  route <<~'RUBY'
+    scope module: :mcp do
+      get '/mcp/test', to: 'mcp#test'
+    end
+  RUBY

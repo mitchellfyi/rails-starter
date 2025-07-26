@@ -5,6 +5,10 @@
 
 say "Installing I18n module..."
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/i18n/app/{controllers/concerns,helpers/concerns,assets/stylesheets,views/shared}'
+run 'mkdir -p spec/domains/i18n/integration'
+
 # Add required gems
 gem 'rails-i18n', '~> 7.0'
 
@@ -126,7 +130,7 @@ concern_content = <<~RUBY
   end
 RUBY
 
-create_file 'app/controllers/concerns/application_controller/locale_management.rb', concern_content
+create_file 'app/domains/i18n/app/controllers/concerns/application_controller/locale_management.rb', concern_content
 
 # Create formatting helpers
 helper_content = <<~RUBY
@@ -196,7 +200,7 @@ helper_content = <<~RUBY
   end
 RUBY
 
-create_file 'app/helpers/concerns/application_helper/i18n_formatting.rb', helper_content
+create_file 'app/domains/i18n/app/helpers/concerns/application_helper/i18n_formatting.rb', helper_content
 
 # Create English translations
 en_translations = <<~YAML
@@ -427,7 +431,7 @@ css_content = <<~CSS
   }
 CSS
 
-create_file 'app/assets/stylesheets/i18n.css', css_content
+create_file 'app/domains/i18n/app/assets/stylesheets/i18n.css', css_content
 
 # Create locale switching component
 component_content = <<~HTML
@@ -449,7 +453,7 @@ component_content = <<~HTML
   </div>
 HTML
 
-create_file 'app/views/shared/_locale_switcher.html.erb', component_content
+create_file 'app/domains/i18n/app/views/shared/_locale_switcher.html.erb', component_content
 
 # Create test files
 test_content = <<~RUBY
@@ -531,7 +535,7 @@ test_content = <<~RUBY
   end
 RUBY
 
-create_file 'test/integration/i18n_test.rb', test_content
+create_file 'spec/domains/i18n/integration/i18n_test.rb', test_content
 
 # Add include to ApplicationController
 controller_include = <<~RUBY
@@ -598,9 +602,8 @@ say "✅ I18n module installed successfully!"
 say ""
 say "Next steps:"
 say "1. Run `rails db:migrate` to add locale column to users"
-say "2. Add I18n concern to ApplicationController (see doc/i18n_controller_setup.md)"
-say "3. Update your layout files (see doc/i18n_layout_setup.md)"
-say "4. Run tests with `rails test test/integration/i18n_test.rb`"
+say "2. Review the I18n module README for integration instructions."
+say "3. Run tests with `bundle exec rspec spec/domains/i18n/`"
 say ""
 say "Your application now supports:"
 say "  ✓ Automatic locale detection"

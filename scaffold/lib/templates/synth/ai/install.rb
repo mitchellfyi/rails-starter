@@ -3,18 +3,17 @@
 # Synth AI module installer for the Rails SaaS starter template.
 # This install script is executed by the bin/synth CLI when adding the AI module.
 
-say_status :synth_ai, "Installing AI module with PromptTemplate and audit system"
+say_status :synth_ai, "Installing AI module"
 
 # Add AI specific gems to the application's Gemfile
-add_gem 'ruby-openai'
+add_gem 'ruby-openai', '~> 7.0'
 add_gem 'paper_trail'
-say_status :synth_ai, "Installing AI module with LLM job system"
-
-# Add AI specific gems to the application's Gemfile
-gem 'ruby-openai', '~> 7.0'
 
 # Run bundle install and set up AI configuration after gems are installed
 after_bundle do
+  # Create domain-specific directories
+  run 'mkdir -p app/domains/ai/app/{controllers,models,services,jobs,views,policies,queries}'
+  run 'mkdir -p spec/domains/ai/{models,controllers,jobs,fixtures}'
   # Create an initializer for AI configuration
   initializer 'ai.rb', <<~'RUBY'
     # AI module configuration
@@ -35,7 +34,7 @@ after_bundle do
   RUBY
 
   # Create PromptTemplate model and migration
-  create_file 'app/models/prompt_template.rb', <<~'RUBY'
+  create_file 'app/domains/ai/app/models/prompt_template.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptTemplate < ApplicationRecord
@@ -93,7 +92,7 @@ after_bundle do
   RUBY
 
   # Create PromptExecution model for audit history
-  create_file 'app/models/prompt_execution.rb', <<~'RUBY'
+  create_file 'app/domains/ai/app/models/prompt_execution.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptExecution < ApplicationRecord
@@ -207,7 +206,7 @@ after_bundle do
   RUBY
 
   # Create controllers
-  create_file 'app/controllers/prompt_templates_controller.rb', <<~'RUBY'
+  create_file 'app/domains/ai/app/controllers/prompt_templates_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptTemplatesController < ApplicationController
@@ -325,7 +324,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'app/controllers/prompt_executions_controller.rb', <<~'RUBY'
+  create_file 'app/domains/ai/app/controllers/prompt_executions_controller.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class PromptExecutionsController < ApplicationController
@@ -391,8 +390,8 @@ after_bundle do
   RUBY
 
   # Create views
-  run 'mkdir -p app/views/prompt_templates'
-  create_file 'app/views/prompt_templates/index.html.erb', <<~'ERB'
+  run 'mkdir -p app/domains/ai/app/views/prompt_templates'
+  create_file 'app/domains/ai/app/views/prompt_templates/index.html.erb', <<~'ERB'
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
@@ -469,7 +468,7 @@ after_bundle do
     </div>
   ERB
 
-  create_file 'app/views/prompt_templates/show.html.erb', <<~'ERB'
+  create_file 'app/domains/ai/app/views/prompt_templates/show.html.erb', <<~'ERB'
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="lg:flex lg:items-center lg:justify-between">
         <div class="min-w-0 flex-1">
@@ -753,7 +752,7 @@ after_bundle do
     </script>
   ERB
 
-  create_file 'app/views/prompt_templates/_form.html.erb', <<~'ERB'
+  create_file 'app/domains/ai/app/views/prompt_templates/_form.html.erb', <<~'ERB'
     <%= form_with model: prompt_template, local: true, class: 'space-y-6' do |form| %>
       <% if prompt_template.errors.any? %>
         <div class="rounded-md bg-red-50 p-4">
@@ -888,7 +887,7 @@ after_bundle do
     </script>
   ERB
 
-  create_file 'app/views/prompt_templates/new.html.erb', <<~'ERB'
+  create_file 'app/domains/ai/app/views/prompt_templates/new.html.erb', <<~'ERB'
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">New Prompt Template</h1>
@@ -903,7 +902,7 @@ after_bundle do
     </div>
   ERB
 
-  create_file 'app/views/prompt_templates/edit.html.erb', <<~'ERB'
+  create_file 'app/domains/ai/app/views/prompt_templates/edit.html.erb', <<~'ERB'
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">Edit Prompt Template</h1>
@@ -919,8 +918,8 @@ after_bundle do
   ERB
 
   # Add execution views
-  run 'mkdir -p app/views/prompt_executions'
-  create_file 'app/views/prompt_executions/index.html.erb', <<~'ERB'
+  run 'mkdir -p app/domains/ai/app/views/prompt_executions'
+  create_file 'app/domains/ai/app/views/prompt_executions/index.html.erb', <<~'ERB'
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="sm:flex sm:items-center">
         <div class="sm:flex-auto">
@@ -998,7 +997,7 @@ after_bundle do
     </div>
   ERB
 
-  create_file 'app/views/prompt_executions/show.html.erb', <<~'ERB'
+  create_file 'app/domains/ai/app/views/prompt_executions/show.html.erb', <<~'ERB'
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -1087,7 +1086,7 @@ after_bundle do
   ERB
 
   # Add CSS for status indicators
-  create_file 'app/assets/stylesheets/prompt_templates.css', <<~'CSS'
+  create_file 'app/domains/ai/app/assets/stylesheets/prompt_templates.css', <<~'CSS'
     .status-pending {
       @apply bg-yellow-100 text-yellow-800;
     }
@@ -1114,12 +1113,14 @@ after_bundle do
 
   # Add routes
   route <<~'RUBY'
-    resources :prompt_templates do
-      member do
-        post :preview
-        get :diff
+    scope module: :ai do
+      resources :prompt_templates do
+        member do
+          post :preview
+          get :diff
+        end
+        resources :prompt_executions, only: [:index, :show, :create, :destroy]
       end
-      resources :prompt_executions, only: [:index, :show, :create, :destroy]
     end
   RUBY
 
@@ -1127,7 +1128,7 @@ after_bundle do
   run 'mkdir -p test/models test/controllers test/fixtures'
 
   # Model tests
-  create_file 'test/models/prompt_template_test.rb', <<~'RUBY'
+  create_file 'spec/domains/ai/models/prompt_template_test.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     require 'test_helper'
@@ -1276,7 +1277,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'test/models/prompt_execution_test.rb', <<~'RUBY'
+  create_file 'spec/domains/ai/models/prompt_execution_test.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     require 'test_helper'
@@ -1414,7 +1415,7 @@ after_bundle do
   RUBY
 
   # Controller tests
-  create_file 'test/controllers/prompt_templates_controller_test.rb', <<~'RUBY'
+  create_file 'spec/domains/ai/controllers/prompt_templates_controller_test.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     require 'test_helper'
@@ -1603,7 +1604,7 @@ after_bundle do
     end
   RUBY
 
-  create_file 'test/controllers/prompt_executions_controller_test.rb', <<~'RUBY'
+  create_file 'spec/domains/ai/controllers/prompt_executions_controller_test.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     require 'test_helper'
@@ -1710,7 +1711,7 @@ after_bundle do
   RUBY
 
   # Fixtures
-  create_file 'test/fixtures/prompt_templates.yml', <<~'YAML'
+  create_file 'spec/domains/ai/fixtures/prompt_templates.yml', <<~'YAML'
     basic:
       name: Basic Template
       slug: basic_template
@@ -1740,7 +1741,7 @@ after_bundle do
       updated_at: <%= 3.days.ago %>
   YAML
 
-  create_file 'test/fixtures/prompt_executions.yml', <<~'YAML'
+  create_file 'spec/domains/ai/fixtures/prompt_executions.yml', <<~'YAML'
     successful:
       prompt_template: basic
       input_context: {"name": "John"}

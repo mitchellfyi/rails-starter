@@ -5,6 +5,10 @@
 
 say_status :docs, "Installing documentation module with generators and tools"
 
+# Create domain-specific directories
+run 'mkdir -p app/domains/docs/app/services'
+run 'mkdir -p app/domains/docs/lib/tasks'
+
 # Add documentation gems
 add_gem 'yard', '~> 0.9', group: :development
 add_gem 'redcarpet', '~> 3.6', group: :development
@@ -27,7 +31,7 @@ after_bundle do
   OPTS
 
   # Create documentation generator service
-  create_file 'app/services/documentation_generator.rb', <<~'RUBY'
+  create_file 'app/domains/docs/app/services/documentation_generator.rb', <<~'RUBY'
     class DocumentationGenerator
       attr_reader :output_dir
 
@@ -425,7 +429,7 @@ after_bundle do
   RUBY
 
   # Create documentation Rake task
-  create_file 'lib/tasks/docs.rake', <<~'RUBY'
+  create_file 'app/domains/docs/lib/tasks/docs.rake', <<~'RUBY'
     namespace :docs do
       desc "Generate all documentation"
       task generate: :environment do
