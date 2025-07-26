@@ -528,6 +528,9 @@ after_bundle do
         def create
           @plan = Plan.new(plan_params)
           
+          # Handle features and feature_limits arrays
+          process_plan_arrays
+          
           if @plan.save
             # Create corresponding Stripe product and price if Stripe IDs not provided
             unless @plan.stripe_product_id.present? && @plan.stripe_price_id.present?
@@ -547,6 +550,9 @@ after_bundle do
         end
 
         def update
+          # Handle features and feature_limits arrays
+          process_plan_arrays
+          
           if @plan.update(plan_params)
             # Update Stripe product if needed
             update_stripe_product if stripe_needs_update?
@@ -590,8 +596,34 @@ after_bundle do
             :name, :description, :amount, :currency, :interval, :usage_type,
             :trial_period_days, :sort_order, :highlighted, :active,
             :stripe_product_id, :stripe_price_id,
-            features: [], metadata: {}, feature_limits: {}
+            features: []
           )
+        end
+
+        def process_plan_arrays
+          # Handle features array
+          if params[:plan][:features].present?
+            @plan.features = params[:plan][:features].reject(&:blank?)
+          end
+
+          # Handle feature_limits hash from separate key/value arrays
+          if params[:plan][:feature_limits_keys].present? && params[:plan][:feature_limits_values].present?
+            keys = params[:plan][:feature_limits_keys].reject(&:blank?)
+            values = params[:plan][:feature_limits_values].reject(&:blank?)
+            
+            feature_limits = {}
+            keys.each_with_index do |key, index|
+              if values[index].present?
+                # Try to convert to integer if it's a number, otherwise keep as string
+                value = values[index].match?(/\A-?\d+\z/) ? values[index].to_i : values[index]
+                feature_limits[key] = value
+              end
+            end
+            @plan.feature_limits = feature_limits
+          end
+
+          # Handle metadata (if you want to add metadata editing later)
+          @plan.metadata ||= {}
         end
 
         def authenticate_admin!
@@ -639,6 +671,83 @@ after_bundle do
             description: @plan.description,
             metadata: @plan.metadata || {}
           })
+        end
+      end
+    end
+  RUBY
+
+  # Create admin coupon controller for coupon management
+  create_file 'app/domains/billing/app/controllers/admin/coupons_controller.rb', <<~'RUBY'
+    # frozen_string_literal: true
+
+    module Admin
+      class CouponsController < ApplicationController
+        before_action :authenticate_admin!
+        before_action :set_coupon, only: [:show, :edit, :update, :destroy, :activate, :deactivate]
+
+        def index
+          @coupons = Coupon.all.order(:code)
+        end
+
+        def show
+        end
+
+        def new
+          @coupon = Coupon.new
+        end
+
+        def create
+          @coupon = Coupon.new(coupon_params)
+          
+          if @coupon.save
+            redirect_to admin_coupon_path(@coupon), notice: 'Coupon created successfully.'
+          else
+            render :new
+          end
+        end
+
+        def edit
+        end
+
+        def update
+          if @coupon.update(coupon_params)
+            redirect_to admin_coupon_path(@coupon), notice: 'Coupon updated successfully.'
+          else
+            render :edit
+          end
+        end
+
+        def destroy
+          @coupon.destroy
+          redirect_to admin_coupons_path, notice: 'Coupon deleted successfully.'
+        end
+
+        def activate
+          @coupon.update!(active: true)
+          redirect_to admin_coupons_path, notice: 'Coupon activated successfully.'
+        end
+
+        def deactivate
+          @coupon.update!(active: false)
+          redirect_to admin_coupons_path, notice: 'Coupon deactivated successfully.'
+        end
+
+        private
+
+        def set_coupon
+          @coupon = Coupon.find(params[:id])
+        end
+
+        def coupon_params
+          params.require(:coupon).permit(
+            :code, :stripe_coupon_id, :discount_type, :discount_value,
+            :valid_from, :valid_until, :max_redemptions, :active
+          )
+        end
+
+        def authenticate_admin!
+          # Implement your admin authentication logic here
+          redirect_to root_path unless current_user&.admin?
         end
       end
     end
@@ -1335,6 +1444,12 @@ after_bundle do
   template 'billing_mailer/invoice_paid.html.erb', 'app/domains/billing/app/views/billing_mailer/invoice_paid.html.erb'
   template 'billing_mailer/payment_failed.html.erb', 'app/domains/billing/app/views/billing_mailer/payment_failed.html.erb'
   template 'billing_mailer/trial_will_end.html.erb', 'app/domains/billing/app/views/billing_mailer/trial_will_end.html.erb'
+  
+  # Copy admin view templates
+  template 'admin/plans/index.html.erb', 'app/domains/billing/app/views/admin/plans/index.html.erb'
+  template 'admin/plans/show.html.erb', 'app/domains/billing/app/views/admin/plans/show.html.erb'
+  template 'admin/plans/new.html.erb', 'app/domains/billing/app/views/admin/plans/new.html.erb'
+  template 'admin/plans/edit.html.erb', 'app/domains/billing/app/views/admin/plans/edit.html.erb'
 
   # Copy JavaScript assets
   copy_file 'billing.js', 'app/domains/billing/app/assets/javascripts/billing.js'
@@ -1359,6 +1474,15 @@ after_bundle do
   ENV
 
   say_status :synth_billing, "Billing module installed successfully!"
-  say_status :synth_billing, "Please run 'rails db:migrate' and configure your Stripe API keys."
-  say_status :synth_billing, "Don't forget to set up webhook endpoints in your Stripe dashboard."
+  say_status :synth_billing, "✅ Enhanced plan model with metadata and feature limits"
+  say_status :synth_billing, "✅ Improved webhook retry logic with error classification"
+  say_status :synth_billing, "✅ Added admin UI for plan management"
+  say_status :synth_billing, "✅ Comprehensive edge case tests included"
+  say_status :synth_billing, ""
+  say_status :synth_billing, "Next steps:"
+  say_status :synth_billing, "1. Run 'rails db:migrate' to create billing tables"
+  say_status :synth_billing, "2. Configure your Stripe API keys in .env"
+  say_status :synth_billing, "3. Set up webhook endpoints in your Stripe dashboard"
+  say_status :synth_billing, "4. Access admin plan management at /admin/plans"
+  say_status :synth_billing, "5. Add admin? method to User model for admin access"
 end
