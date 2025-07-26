@@ -885,8 +885,8 @@ after_bundle do
   # ==========================================
 
   # Create admin migration for users
-  generate :migration, 'add_admin_to_users', <<~'RUBY'
-    class AddAdminToUsers < ActiveRecord::Migration[7.1]
+  generate :migration, 'add_admin_to_users', <<~RUBY
+    class AddAdminToUsers < ActiveRecord::Migration[#{ActiveRecord::Migration.current_version}]
       def change
         add_column :users, :admin, :boolean, default: false, null: false
         add_index :users, :admin
