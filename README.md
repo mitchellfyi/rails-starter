@@ -17,6 +17,8 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 1. **Install prerequisites.**  You’ll need a recent Ruby (matching Rails Edge), Node.js/Yarn, PostgreSQL (with the `pgvector` extension), Redis, and Fly.io or Render CLI if you plan to deploy.
 2. **Create your app.**  Run:
 
+   ```bash
+   rails new myapp --dev -m https://raw.githubusercontent.com/mitchellfyi/rails-starter/main/scaffold/template.rb
    cd myapp
    
    # Boot the application
@@ -28,20 +30,62 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 
 3. **Explore `bin/synth`.**  The CLI tool allows you to manage feature modules:
 
-   ```sh
-   bin/synth list            # Show installed modules
-   bin/synth add ai          # Add AI/LLM support
-   bin/synth add billing     # Add Stripe billing
-   bin/synth remove cms      # Remove the CMS/blog engine
-   bin/synth upgrade         # Pull in latest module versions
-   bin/synth test ai         # Run AI tests
-   bin/synth doctor          # Validate your setup (keys, MCP fetchers)
-   bin/synth scaffold agent chatbot_support
+   ```bash
+   bin/synth help              # Show all available commands with descriptions
+   bin/synth list              # Show installed modules
+   bin/synth add ai            # Add AI/LLM support
+   bin/synth add billing       # Add Stripe billing
+   bin/synth add cms           # Add CMS/blog engine
+   bin/synth remove cms        # Remove the CMS/blog engine
+   bin/synth upgrade           # Pull in latest module versions
+   bin/synth test ai           # Run AI tests
+   bin/synth doctor            # Validate your setup (keys, MCP fetchers)
+   bin/synth scaffold agent chatbot_support  # Create AI agent
    ```
 
 4. **Configure your environment.**  Copy `.env.example` to `.env` and fill in secrets for Devise, OmniAuth providers, Stripe API keys, and LLM providers.  Configure your database (`config/database.yml`) and set up Redis.
 
 5. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+
+## Troubleshooting
+
+### Common Issues
+
+**"Thor not found" error:**
+```bash
+# Install Thor gem system-wide
+sudo apt install ruby-thor  # Ubuntu/Debian
+gem install thor             # Alternative if you have gem permissions
+```
+
+**Database connection errors:**
+```bash
+# Ensure PostgreSQL is running and pgvector is installed
+sudo apt install postgresql-16-pgvector  # Ubuntu/Debian
+createdb myapp_development
+```
+
+**Redis connection errors:**
+```bash
+# Start Redis service
+sudo systemctl start redis-server
+# Or install Redis
+sudo apt install redis-server
+```
+
+**Missing environment variables:**
+```bash
+# Copy and configure environment file
+cp .env.example .env
+# Edit .env with your API keys and database credentials
+```
+
+### Getting Help
+
+- Check the [CHANGELOG.md](CHANGELOG.md) for recent changes
+- Review module-specific documentation in `lib/templates/synth/`
+- Run `bin/synth doctor` to validate your setup
+- Open an issue on GitHub for bugs or feature requests
 
 ## Features
 
@@ -68,7 +112,17 @@ Most Rails templates are either toy examples or opinionated stacks that become b
 
 ### CLI (`bin/synth`)
 
-The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/templates/synth/` directory.  Modules encapsulate features like `auth`, `billing`, `ai`, `mcp`, `cms`, `admin`, `deploy`, `testing`, `api`, and `docs`.  Each module includes installation scripts, migrations, seeds, and a README.  The CLI logs its actions to `log/synth.log` and provides commands to scaffold new agents for AI features.
+The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/templates/synth/` directory.  Modules encapsulate features like `ai`, `billing`, `cms`, `admin`, `deploy`, `testing`, `api`, and `docs`.  Each module includes installation scripts, migrations, seeds, and a README.  The CLI logs its actions to `log/synth.log` and provides commands to scaffold new agents for AI features.
+
+**Key Commands:**
+- `bin/synth help` - Show all commands with detailed descriptions
+- `bin/synth add MODULE` - Install feature modules (ai, billing, cms, admin)
+- `bin/synth list` - Show installed modules and versions
+- `bin/synth doctor` - Validate setup, API keys, and configuration
+- `bin/synth test [MODULE]` - Run tests for all modules or specific module
+- `bin/synth scaffold agent NAME` - Create new AI agents
+
+For complete CLI documentation and examples, see the [Documentation Index](docs/README.md).
 
 ### Testing
 
@@ -80,13 +134,24 @@ Seed data sets up a demo organisation with a user, example prompt templates, exa
 
 ## Contributing
 
-Contributions are welcome!  Please read **AGENTS.md** for detailed instructions on picking tasks, planning, implementing, testing, and verifying work.  In short:
+Contributions are welcome!  Please read **[AGENTS.md](AGENTS.md)** for detailed instructions on picking tasks, planning, implementing, testing, and verifying work.  
 
-1. Pick an open issue from the project board.
-2. Create a branch and implement the feature with tests.
-3. Keep commits small and focused; follow established patterns.
-4. Update documentation where needed.
-5. Open a PR, link it to the issue, and request review.
+### Quick Start for Contributors
+1. Pick an open issue from the [project board](https://github.com/users/mitchellfyi/projects/2)
+2. Create a branch and implement the feature with tests
+3. Keep commits small and focused; follow established patterns
+4. Update documentation where needed
+5. Open a PR, link it to the issue, and request review
+
+### Documentation
+- **[Documentation Index](docs/README.md)** - Complete documentation overview
+- **[Module Development Guide](docs/CONTRIBUTING_MODULES.md)** - How to create new modules  
+- **[Testing Strategy](docs/TESTING.md)** - Testing guidelines and CI setup
+- **[API Documentation](docs/api/README.md)** - Complete REST API reference
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Environment and module setup
+
+### Module System
+Create new features as self-contained modules using `bin/synth`. See the [Module Development Guide](docs/CONTRIBUTING_MODULES.md) for detailed instructions.
 
 ## License
 
