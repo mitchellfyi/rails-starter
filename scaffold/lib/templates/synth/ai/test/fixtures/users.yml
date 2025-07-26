@@ -3,8 +3,8 @@
 
 one:
   email: "alice@example.com"
-  encrypted_password: "<%= Devise::Encryptor.digest(User, 'password123') %>"
+  encrypted_password: "<%= User.new.send(:password_digest, 'password123') %>"
 
 two:
   email: "bob@example.com"
-  encrypted_password: "<%= Devise::Encryptor.digest(User, 'password123') %>"
+  encrypted_password: "<%= User.new.send(:password_digest, 'password123') %>"
