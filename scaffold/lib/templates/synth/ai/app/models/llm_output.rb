@@ -8,7 +8,7 @@ class LLMOutput < ApplicationRecord
   validates :model_name, presence: true
   validates :format, presence: true, inclusion: { in: %w[text json markdown html] }
   validates :status, presence: true, inclusion: { in: %w[pending processing completed failed] }
-  validates :raw_response, presence: true, on: :update
+  validate :raw_response_required_for_completed_status
   validates :job_id, presence: true
 
   enum feedback: {
