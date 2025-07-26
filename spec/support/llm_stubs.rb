@@ -28,7 +28,7 @@ module LlmStubs
     # Stub Anthropic API calls
     # Example: allow_any_instance_of(Anthropic::Client).to receive(:completions)
   end
-end
+}
 
 RSpec.configure do |config|
   config.include LlmStubs

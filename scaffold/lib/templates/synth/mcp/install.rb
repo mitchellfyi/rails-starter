@@ -300,3 +300,10 @@ after_bundle do
   say_status :mcp, "3. Configure context providers"
   say_status :mcp, "4. Test with bin/synth test mcp"
 end
+
+  say_status :mcp, "MCP module installed. Next steps:"
+  say_status :mcp, "1. Run rails db:migrate"
+  say_status :mcp, "2. Add MCP routes"
+  say_status :mcp, "3. Configure context providers"
+  say_status :mcp, "4. Test with bin/synth test mcp"
+end
