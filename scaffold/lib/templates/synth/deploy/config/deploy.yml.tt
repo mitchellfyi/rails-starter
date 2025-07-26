@@ -1,0 +1,93 @@
+# Kamal deployment configuration
+# See https://kamal-deploy.org/docs/configuration for more information
+
+service: <%= app_name %>
+image: <%= app_name %>
+
+servers:
+  web:
+    hosts:
+      - YOUR_SERVER_IP_1
+      - YOUR_SERVER_IP_2
+    labels:
+      traefik.http.routers.web.rule: Host(`yourapp.com`)
+      traefik.http.routers.web.tls.certresolver: letsencrypt
+    options:
+      network: "kamal"
+      
+  worker:
+    hosts:
+      - YOUR_WORKER_SERVER_IP
+    cmd: bin/sidekiq
+    options:
+      network: "kamal"
+
+registry:
+  server: ghcr.io
+  username: 
+    - KAMAL_REGISTRY_USERNAME
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+env:
+  clear:
+    RAILS_ENV: production
+    RAILS_LOG_TO_STDOUT: "true"
+    RAILS_SERVE_STATIC_FILES: "true"
+    FORCE_SSL: "true"
+  secret:
+    - DATABASE_URL
+    - REDIS_URL
+    - SECRET_KEY_BASE
+    - RAILS_MASTER_KEY
+
+builder:
+  args:
+    RUBY_VERSION: 3.3.0
+
+healthcheck:
+  path: /health
+  port: 3000
+  max_attempts: 7
+  interval: 20s
+
+accessories:
+  postgres:
+    image: postgres:16
+    host: YOUR_DATABASE_SERVER_IP
+    env:
+      clear:
+        POSTGRES_DB: <%= app_name %>_production
+      secret:
+        - POSTGRES_USER
+        - POSTGRES_PASSWORD
+    files:
+      - config/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    directories:
+      - data:/var/lib/postgresql/data
+    
+  redis:
+    image: redis:7
+    host: YOUR_REDIS_SERVER_IP
+    cmd: redis-server --save 20 1 --loglevel warning --requirepass $REDIS_PASSWORD
+    env:
+      secret:
+        - REDIS_PASSWORD
+    directories:
+      - data:/data
+
+traefik:
+  options:
+    publish:
+      - "443:443"
+    volume:
+      - "/letsencrypt/acme.json:/letsencrypt/acme.json"
+  args:
+    entrypoints.web.address: ":80"
+    entrypoints.websecure.address: ":443"
+    certificatesresolvers.letsencrypt.acme.tlschallenge: true
+    certificatesresolvers.letsencrypt.acme.email: "your-email@example.com"
+    certificatesresolvers.letsencrypt.acme.storage: "/letsencrypt/acme.json"
+
+ssh:
+  user: deploy
