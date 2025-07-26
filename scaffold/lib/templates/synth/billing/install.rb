@@ -222,6 +222,7 @@ after_bundle do
       end
     end
   RUBY
+  create_file 'app/models/coupon.rb', <<~'RUBY'
     # frozen_string_literal: true
 
     class Coupon < ApplicationRecord
