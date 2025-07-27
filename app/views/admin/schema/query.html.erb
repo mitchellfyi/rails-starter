@@ -1,0 +1,617 @@
+<% content_for :page_title, "Query Interface" %>
+
+<div class="admin-content">
+  <div class="content-header">
+    <div class="header-with-nav">
+      <%= link_to admin_schema_index_path, class: "back-link" do %>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Back to Schema
+      <% end %>
+      <h1>Query Interface</h1>
+    </div>
+    <p class="content-description">
+      Execute read-only SQL queries against your database. Only SELECT statements are allowed for security.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+    <!-- Query Form -->
+    <div class="xl:col-span-3">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">SQL Query</h2>
+          <div class="query-actions">
+            <button type="button" id="explain-btn" class="btn btn-secondary">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="btn-icon">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Explain
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <%= form_with url: admin_schema_query_path, method: :get, local: true, class: "query-form" do |form| %>
+            <div class="form-group">
+              <%= form.text_area :sql, 
+                    value: params[:sql], 
+                    placeholder: "SELECT * FROM workspaces LIMIT 10", 
+                    class: "sql-textarea",
+                    id: "sql-query" %>
+            </div>
+            <div class="form-actions">
+              <%= form.submit "Execute Query", class: "btn btn-primary" %>
+              <button type="button" id="clear-btn" class="btn btn-secondary">Clear</button>
+            </div>
+          <% end %>
+
+          <!-- Query Examples -->
+          <div class="query-examples">
+            <h4 class="examples-title">Example Queries:</h4>
+            <div class="examples-list">
+              <button type="button" class="example-query" data-query="SELECT * FROM workspaces LIMIT 10">
+                Basic workspace query
+              </button>
+              <button type="button" class="example-query" data-query="SELECT COUNT(*) as total_workspaces FROM workspaces">
+                Count workspaces
+              </button>
+              <button type="button" class="example-query" data-query="SELECT name, created_at FROM workspaces ORDER BY created_at DESC LIMIT 5">
+                Recent workspaces
+              </button>
+              <button type="button" class="example-query" data-query="SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'">
+                List all tables
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Query Results -->
+      <% if @query_result || @error %>
+        <div class="card mt-6">
+          <div class="card-header">
+            <h2 class="card-title">
+              <% if @error %>
+                Query Error
+              <% else %>
+                Query Results
+              <% end %>
+            </h2>
+            <% if @query_result %>
+              <div class="results-info">
+                <span class="result-count"><%= @query_result[:count] %> rows</span>
+              </div>
+            <% end %>
+          </div>
+          <div class="card-content">
+            <% if @error %>
+              <div class="error-message">
+                <svg class="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                <div class="error-text">
+                  <strong>Error:</strong> <%= @error %>
+                </div>
+              </div>
+            <% elsif @query_result %>
+              <% if @query_result[:rows].any? %>
+                <div class="results-container">
+                  <table class="results-table">
+                    <thead>
+                      <tr>
+                        <% @query_result[:columns].each do |column| %>
+                          <th><%= column %></th>
+                        <% end %>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% @query_result[:rows].each do |row| %>
+                        <tr>
+                          <% row.each do |value| %>
+                            <td>
+                              <% if value.nil? %>
+                                <span class="null-value">NULL</span>
+                              <% elsif value.is_a?(String) && value.length > 100 %>
+                                <span class="long-text" title="<%= value %>">
+                                  <%= truncate(value, length: 100) %>
+                                </span>
+                              <% else %>
+                                <%= value %>
+                              <% end %>
+                            </td>
+                          <% end %>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              <% else %>
+                <div class="empty-results">
+                  <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                  </svg>
+                  <p>No results found</p>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-content">
+      <!-- Available Tables -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Available Tables</h3>
+          <p class="card-description">Click to insert table name</p>
+        </div>
+        <div class="card-content">
+          <div class="tables-list">
+            <% @tables.each do |table| %>
+              <button type="button" class="table-button" data-table="<%= table %>">
+                <code><%= table %></code>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Query Tips -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Query Tips</h3>
+        </div>
+        <div class="card-content">
+          <div class="tips-list">
+            <div class="tip-item">
+              <strong>Security:</strong> Only SELECT queries are allowed
+            </div>
+            <div class="tip-item">
+              <strong>Limits:</strong> Results are automatically limited to 100 rows
+            </div>
+            <div class="tip-item">
+              <strong>Performance:</strong> Use LIMIT for large tables
+            </div>
+            <div class="tip-item">
+              <strong>Schema:</strong> Use <code>PRAGMA table_info(table_name)</code> to see column details
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Explain Modal -->
+<div id="explain-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Query Explanation</h3>
+      <button type="button" id="close-modal" class="close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <pre id="explain-result"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const sqlTextarea = document.getElementById('sql-query');
+  const clearBtn = document.getElementById('clear-btn');
+  const explainBtn = document.getElementById('explain-btn');
+  const explainModal = document.getElementById('explain-modal');
+  const closeModal = document.getElementById('close-modal');
+  const explainResult = document.getElementById('explain-result');
+
+  // Example queries
+  document.querySelectorAll('.example-query').forEach(button => {
+    button.addEventListener('click', function() {
+      sqlTextarea.value = this.dataset.query;
+      sqlTextarea.focus();
+    });
+  });
+
+  // Table buttons
+  document.querySelectorAll('.table-button').forEach(button => {
+    button.addEventListener('click', function() {
+      const tableName = this.dataset.table;
+      const cursorPos = sqlTextarea.selectionStart;
+      const textBefore = sqlTextarea.value.substring(0, cursorPos);
+      const textAfter = sqlTextarea.value.substring(cursorPos);
+      sqlTextarea.value = textBefore + tableName + textAfter;
+      sqlTextarea.focus();
+      sqlTextarea.setSelectionRange(cursorPos + tableName.length, cursorPos + tableName.length);
+    });
+  });
+
+  // Clear button
+  clearBtn.addEventListener('click', function() {
+    sqlTextarea.value = '';
+    sqlTextarea.focus();
+  });
+
+  // Explain button
+  explainBtn.addEventListener('click', function() {
+    const sql = sqlTextarea.value.trim();
+    if (!sql) {
+      alert('Please enter a SQL query first');
+      return;
+    }
+
+    fetch('<%= admin_schema_explain_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ sql: sql })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        explainResult.textContent = 'Error: ' + data.error;
+      } else {
+        explainResult.textContent = data.explanation || 'No explanation available';
+      }
+      explainModal.style.display = 'block';
+    })
+    .catch(error => {
+      explainResult.textContent = 'Error: ' + error.message;
+      explainModal.style.display = 'block';
+    });
+  });
+
+  // Close modal
+  closeModal.addEventListener('click', function() {
+    explainModal.style.display = 'none';
+  });
+
+  // Close modal on outside click
+  explainModal.addEventListener('click', function(e) {
+    if (e.target === explainModal) {
+      explainModal.style.display = 'none';
+    }
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.querySelector('form.query-form').submit();
+      }
+    }
+  });
+});
+</script>
+
+<style>
+.query-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: white;
+  color: #374151;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  border-color: #6b7280;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+  border-color: #4b5563;
+}
+
+.btn-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.query-form {
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.sql-textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.sql-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.query-examples {
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.examples-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.75rem;
+}
+
+.examples-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.example-query {
+  padding: 0.375rem 0.75rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.example-query:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.results-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.result-count {
+  background: #10b981;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 0.375rem;
+  color: #dc2626;
+}
+
+.error-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.results-container {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.results-table th,
+.results-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+.results-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  position: sticky;
+  top: 0;
+}
+
+.null-value {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.long-text {
+  cursor: help;
+}
+
+.empty-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+}
+
+.tables-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.table-button {
+  width: 100%;
+  padding: 0.5rem;
+  text-align: left;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.table-button:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.table-button code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.tips-list {
+  space-y: 0.75rem;
+}
+
+.tip-item {
+  font-size: 0.875rem;
+  color: #374151;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.tip-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.tip-item code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border-radius: 0.5rem;
+  min-width: 500px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+
+.modal-body pre {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+</style>
