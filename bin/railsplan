@@ -1,28 +1,29 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Simple CLI entry point for the Rails SaaS Starter Template
-require 'fileutils'
-require 'json'
-require 'pathname'
+# RailsPlan - Global CLI for Rails SaaS Bootstrapping
+# 
+# This script provides a comprehensive CLI tool for generating
+# full-stack, AI-native, production-ready Rails SaaS applications.
 
-# Ensure lib directory is in load path
-lib_path = File.expand_path('../lib', __dir__)
-$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
+require "railsplan"
 
-# Load the modular RailsPlan CLI
-require 'railsplan/cli'
-
-# Start the CLI with error handling
+# Start the CLI
 begin
   RailsPlan::CLI.start(ARGV)
+rescue Interrupt
+  puts "\n❌ Operation cancelled by user"
+  exit 130
+rescue RailsPlan::Error => e
+  puts "❌ #{e.message}"
+  exit 1
 rescue => e
-  puts "❌ Error: #{e.message}"
-  if ARGV.include?('--verbose') || ARGV.include?('-v')
+  puts "❌ Unexpected error: #{e.message}"
+  if ARGV.include?("--verbose") || ARGV.include?("-v")
     puts "Stack trace:"
     puts e.backtrace.join("\n")
   else
     puts "Run with --verbose for detailed error information"
   end
   exit 1
-end
+end 

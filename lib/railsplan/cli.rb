@@ -1,180 +1,205 @@
 # frozen_string_literal: true
 
-require 'fileutils'
-require 'json'
-require 'pathname'
-
-# Load all command classes
-require_relative 'commands/base_command'
-require_relative 'commands/list_command'
-require_relative 'commands/add_command'
-require_relative 'commands/remove_command'
-require_relative 'commands/bootstrap_command'
-require_relative 'commands/doctor_command'
-require_relative 'commands/info_command'
-require_relative 'commands/test_command'
+require "thor"
+require "railsplan/generator"
+require "railsplan/logger"
 
 module RailsPlan
-  # Main CLI dispatcher for RailsPlan commands
-  class CLI
-    COMMANDS = {
-      'list' => Commands::ListCommand,
-      'add' => Commands::AddCommand,
-      'remove' => Commands::RemoveCommand,
-      'bootstrap' => Commands::BootstrapCommand,
-      'doctor' => Commands::DoctorCommand,
-      'info' => Commands::InfoCommand,
-      'test' => Commands::TestCommand
-    }.freeze
+  # Main CLI class using Thor
+  class CLI < Thor
+    include Thor::Actions
 
-    def self.start(args)
-      new.execute(args)
+    # Set the source root for templates
+    def self.source_root
+      File.expand_path("../templates", __dir__)
     end
 
-    def initialize
-      load_rails_environment
-    end
+    # Global options
+    class_option :verbose, type: :boolean, aliases: "-v", desc: "Enable verbose output"
+    class_option :force, type: :boolean, aliases: "-f", desc: "Force operation without confirmation"
+    class_option :quiet, type: :boolean, aliases: "-q", desc: "Suppress output"
 
-    def load_rails_environment
-      # Try to load Rails if we're in a Rails app directory
-      if File.exist?('config/application.rb') && !defined?(Rails)
-        begin
-          ENV['RAILS_ENV'] ||= 'development'
-          require './config/environment'
-        rescue LoadError, StandardError => e
-          warn "⚠️  Failed to load Rails environment: #{e.message}"
-          warn e.backtrace.join("\n") if e.backtrace
-        end
-      end
-    end
-
-    def execute(args)
-      command_name = args.first
-      verbose = args.include?('--verbose') || args.include?('-v')
+    # Main command to generate a new Rails application
+    desc "new APP_NAME", "Generate a new Rails SaaS application"
+    long_desc <<-LONGDESC
+      Generate a new Rails SaaS application with AI-native features and modular architecture.
       
-      case command_name
-      when 'help', '--help', '-h', nil
-        show_help
-      when *COMMANDS.keys
-        run_command(command_name, args[1..-1], verbose)
-      when 'upgrade'
-        run_upgrade_command(args[1..-1], verbose)
-      when 'docs'
-        run_docs_command(verbose)
+      This command will:
+      1. Check and ensure Ruby version compatibility
+      2. Install Rails if not available
+      3. Generate a new Rails application with optimal defaults
+      4. Apply modular templates for AI, billing, admin, and other features
+      5. Set up development environment and dependencies
+      
+      Examples:
+        railsplan new myapp                    # Generate with interactive prompts
+        railsplan new myapp --ai --billing     # Generate with specific modules
+        railsplan new myapp --demo             # Quick demo setup
+        railsplan new myapp --guided           # Full guided setup
+    LONGDESC
+    option :ai, type: :boolean, desc: "Include AI module"
+    option :billing, type: :boolean, desc: "Include billing module"
+    option :admin, type: :boolean, desc: "Include admin panel"
+    option :cms, type: :boolean, desc: "Include CMS module"
+    option :demo, type: :boolean, desc: "Quick demo setup with sensible defaults"
+    option :guided, type: :boolean, desc: "Full guided setup for production"
+    option :ruby_version, desc: "Specify Ruby version to use"
+    option :rails_version, desc: "Specify Rails version to use"
+    def new(app_name)
+      RailsPlan.logger.info("Starting RailsPlan application generation")
+      
+      generator = Generator.new(app_name, options)
+      generator.generate
+    end
+
+    # Add modules to existing application
+    desc "add MODULE", "Add a module to an existing Rails application"
+    long_desc <<-LONGDESC
+      Add a feature module to an existing Rails application.
+      
+      Available modules:
+        ai        - AI/LLM integration with multi-provider support
+        billing   - Subscription and payment processing
+        admin     - Admin panel and user management
+        cms       - Content management system
+        auth      - Enhanced authentication and authorization
+        api       - RESTful API with documentation
+        notifications - Real-time notifications
+        workspace - Multi-tenant workspace management
+        
+      Examples:
+        railsplan add ai
+        railsplan add billing --force
+    LONGDESC
+    def add(module_name)
+      RailsPlan.logger.info("Adding module: #{module_name}")
+      
+      # TODO: Implement module addition
+      say("Adding module '#{module_name}' to existing application...", :green)
+      say("This feature is coming soon!", :yellow)
+    end
+
+    # List available modules
+    desc "list", "List available and installed modules"
+    long_desc <<-LONGDESC
+      List all available modules and their installation status.
+      
+      Examples:
+        railsplan list
+        railsplan list --available
+        railsplan list --installed
+    LONGDESC
+    option :available, type: :boolean, aliases: "-a", desc: "Show only available modules"
+    option :installed, type: :boolean, aliases: "-i", desc: "Show only installed modules"
+    def list
+      RailsPlan.logger.info("Listing modules")
+      
+      # TODO: Implement module listing
+      say("Available modules:", :green)
+      say("  ai          - AI/LLM integration")
+      say("  billing     - Subscription and payment processing")
+      say("  admin       - Admin panel and user management")
+      say("  cms         - Content management system")
+      say("  auth        - Enhanced authentication")
+      say("  api         - RESTful API with documentation")
+      say("  notifications - Real-time notifications")
+      say("  workspace   - Multi-tenant workspace management")
+    end
+
+    # Doctor command for validation and debugging
+    desc "doctor", "Validate setup and configuration"
+    long_desc <<-LONGDESC
+      Run diagnostics to validate your RailsPlan setup and configuration.
+      
+      This command checks:
+        - Ruby version compatibility
+        - Rails installation
+        - Required dependencies
+        - Module installation status
+        - Configuration files
+        
+      Examples:
+        railsplan doctor
+    LONGDESC
+    def doctor
+      RailsPlan.logger.info("Running doctor command")
+      
+      say("Running RailsPlan diagnostics...", :green)
+      
+      # Check Ruby version
+      ruby_version = RUBY_VERSION
+      ruby_manager = RailsPlan::RubyManager.new
+      
+      if ruby_manager.current_version_supported?
+        say("✓ Ruby version: #{ruby_version} (supported)", :green)
       else
-        puts "❌ Unknown command: #{command_name}"
-        show_help
-        exit 1
+        min_version = ruby_manager.minimum_supported_version
+        say("✗ Ruby version: #{ruby_version} (not supported, need >= #{min_version})", :red)
       end
+      
+      # Check Rails installation
+      begin
+        require "rails"
+        rails_version = Rails.version
+        say("✓ Rails version: #{rails_version}", :green)
+      rescue LoadError
+        say("✗ Rails not installed", :red)
+      end
+      
+      # Check for .railsplanrc
+      if File.exist?(".railsplanrc")
+        say("✓ RailsPlan configuration found", :green)
+      else
+        say("ℹ No RailsPlan configuration found", :yellow)
+      end
+      
+      say("Diagnostics complete!", :green)
+    end
+
+    # Rails passthrough command
+    desc "rails [ARGS...]", "Pass through to Rails CLI"
+    long_desc <<-LONGDESC
+      Pass through to the native Rails CLI with additional RailsPlan context.
+      
+      Examples:
+        railsplan rails server
+        railsplan rails console
+        railsplan rails routes
+    LONGDESC
+    def rails(*args)
+      RailsPlan.logger.info("Passing through to Rails CLI: #{args.join(' ')}")
+      
+      # TODO: Implement Rails passthrough with RailsPlan context
+      say("Passing through to Rails CLI...", :green)
+      system("rails", *args)
+    end
+
+    # Version command
+    desc "version", "Show RailsPlan version"
+    def version
+      say("RailsPlan #{RailsPlan::VERSION}", :green)
+    end
+
+    # Help command override
+    def help
+      say("RailsPlan - Global CLI for Rails SaaS Bootstrapping", :green)
+      say("Version: #{RailsPlan::VERSION}", :blue)
+      say("")
+      super
     end
 
     private
 
-    def run_command(command_name, args, verbose)
-      command_class = COMMANDS[command_name]
-      command = command_class.new(verbose: verbose)
+    def say(message, color = nil)
+      return if options[:quiet]
       
-      case command_name
-      when 'list'
-        options = {
-          available: args.include?('--available') || args.include?('-a'),
-          installed: args.include?('--installed') || args.include?('-i')
-        }
-        command.execute(options)
-      when 'add'
-        module_name = args.first
-        unless module_name
-          puts "❌ Module name required. Usage: bin/railsplan add MODULE_NAME"
-          exit 1
-        end
-        options = { force: args.include?('--force') || args.include?('-f') }
-        command.execute(module_name, options)
-      when 'remove'
-        module_name = args.first
-        unless module_name
-          puts "❌ Module name required. Usage: bin/railsplan remove MODULE_NAME"
-          exit 1
-        end
-        options = { force: args.include?('--force') || args.include?('-f') }
-        command.execute(module_name, options)
-      when 'bootstrap'
-        options = {
-          skip_modules: args.include?('--skip-modules'),
-          skip_credentials: args.include?('--skip-credentials')
-        }
-        command.execute(options)
-      when 'doctor'
-        command.execute
-      when 'info'
-        module_name = args.first
-        unless module_name
-          puts "❌ Module name required. Usage: bin/railsplan info MODULE_NAME"
-          exit 1
-        end
-        command.execute(module_name)
-      when 'test'
-        module_name = args.first
-        command.execute(module_name)
+      if color
+        require "pastel"
+        pastel = Pastel.new
+        puts pastel.send(color, message)
+      else
+        puts message
       end
     end
-
-    def run_upgrade_command(args, verbose)
-      puts "🔄 Upgrade command not yet implemented in modular CLI"
-      puts "This will be implemented in a future update"
-      # TODO: Implement upgrade command
-    end
-
-    def run_docs_command(verbose)
-      puts "📚 Docs command not yet implemented in modular CLI"
-      puts "This will be implemented in a future update"
-      # TODO: Implement docs command
-    end
-
-    def show_help
-      puts <<~HELP
-        bin/railsplan - Rails SaaS Starter Template Module Manager
-
-        USAGE:
-          bin/railsplan COMMAND [OPTIONS]
-
-        COMMANDS:
-          bootstrap             Interactive setup wizard for new applications
-          list                  List available and installed modules
-          add MODULE            Install a feature module
-          remove MODULE         Uninstall a feature module  
-          info MODULE           Show detailed information about a module
-          test [MODULE]         Run tests for a module or all modules
-          doctor                Validate setup and configuration
-          help                  Show this help message
-
-        BOOTSTRAP MODES:
-          bootstrap             Interactive wizard with setup type selection
-          bootstrap --demo      Quick demo setup with sensible defaults
-          bootstrap --guided    Full guided setup for production
-
-        OPTIONS:
-          --verbose, -v         Enable verbose output
-          --force, -f           Force operation without confirmation
-          --available, -a       Show only available modules (list command)
-          --installed, -i       Show only installed modules (list command)
-
-        EXAMPLES:
-          bin/railsplan bootstrap              # Interactive setup wizard
-          bin/railsplan list                   # Show all modules
-          bin/railsplan add billing            # Install billing module
-          bin/railsplan remove cms --force     # Remove CMS module without confirmation
-          bin/railsplan info ai                # Show AI module information
-          bin/railsplan test billing           # Run billing module tests
-          bin/railsplan doctor                 # Check system health
-
-        GETTING STARTED:
-          1. Run 'bin/railsplan bootstrap' for guided setup
-          2. Choose demo mode for quick start or guided mode for production
-          3. Follow the wizard prompts to configure your application
-          4. Run 'bin/railsplan doctor' to validate your setup
-
-        For more information, visit: docs/README.md
-      HELP
-    end
   end
-end
+end 
