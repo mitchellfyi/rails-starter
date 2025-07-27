@@ -133,6 +133,19 @@ class SynthCLITest < Minitest::Test
     assert_includes output, 'Copied README.md'
   end
 
+  def test_doctor_command_runs_diagnostics
+    output = capture_output { SynthCLI.start(['doctor']) }
+    
+    assert_includes output, '🏥 Running system diagnostics...'
+    assert_includes output, 'Ruby version:'
+    assert_includes output, 'Checking template structure:'
+    assert_includes output, 'Checking environment variables:'
+    assert_includes output, 'Checking API key configuration:'
+    assert_includes output, 'Checking database migrations:'
+    assert_includes output, 'Checking installed module integrity:'
+    assert_includes output, '🏥 Diagnostics complete'
+  end
+
   private
 
   def create_test_structure
