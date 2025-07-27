@@ -147,10 +147,39 @@ class LLMOutputTest < ActiveSupport::TestCase
     Rails.logger.expects(:info).with("LLM output feedback received", anything)
 
     assert_nil @llm_output.feedback_at
+    assert_nil @llm_output.feedback_comment
+    
     @llm_output.set_feedback!('thumbs_up')
     
     assert @llm_output.thumbs_up?
     assert_not_nil @llm_output.feedback_at
+    assert_nil @llm_output.feedback_comment
+  end
+
+  test "set_feedback! should update feedback with comment" do
+    Rails.logger.expects(:info).with("LLM output feedback received", anything)
+    Rails.logger.expects(:info).with("Positive feedback received for LLM output #{@llm_output.id}", { comment: "Great response!" })
+
+    comment = "Great response!"
+    @llm_output.set_feedback!('thumbs_up', comment: comment)
+    
+    assert @llm_output.thumbs_up?
+    assert_not_nil @llm_output.feedback_at
+    assert_equal comment, @llm_output.feedback_comment
+    assert @llm_output.has_feedback_comment?
+  end
+
+  test "has_feedback_comment? should return correct value" do
+    assert_not @llm_output.has_feedback_comment?
+    
+    @llm_output.feedback_comment = "Test comment"
+    assert @llm_output.has_feedback_comment?
+    
+    @llm_output.feedback_comment = ""
+    assert_not @llm_output.has_feedback_comment?
+    
+    @llm_output.feedback_comment = nil
+    assert_not @llm_output.has_feedback_comment?
   end
 
   test "status check methods" do

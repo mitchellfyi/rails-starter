@@ -55,6 +55,28 @@ class LLMOutputsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil @llm_output.feedback_at
   end
 
+  test "should set feedback with comment" do
+    comment = "This response was very helpful!"
+    post feedback_llm_output_url(@llm_output), 
+         params: { feedback_type: 'thumbs_up', comment: comment }
+    assert_redirected_to @llm_output
+    
+    @llm_output.reload
+    assert @llm_output.thumbs_up?
+    assert_equal comment, @llm_output.feedback_comment
+    assert @llm_output.has_feedback_comment?
+  end
+
+  test "should handle empty comment" do
+    post feedback_llm_output_url(@llm_output), 
+         params: { feedback_type: 'thumbs_down', comment: '   ' }
+    assert_redirected_to @llm_output
+    
+    @llm_output.reload
+    assert @llm_output.thumbs_down?
+    assert_nil @llm_output.feedback_comment
+  end
+
   test "should set thumbs down feedback" do
     post feedback_llm_output_url(@llm_output), params: { feedback_type: 'thumbs_down' }
     assert_redirected_to @llm_output
@@ -79,14 +101,16 @@ class LLMOutputsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should handle feedback with JSON response" do
+    comment = "Great AI response!"
     post feedback_llm_output_url(@llm_output), 
-         params: { feedback_type: 'thumbs_up' },
+         params: { feedback_type: 'thumbs_up', comment: comment },
          headers: { 'Accept' => 'application/json' }
     
     assert_response :success
     response_json = JSON.parse(response.body)
     assert_equal 'success', response_json['status']
     assert_equal 'thumbs_up', response_json['feedback']
+    assert_equal comment, response_json['comment']
   end
 
   test "should re-run job" do

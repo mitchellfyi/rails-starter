@@ -17,16 +17,17 @@ class LLMOutputsController < ApplicationController
   # POST /llm_outputs/:id/feedback
   def feedback
     feedback_type = params[:feedback_type]
+    comment = params[:comment]&.strip
     
     unless %w[thumbs_up thumbs_down none].include?(feedback_type)
       render json: { error: 'Invalid feedback type' }, status: :bad_request
       return
     end
 
-    @llm_output.set_feedback!(feedback_type, user: current_user)
+    @llm_output.set_feedback!(feedback_type, user: current_user, comment: comment)
 
     respond_to do |format|
-      format.json { render json: { status: 'success', feedback: feedback_type } }
+      format.json { render json: { status: 'success', feedback: feedback_type, comment: comment } }
       format.html { redirect_back(fallback_location: @llm_output, notice: 'Feedback recorded') }
     end
   rescue => e
