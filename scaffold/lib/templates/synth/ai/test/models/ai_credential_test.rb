@@ -179,4 +179,273 @@ class AiCredentialTest < ActiveSupport::TestCase
     assert_instance_of AiCredentialJobRunner, runner
     assert_equal @ai_credential, runner.ai_credential
   end
+
+  # Fallback credential tests
+  test "should create fallback credential without workspace" do
+    fallback = AiCredential.new(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      fallback_usage_limit: 100
+    )
+    
+    assert fallback.valid?
+    assert fallback.is_fallback?
+  end
+
+  test "should not allow fallback credential with workspace" do
+    fallback = AiCredential.new(
+      workspace: @workspace,
+      ai_provider: @ai_provider,
+      name: "Invalid Fallback",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true
+    )
+    
+    assert_not fallback.valid?
+    assert_includes fallback.errors[:workspace], "fallback credentials cannot be associated with a workspace"
+  end
+
+  test "should validate fallback usage limit" do
+    fallback = AiCredential.new(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      fallback_usage_limit: -10
+    )
+    
+    assert_not fallback.valid?
+    assert_includes fallback.errors[:fallback_usage_limit], "must be greater than 0"
+  end
+
+  test "should find available fallback credentials" do
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_limit: 100,
+      fallback_usage_count: 50
+    )
+    
+    available = AiCredential.available_fallbacks
+    assert_includes available, fallback
+  end
+
+  test "should not include expired fallback credentials" do
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Expired Fallback",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      expires_at: 1.day.ago
+    )
+    
+    available = AiCredential.available_fallbacks
+    assert_not_includes available, fallback
+  end
+
+  test "should not include over-limit fallback credentials" do
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Over Limit Fallback",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_limit: 100,
+      fallback_usage_count: 150
+    )
+    
+    available = AiCredential.available_fallbacks
+    assert_not_includes available, fallback
+  end
+
+  test "should find best fallback for provider" do
+    # Create two fallback credentials with different usage counts
+    fallback1 = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback 1",
+      api_key: "fallback-key-1",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_count: 100
+    )
+    
+    fallback2 = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback 2",
+      api_key: "fallback-key-2",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_count: 50
+    )
+    
+    # Should return the one with lower usage count
+    best = AiCredential.best_fallback_for_provider("openai")
+    assert_equal fallback2, best
+  end
+
+  test "should fall back to fallback credentials when no user credentials exist" do
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true
+    )
+    
+    # Should return fallback when no user credentials exist
+    best = AiCredential.best_for(@workspace, "openai")
+    assert_equal fallback, best
+  end
+
+  test "should prefer user credentials over fallback credentials" do
+    # Create user credential
+    @ai_credential.save!
+    
+    # Create fallback credential
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true
+    )
+    
+    # Should return user credential, not fallback
+    best = AiCredential.best_for(@workspace, "openai")
+    assert_equal @ai_credential, best
+  end
+
+  test "should check if credential is available" do
+    # Regular credential should be available when active
+    @ai_credential.active = true
+    assert @ai_credential.available?
+    
+    # Regular credential should not be available when inactive
+    @ai_credential.active = false
+    assert_not @ai_credential.available?
+    
+    # Fallback credential should be available when conditions are met
+    fallback = AiCredential.new(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_limit: 100,
+      fallback_usage_count: 50
+    )
+    assert fallback.available?
+    
+    # Fallback should not be available when expired
+    fallback.expires_at = 1.day.ago
+    assert_not fallback.available?
+  end
+
+  test "should calculate remaining usage for fallback credentials" do
+    fallback = AiCredential.new(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      fallback_usage_limit: 100,
+      fallback_usage_count: 30
+    )
+    
+    assert_equal 70, fallback.remaining_usage
+    
+    # Should return infinity for unlimited fallback
+    fallback.fallback_usage_limit = nil
+    assert_equal Float::INFINITY, fallback.remaining_usage
+    
+    # Should return infinity for regular credentials
+    assert_equal Float::INFINITY, @ai_credential.remaining_usage
+  end
+
+  test "should track fallback usage when marked as used" do
+    fallback = AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true,
+      active: true,
+      enabled_for_trials: true,
+      fallback_usage_count: 0
+    )
+    
+    initial_usage = fallback.usage_count
+    initial_fallback_usage = fallback.fallback_usage_count
+    
+    fallback.mark_used!
+    fallback.reload
+    
+    assert_equal initial_usage + 1, fallback.usage_count
+    assert_equal initial_fallback_usage + 1, fallback.fallback_usage_count
+  end
+
+  test "should not track fallback usage for regular credentials" do
+    @ai_credential.save!
+    initial_fallback_usage = @ai_credential.fallback_usage_count
+    
+    @ai_credential.mark_used!
+    @ai_credential.reload
+    
+    # Fallback usage count should not change for regular credentials
+    assert_equal initial_fallback_usage, @ai_credential.fallback_usage_count
+  end
+
+  test "should check if fallback credentials are enabled" do
+    # Should return false when no fallback credentials exist
+    assert_not AiCredential.fallback_enabled?
+    
+    # Should return true when fallback credentials exist
+    AiCredential.create!(
+      workspace: nil,
+      ai_provider: @ai_provider,
+      name: "Fallback OpenAI",
+      api_key: "fallback-key",
+      preferred_model: "gpt-4",
+      is_fallback: true
+    )
+    
+    assert AiCredential.fallback_enabled?
+  end
 end

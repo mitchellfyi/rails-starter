@@ -7,6 +7,16 @@ Rails.application.routes.draw do
   # AI Provider management (admin only)
   resources :ai_providers
   
+  # Admin routes for fallback credentials
+  namespace :admin do
+    resources :fallback_credentials, path: 'fallback-credentials' do
+      member do
+        patch :toggle_active
+        post :test_connection
+      end
+    end
+  end
+  
   # Workspace-scoped AI credentials
   resources :workspaces, param: :slug do
     resources :ai_credentials do

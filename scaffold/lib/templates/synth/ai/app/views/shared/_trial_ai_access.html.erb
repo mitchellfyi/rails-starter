@@ -1,0 +1,70 @@
+<%
+# Onboarding component for trial AI access
+# Usage: <%= render 'shared/trial_ai_access', provider: 'openai', workspace: current_workspace %>
+
+provider_slug = local_assigns[:provider] || 'openai'
+workspace = local_assigns[:workspace]
+fallback_credential = AiCredential.best_fallback_for_provider(provider_slug)
+%>
+
+<% if fallback_credential&.available? && AiCredential.fallback_enabled? %>
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+    <div class="flex items-start">
+      <div class="flex-shrink-0">
+        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div class="ml-3 flex-1">
+        <h3 class="text-lg font-medium text-blue-900">Try AI Features for Free</h3>
+        
+        <% if fallback_credential.onboarding_message.present? %>
+          <p class="mt-2 text-sm text-blue-800">
+            <%= fallback_credential.onboarding_message %>
+          </p>
+        <% else %>
+          <p class="mt-2 text-sm text-blue-800">
+            Get started with AI features using our shared API access. Perfect for trying out the platform before adding your own API keys.
+          </p>
+        <% end %>
+        
+        <div class="mt-4">
+          <div class="flex items-center space-x-4 text-sm text-blue-700">
+            <div class="flex items-center">
+              <span class="font-medium">Provider:</span>
+              <span class="ml-1"><%= fallback_credential.ai_provider.name %></span>
+            </div>
+            <div class="flex items-center">
+              <span class="font-medium">Model:</span>
+              <span class="ml-1"><%= fallback_credential.preferred_model %></span>
+            </div>
+            <% if fallback_credential.fallback_usage_limit %>
+              <div class="flex items-center">
+                <span class="font-medium">Remaining:</span>
+                <span class="ml-1"><%= fallback_credential.remaining_usage %> calls</span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
+        <div class="mt-4 flex space-x-3">
+          <% if workspace %>
+            <%= link_to "Start Using AI Features", workspace_path(workspace, anchor: 'ai-features'), 
+                class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+          <% end %>
+          
+          <% if defined?(new_workspace_ai_credential_path) && workspace %>
+            <%= link_to "Add Your Own API Key", new_workspace_ai_credential_path(workspace), 
+                class: "bg-white hover:bg-blue-50 text-blue-600 border border-blue-600 px-4 py-2 rounded-md text-sm font-medium" %>
+          <% end %>
+        </div>
+        
+        <% if fallback_credential.expires_at %>
+          <p class="mt-3 text-xs text-blue-600">
+            Trial access expires on <%= fallback_credential.expires_at.strftime("%B %d, %Y") %>
+          </p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

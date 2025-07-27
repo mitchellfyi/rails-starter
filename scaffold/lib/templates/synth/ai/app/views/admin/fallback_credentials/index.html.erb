@@ -1,0 +1,80 @@
+<% content_for :title, "Fallback AI Credentials" %>
+
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Fallback AI Credentials</h1>
+      <p class="text-gray-600">Manage shared API keys for trial users and onboarding</p>
+    </div>
+    <%= link_to "Add Fallback Credential", new_admin_fallback_credential_path, 
+        class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+  </div>
+
+  <% if @credentials.any? %>
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% @credentials.each do |credential| %>
+          <li>
+            <div class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= credential.active? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                      <%= credential.active? ? 'Active' : 'Inactive' %>
+                    </span>
+                  </div>
+                  <div class="ml-4 flex-1 min-w-0">
+                    <div class="flex items-center">
+                      <p class="text-sm font-medium text-gray-900 truncate">
+                        <%= credential.name %>
+                      </p>
+                      <p class="ml-2 text-sm text-gray-500">
+                        (<%= credential.ai_provider.name %>)
+                      </p>
+                    </div>
+                    <div class="mt-1">
+                      <div class="flex items-center text-sm text-gray-500">
+                        <span class="truncate">Model: <%= credential.preferred_model %></span>
+                        <span class="mx-2">•</span>
+                        <span>Usage: <%= credential.fallback_usage_count %><%= " / #{credential.fallback_usage_limit}" if credential.fallback_usage_limit %></span>
+                        <% if credential.expires_at %>
+                          <span class="mx-2">•</span>
+                          <span>Expires: <%= credential.expires_at.strftime("%B %d, %Y") %></span>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <%= link_to "View", admin_fallback_credential_path(credential), 
+                      class: "text-blue-600 hover:text-blue-900 text-sm font-medium" %>
+                  <%= link_to "Edit", edit_admin_fallback_credential_path(credential), 
+                      class: "text-gray-600 hover:text-gray-900 text-sm font-medium" %>
+                  <%= link_to credential.active? ? "Deactivate" : "Activate", 
+                      toggle_active_admin_fallback_credential_path(credential), 
+                      method: :patch,
+                      class: "text-gray-600 hover:text-gray-900 text-sm font-medium" %>
+                </div>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% else %>
+    <div class="text-center py-12">
+      <div class="mx-auto h-12 w-12 text-gray-400">
+        <!-- Icon -->
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+        </svg>
+      </div>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No fallback credentials</h3>
+      <p class="mt-1 text-sm text-gray-500">Get started by creating your first fallback credential for trial users.</p>
+      <div class="mt-6">
+        <%= link_to "Add Fallback Credential", new_admin_fallback_credential_path, 
+            class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+      </div>
+    </div>
+  <% end %>
+</div>
