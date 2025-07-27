@@ -11,6 +11,9 @@ class Workspace < ApplicationRecord
   has_many :impersonations, dependent: :destroy
   has_many :ai_credentials, dependent: :destroy
   has_many :llm_outputs, dependent: :nullify
+  has_many :ai_datasets, dependent: :destroy
+  has_many :workspace_embedding_sources, dependent: :destroy
+  has_one :workspace_ai_config, dependent: :destroy
 
   validates :name, presence: true, length: { minimum: 1, maximum: 255 }
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-]+\z/ }
@@ -67,6 +70,21 @@ class Workspace < ApplicationRecord
     return false unless membership
     
     membership.can?(resource, action)
+  end
+
+  # Get or create AI configuration for this workspace
+  def ai_config
+    workspace_ai_config || create_workspace_ai_config!(updated_by: created_by)
+  end
+
+  # Get active embedding sources
+  def active_embedding_sources
+    workspace_embedding_sources.active
+  end
+
+  # Get completed datasets  
+  def completed_datasets
+    ai_datasets.completed
   end
 
   private
