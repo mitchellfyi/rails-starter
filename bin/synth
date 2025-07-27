@@ -6,6 +6,255 @@ require 'fileutils'
 require 'json'
 require 'pathname'
 
+# Documentation generator for Synth modules
+class DocumentationGenerator
+  DOMAINS_PATH = File.expand_path('../app/domains', __dir__)
+  DOCS_PATH = File.expand_path('../docs', __dir__)
+  SWAGGER_PATH = File.expand_path('../swagger', __dir__)
+  
+  def initialize
+    @verbose = false
+  end
+  
+  def generate_all
+    ensure_docs_directory
+    
+    puts "📚 Generating documentation from installed modules..."
+    
+    # Generate main README with all installed modules
+    generate_main_readme
+    
+    # Generate individual module docs
+    generate_module_docs
+    
+    # Generate OpenAPI documentation if API module is installed
+    generate_api_docs if api_module_installed?
+    
+    puts "✅ Documentation generation complete!"
+    puts "📖 Main documentation: docs/README.md"
+    puts "🗂️  Module documentation: docs/modules/"
+    puts "🔗 API documentation: docs/api.json" if api_module_installed?
+  end
+  
+  private
+  
+  def ensure_docs_directory
+    FileUtils.mkdir_p(DOCS_PATH)
+    FileUtils.mkdir_p(File.join(DOCS_PATH, 'modules'))
+  end
+  
+  def generate_main_readme
+    installed_modules = get_installed_modules
+    
+    main_readme = <<~MARKDOWN
+      # #{app_name} Documentation
+
+      This documentation is auto-generated from installed Synth modules and OpenAPI specifications.
+
+      ## Overview
+
+      This Rails SaaS application is built using the Rails SaaS Starter Template with the following installed modules:
+
+      #{generate_modules_overview(installed_modules)}
+
+      ## Quick Start
+
+      ### Prerequisites
+
+      - Ruby 3.3.0 or later
+      - Node.js 18 or later
+      - PostgreSQL 14+ with pgvector extension
+      - Redis 6 or later
+
+      ### Installation
+
+      ```bash
+      # Clone and setup
+      git clone <repository-url>
+      cd <app-name>
+      bundle install
+      yarn install
+
+      # Database setup
+      rails db:create
+      rails db:migrate
+      rails db:seed
+
+      # Start development server
+      bin/dev
+      ```
+
+      ## Module Documentation
+
+      #{generate_modules_list(installed_modules)}
+
+      #{generate_api_section if api_module_installed?}
+
+      ## Synth CLI
+
+      Use the Synth CLI to manage modules:
+
+      ```bash
+      # List available modules
+      bin/synth list
+
+      # Add new modules
+      bin/synth add [module_name]
+
+      # Remove modules
+      bin/synth remove [module_name]
+
+      # Generate documentation
+      bin/synth docs
+      ```
+
+      ---
+
+      *Documentation generated on #{Time.now.strftime('%Y-%m-%d %H:%M:%S')} by `bin/synth docs`*
+    MARKDOWN
+    
+    File.write(File.join(DOCS_PATH, 'README.md'), main_readme)
+    puts "✅ Generated main README.md"
+  end
+  
+  def generate_module_docs
+    get_installed_modules.each do |module_name|
+      module_readme_path = File.join(DOMAINS_PATH, module_name, 'README.md')
+      next unless File.exist?(module_readme_path)
+      
+      # Copy module README to docs/modules/
+      module_content = File.read(module_readme_path)
+      output_path = File.join(DOCS_PATH, 'modules', "#{module_name}.md")
+      File.write(output_path, module_content)
+      
+      puts "✅ Generated docs/modules/#{module_name}.md"
+    end
+  end
+  
+  def generate_api_docs
+    swagger_files = Dir.glob(File.join(SWAGGER_PATH, '**/*.{json,yaml,yml}'))
+    return if swagger_files.empty?
+    
+    # Copy the main swagger file to docs/
+    main_swagger = swagger_files.find { |f| f.include?('swagger') } || swagger_files.first
+    if main_swagger && File.exist?(main_swagger)
+      target_path = File.join(DOCS_PATH, 'api.json')
+      
+      if main_swagger.end_with?('.json')
+        FileUtils.cp(main_swagger, target_path)
+      else
+        # Convert YAML to JSON if needed
+        require 'yaml'
+        yaml_content = YAML.load_file(main_swagger)
+        File.write(target_path, JSON.pretty_generate(yaml_content))
+      end
+      
+      puts "✅ Generated API documentation from OpenAPI schema"
+    end
+  rescue => e
+    puts "⚠️  Warning: Could not generate API docs: #{e.message}"
+  end
+  
+  def get_installed_modules
+    return [] unless Dir.exist?(DOMAINS_PATH)
+    
+    Dir.children(DOMAINS_PATH).select do |dir|
+      File.directory?(File.join(DOMAINS_PATH, dir))
+    end.sort
+  end
+  
+  def generate_modules_overview(modules)
+    return "No modules installed." if modules.empty?
+    
+    overview = modules.map do |module_name|
+      readme_path = File.join(DOMAINS_PATH, module_name, 'README.md')
+      description = if File.exist?(readme_path)
+        extract_description_from_readme(File.read(readme_path))
+      else
+        "No description available"
+      end
+      
+      "- **#{module_name.capitalize}**: #{description}"
+    end
+    
+    overview.join("\n")
+  end
+  
+  def generate_modules_list(modules)
+    return "No modules installed." if modules.empty?
+    
+    list = modules.map do |module_name|
+      "- [#{module_name.capitalize}](modules/#{module_name}.md)"
+    end
+    
+    list.join("\n")
+  end
+  
+  def generate_api_section
+    return "" unless api_module_installed?
+    
+    <<~MARKDOWN
+      ## API Documentation
+
+      This application provides a JSON:API compliant REST API. 
+
+      - **OpenAPI Specification**: [api.json](api.json)
+      - **API Module Documentation**: [modules/api.md](modules/api.md)
+
+      ### Authentication
+
+      Most API endpoints require authentication using Bearer tokens.
+
+      ### Base URL
+
+      - Development: `http://localhost:3000/api`
+      - Production: `https://your-domain.com/api`
+    MARKDOWN
+  end
+  
+  def api_module_installed?
+    Dir.exist?(File.join(DOMAINS_PATH, 'api'))
+  end
+  
+  def app_name
+    # Try to extract app name from various sources
+    if File.exist?('config/application.rb')
+      content = File.read('config/application.rb')
+      match = content.match(/module\s+(\w+)/)
+      return match[1] if match
+    end
+    
+    File.basename(Dir.pwd).split(/[-_]/).map(&:capitalize).join(' ')
+  end
+  
+  def extract_description_from_readme(content)
+    lines = content.split("\n")
+    
+    # Find first non-header line that has content
+    description_line = lines.find do |line|
+      line.strip.length > 0 && 
+      !line.start_with?('#') && 
+      !line.strip.match?(/^[\*\-\+]\s/) # Skip list items
+    end
+    
+    return "No description available." unless description_line
+    
+    # Clean up the description
+    description_line.strip.gsub(/\*\*(.*?)\*\*/, '\1').truncate(120)
+  end
+end
+
+# String truncate helper
+class String
+  def truncate(length, omission = '...')
+    if self.length > length
+      self[0, length - omission.length] + omission
+    else
+      self
+    end
+  end
+end
+
 class SynthCLI
   TEMPLATE_PATH = File.expand_path('../scaffold/lib/templates/synth', __dir__)
   REGISTRY_PATH = File.expand_path('../scaffold/config/synth_modules.json', __dir__)
@@ -47,6 +296,8 @@ class SynthCLI
       cli.test(module_name)
     when 'doctor'
       cli.doctor
+    when 'docs'
+      cli.docs
     when 'upgrade'
       module_name = args[1..-1].find { |arg| !arg.start_with?('--') && !arg.start_with?('-') }
       cli.upgrade(module_name)
@@ -141,6 +392,26 @@ class SynthCLI
     else
       upgrade_all_modules(backup_enabled, non_interactive)
     end
+    
+    # Regenerate documentation after upgrade
+    puts "📚 Regenerating documentation after upgrade..."
+    docs
+  end
+
+  def docs
+    puts "📚 Generating documentation from installed modules..."
+    
+    begin
+      generator = DocumentationGenerator.new
+      generator.generate_all
+      puts "✅ Documentation generated successfully!"
+      puts "📖 Main documentation available at: docs/README.md"
+      puts "🗂️  Module documentation available at: docs/modules/"
+    rescue => e
+      puts "❌ Error generating documentation: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
   end
 
   def show_help
@@ -156,6 +427,7 @@ class SynthCLI
         remove MODULE         Uninstall a feature module  
         info MODULE           Show detailed information about a module
         test [MODULE]         Run tests for a module or all modules
+        docs                  Generate documentation from installed modules and OpenAPI schema
         upgrade [MODULE]      Upgrade one or all installed modules to latest versions
         doctor                Validate setup and configuration
         help                  Show this help message
@@ -178,6 +450,7 @@ class SynthCLI
         bin/synth remove cms --force
         bin/synth info ai
         bin/synth test billing
+        bin/synth docs
         bin/synth upgrade
         bin/synth upgrade ai --verbose
         bin/synth upgrade --yes --no-backup
