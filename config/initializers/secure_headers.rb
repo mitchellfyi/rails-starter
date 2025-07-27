@@ -20,11 +20,7 @@ if ParanoidMode.enabled?
     
     # HTTP Strict Transport Security
     if ParanoidMode.config.force_https
-      config.hsts = {
-        max_age: ParanoidMode.config.hsts_max_age,
-        include_subdomains: ParanoidMode.config.hsts_include_subdomains,
-        preload: ParanoidMode.config.hsts_preload
-      }
+      config.hsts = "max-age=#{ParanoidMode.config.hsts_max_age}; includeSubDomains; preload"
     else
       config.hsts = SecureHeaders::OPT_OUT
     end

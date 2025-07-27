@@ -5,18 +5,23 @@ class User < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   
   # Serialization for backup codes
-  serialize :backup_codes, Array
+  serialize :backup_codes, coder: JSON
   
   # Encrypted attributes for paranoid mode
   if ParanoidMode.enabled?
+    # Generate or retrieve a 32-byte encryption key
+    encryption_key = Rails.application.credentials.encryption_key&.byteslice(0, 32) || 
+                     ENV['RAILS_ENCRYPTION_KEY']&.byteslice(0, 32) || 
+                     'development_key_32_bytes_long___'
+    
     attr_encrypted :first_name, 
-      key: -> { Rails.application.credentials.encryption_key || raise("Encryption key not configured") },
+      key: encryption_key,
       algorithm: 'aes-256-gcm'
     attr_encrypted :last_name, 
-      key: -> { Rails.application.credentials.encryption_key || raise("Encryption key not configured") },
+      key: encryption_key,
       algorithm: 'aes-256-gcm'
     attr_encrypted :two_factor_secret, 
-      key: -> { Rails.application.credentials.encryption_key || raise("Encryption key not configured") },
+      key: encryption_key,
       algorithm: 'aes-256-gcm'
   end
   
