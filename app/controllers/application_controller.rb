@@ -6,6 +6,10 @@ class ApplicationController < ActionController::Base
   # Include common helpers
   include HomeHelper
   
+  # Include paranoid mode security features
+  include ParanoidSessionManagement if ParanoidMode.enabled?
+  include ParanoidTwoFactorAuth if ParanoidMode.enabled?
+  
   before_action :set_current_user
   
   private
@@ -33,5 +37,10 @@ class ApplicationController < ActionController::Base
     unless current_user
       redirect_to root_path, alert: 'Please log in to access this page.'
     end
+  end
+  
+  # Override for paranoid session management
+  def redirect_to_login
+    redirect_to root_path, alert: 'Please log in to continue.'
   end
 end
