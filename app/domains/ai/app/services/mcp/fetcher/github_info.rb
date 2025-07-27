@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../../../../../lib/api_client_factory'
+
 module Mcp
   module Fetcher
     # Specialized fetcher for retrieving GitHub repository and user information
@@ -96,55 +98,69 @@ module Mcp
       end
 
       def self.fetch_github_profile(username, headers)
-        url = "https://api.github.com/users/#{username}"
-        
-        response = super(
-          url: url,
-          headers: headers,
-          cache_key: "github_profile_#{username}",
-          cache_ttl: 1.hour,
-          rate_limit_key: 'github_api'
-        )
-
-        if response[:success]
-          profile = response[:data]
+        # Use GitHub client from factory (stub in test, real in other environments)
+        if ApiClientFactory.stub_mode?
+          client = ApiClientFactory.github_client
+          profile_data = client.user(username)
+          
           {
-            name: profile['name'],
-            bio: profile['bio'],
-            location: profile['location'],
-            company: profile['company'],
-            blog: profile['blog'],
-            public_repos: profile['public_repos'],
-            followers: profile['followers'],
-            following: profile['following'],
-            created_at: profile['created_at'],
-            updated_at: profile['updated_at']
+            name: profile_data['name'],
+            bio: profile_data['bio'],
+            location: profile_data['location'],
+            company: profile_data['company'],
+            blog: profile_data['blog'],
+            public_repos: profile_data['public_repos'],
+            followers: profile_data['followers'],
+            following: profile_data['following'],
+            created_at: profile_data['created_at'],
+            updated_at: profile_data['updated_at']
           }
         else
-          nil
+          # Original HTTP-based implementation for non-test environments
+          url = "https://api.github.com/users/#{username}"
+          
+          response = super(
+            url: url,
+            headers: headers,
+            cache_key: "github_profile_#{username}",
+            cache_ttl: 1.hour,
+            rate_limit_key: 'github_api'
+          )
+
+          if response[:success]
+            profile = response[:data]
+            {
+              name: profile['name'],
+              bio: profile['bio'],
+              location: profile['location'],
+              company: profile['company'],
+              blog: profile['blog'],
+              public_repos: profile['public_repos'],
+              followers: profile['followers'],
+              following: profile['following'],
+              created_at: profile['created_at'],
+              updated_at: profile['updated_at']
+            }
+          else
+            nil
+          end
         end
       end
 
       def self.fetch_github_repos(username, headers, limit, org_name)
-        # Determine the correct URL based on whether it's a user or organization
-        base_url = if org_name.present?
-                     "https://api.github.com/orgs/#{org_name}/repos"
-                   else
-                     "https://api.github.com/users/#{username}/repos"
-                   end
-
-        url = "#{base_url}?sort=updated&per_page=#{limit}"
-        
-        response = super(
-          url: url,
-          headers: headers,
-          cache_key: "github_repos_#{org_name || username}_#{limit}",
-          cache_ttl: 30.minutes,
-          rate_limit_key: 'github_api'
-        )
-
-        if response[:success] && response[:data].is_a?(Array)
-          repos = response[:data].map do |repo|
+        # Use GitHub client from factory (stub in test, real in other environments)
+        if ApiClientFactory.stub_mode?
+          client = ApiClientFactory.github_client
+          
+          # Get repositories based on whether it's for a user or organization
+          repos_data = if org_name.present?
+                         client.org_repos(org_name, per_page: limit)
+                       else
+                         client.repos(username, per_page: limit)
+                       end
+          
+          # Transform to expected format
+          repos = repos_data.map do |repo|
             {
               name: repo['name'],
               full_name: repo['full_name'],
@@ -169,11 +185,56 @@ module Mcp
             }
           }
         else
-          {
-            count: 0,
-            repositories: [],
-            summary: { total_stars: 0, languages: {}, most_recent: nil }
-          }
+          # Original HTTP-based implementation for non-test environments
+          # Determine the correct URL based on whether it's a user or organization
+          base_url = if org_name.present?
+                       "https://api.github.com/orgs/#{org_name}/repos"
+                     else
+                       "https://api.github.com/users/#{username}/repos"
+                     end
+
+          url = "#{base_url}?sort=updated&per_page=#{limit}"
+          
+          response = super(
+            url: url,
+            headers: headers,
+            cache_key: "github_repos_#{org_name || username}_#{limit}",
+            cache_ttl: 30.minutes,
+            rate_limit_key: 'github_api'
+          )
+
+          if response[:success] && response[:data].is_a?(Array)
+            repos = response[:data].map do |repo|
+              {
+                name: repo['name'],
+                full_name: repo['full_name'],
+                description: repo['description'],
+                language: repo['language'],
+                stars: repo['stargazers_count'],
+                forks: repo['forks_count'],
+                open_issues: repo['open_issues_count'],
+                private: repo['private'],
+                updated_at: repo['updated_at'],
+                url: repo['html_url']
+              }
+            end
+
+            {
+              count: repos.size,
+              repositories: repos,
+              summary: {
+                total_stars: repos.sum { |r| r[:stars] || 0 },
+                languages: repos.map { |r| r[:language] }.compact.tally,
+                most_recent: repos.first&.dig(:updated_at)
+              }
+            }
+          else
+            {
+              count: 0,
+              repositories: [],
+              summary: { total_stars: 0, languages: {}, most_recent: nil }
+            }
+          end
         end
       end
     end
