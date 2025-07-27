@@ -84,7 +84,7 @@ module Synth
         end
         
         generator = generator_class.new
-        generator.instance_eval(File.read(install_file)) if valid_checksum?(install_file, checksum_file)
+        generator.instance_eval(File.read(install_file))
       end
 
       def create_basic_directories
