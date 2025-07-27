@@ -1,0 +1,388 @@
+<% content_for :title, "Batch Estimation Result" %>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-8">
+    <div class="flex items-center justify-between">
+      <h1 class="text-3xl font-bold text-gray-900">Batch Estimation Result</h1>
+      <%= link_to "← Back to Estimator", ai_usage_estimator_index_path, 
+            class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50" %>
+    </div>
+    <p class="mt-2 text-gray-600">Estimated usage and costs for <%= @inputs_count %> inputs</p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+      <div class="text-3xl font-bold">$<%= sprintf("%.4f", @batch_estimation[:summary][:total_cost]) %></div>
+      <div class="text-blue-100">Total Cost</div>
+    </div>
+    <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+      <div class="text-3xl font-bold"><%= number_with_delimiter(@batch_estimation[:summary][:total_tokens]) %></div>
+      <div class="text-green-100">Total Tokens</div>
+    </div>
+    <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+      <div class="text-3xl font-bold"><%= @batch_estimation[:summary][:successful_estimates] %></div>
+      <div class="text-purple-100">Successful</div>
+    </div>
+    <div class="bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg shadow-lg p-6 text-white">
+      <div class="text-3xl font-bold">$<%= sprintf("%.4f", @batch_estimation[:summary][:average_cost_per_input]) %></div>
+      <div class="text-gray-100">Avg per Input</div>
+    </div>
+  </div>
+
+  <!-- Summary Details -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <!-- Token Breakdown -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Token Summary</h3>
+      <div class="space-y-3">
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-600">Input Tokens</span>
+          <span class="font-semibold"><%= number_with_delimiter(@batch_estimation[:summary][:total_input_tokens]) %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-600">Output Tokens</span>
+          <span class="font-semibold"><%= number_with_delimiter(@batch_estimation[:summary][:total_output_tokens]) %></span>
+        </div>
+        <div class="border-t pt-3">
+          <div class="flex justify-between">
+            <span class="text-sm font-medium text-gray-700">Total</span>
+            <span class="font-bold"><%= number_with_delimiter(@batch_estimation[:summary][:total_tokens]) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Processing Summary -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Processing Summary</h3>
+      <div class="space-y-3">
+        <div class="flex justify-between">
+          <span class="text-sm text-gray-600">Total Inputs</span>
+          <span class="font-semibold"><%= @batch_estimation[:summary][:total_inputs] %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-sm text-green-600">Successful</span>
+          <span class="font-semibold text-green-600"><%= @batch_estimation[:summary][:successful_estimates] %></span>
+        </div>
+        <% if @batch_estimation[:summary][:failed_estimates] > 0 %>
+          <div class="flex justify-between">
+            <span class="text-sm text-red-600">Failed</span>
+            <span class="font-semibold text-red-600"><%= @batch_estimation[:summary][:failed_estimates] %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Model Information -->
+    <div class="bg-white shadow rounded-lg p-6">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Configuration</h3>
+      <div class="space-y-3">
+        <div>
+          <span class="text-sm text-gray-600">Model</span>
+          <div class="font-semibold"><%= @batch_estimation[:summary][:model] %></div>
+        </div>
+        <div>
+          <span class="text-sm text-gray-600">Provider</span>
+          <div class="font-semibold"><%= @batch_estimation[:summary][:provider].capitalize %></div>
+        </div>
+        <div>
+          <span class="text-sm text-gray-600">Format</span>
+          <div class="font-semibold"><%= @format.capitalize %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+    <div class="flex flex-wrap gap-3">
+      <button onclick="exportResults()" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        Export Results
+      </button>
+      
+      <button onclick="runSuccessfulJobs()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m6-6V7a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2v-5"></path>
+        </svg>
+        Run All Successful Jobs
+      </button>
+
+      <button onclick="showCostBreakdown()" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v6a2 2 0 01-2 2H9z"></path>
+        </svg>
+        Cost Breakdown
+      </button>
+    </div>
+  </div>
+
+  <!-- Individual Results Table -->
+  <div class="bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium text-gray-900">Individual Estimations</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Input Tokens</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output Tokens</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cost</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Context</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <% @batch_estimation[:estimates].each do |estimate| %>
+            <tr class="<%= estimate[:success] ? 'hover:bg-gray-50' : 'bg-red-50' %>">
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= estimate[:index] + 1 %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <% if estimate[:success] %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Success
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    Failed
+                  </span>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= estimate[:success] ? number_with_delimiter(estimate[:input_tokens]) : '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= estimate[:success] ? number_with_delimiter(estimate[:output_tokens]) : '-' %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <%= estimate[:success] ? "$#{sprintf('%.4f', estimate[:total_cost])}" : '-' %>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                <% if estimate[:success] %>
+                  <div class="truncate font-mono text-xs">
+                    <%= truncate((estimate[:context] || {}).to_json, length: 50) %>
+                  </div>
+                <% else %>
+                  <div class="text-red-600 text-xs">
+                    <%= truncate(estimate[:error], length: 50) %>
+                  </div>
+                <% end %>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <% if estimate[:success] %>
+                  <button onclick="viewDetails(<%= estimate[:index] %>)" class="text-blue-600 hover:text-blue-900">
+                    View Details
+                  </button>
+                <% else %>
+                  <button onclick="showError(<%= estimate[:index] %>)" class="text-red-600 hover:text-red-900">
+                    View Error
+                  </button>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for details/errors -->
+<div id="details-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+          Details
+        </h3>
+        <div class="mt-2">
+          <div id="modal-content" class="text-sm text-gray-500"></div>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const batchData = <%= @batch_estimation.to_json %>;
+
+function exportResults() {
+  const csv = generateCSV();
+  downloadCSV(csv, 'batch_estimation_results.csv');
+}
+
+function generateCSV() {
+  const headers = ['Index', 'Status', 'Input Tokens', 'Output Tokens', 'Total Cost', 'Context', 'Error'];
+  const rows = batchData.estimates.map(estimate => [
+    estimate.index + 1,
+    estimate.success ? 'Success' : 'Failed',
+    estimate.success ? estimate.input_tokens : '',
+    estimate.success ? estimate.output_tokens : '',
+    estimate.success ? estimate.total_cost : '',
+    estimate.success ? JSON.stringify(estimate.context || {}) : '',
+    estimate.success ? '' : estimate.error
+  ]);
+  
+  return [headers, ...rows].map(row => 
+    row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',')
+  ).join('\n');
+}
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('hidden', '');
+  a.setAttribute('href', url);
+  a.setAttribute('download', filename);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function runSuccessfulJobs() {
+  const successfulEstimates = batchData.estimates.filter(e => e.success);
+  
+  if (successfulEstimates.length === 0) {
+    alert('No successful estimations to run');
+    return;
+  }
+  
+  if (!confirm(`Are you sure you want to run ${successfulEstimates.length} jobs? This will cost approximately $${batchData.summary.total_cost.toFixed(4)}`)) {
+    return;
+  }
+  
+  // Queue all successful jobs
+  const promises = successfulEstimates.map(estimate => {
+    const jobData = {
+      data: {
+        type: 'llm_job',
+        attributes: {
+          template: '<%= @template %>',
+          model: '<%= @model %>',
+          context: estimate.context || {},
+          format: '<%= @format %>'
+        }
+      }
+    };
+    
+    return fetch('/api/v1/llm_jobs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify(jobData)
+    });
+  });
+  
+  Promise.allSettled(promises).then(results => {
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - successful;
+    
+    alert(`Queued ${successful} jobs successfully. ${failed} failed to queue.`);
+  });
+}
+
+function showCostBreakdown() {
+  const content = `
+    <div class="space-y-4">
+      <div>
+        <h4 class="font-medium">Summary</h4>
+        <div class="mt-2 space-y-1 text-sm">
+          <div>Total Cost: $${batchData.summary.total_cost.toFixed(6)}</div>
+          <div>Average per Input: $${batchData.summary.average_cost_per_input.toFixed(6)}</div>
+          <div>Total Tokens: ${batchData.summary.total_tokens.toLocaleString()}</div>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-medium">Token Distribution</h4>
+        <div class="mt-2 space-y-1 text-sm">
+          <div>Input Tokens: ${batchData.summary.total_input_tokens.toLocaleString()}</div>
+          <div>Output Tokens: ${batchData.summary.total_output_tokens.toLocaleString()}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  showModal('Cost Breakdown', content);
+}
+
+function viewDetails(index) {
+  const estimate = batchData.estimates[index];
+  const content = `
+    <div class="space-y-4">
+      <div>
+        <h4 class="font-medium">Estimation Details</h4>
+        <div class="mt-2 space-y-1 text-sm">
+          <div>Input Tokens: ${estimate.input_tokens.toLocaleString()}</div>
+          <div>Output Tokens: ${estimate.output_tokens.toLocaleString()}</div>
+          <div>Total Cost: $${estimate.total_cost.toFixed(6)}</div>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-medium">Context</h4>
+        <pre class="mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">${JSON.stringify(estimate.context || {}, null, 2)}</pre>
+      </div>
+      <div>
+        <h4 class="font-medium">Generated Prompt</h4>
+        <pre class="mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto max-h-32 overflow-y-auto">${estimate.prompt}</pre>
+      </div>
+    </div>
+  `;
+  
+  showModal(`Estimation #${index + 1}`, content);
+}
+
+function showError(index) {
+  const estimate = batchData.estimates[index];
+  const content = `
+    <div class="space-y-4">
+      <div>
+        <h4 class="font-medium text-red-600">Error Details</h4>
+        <div class="mt-2 text-sm text-red-700 bg-red-50 p-3 rounded">
+          ${estimate.error}
+        </div>
+      </div>
+      <div>
+        <h4 class="font-medium">Input Context</h4>
+        <pre class="mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">${JSON.stringify(estimate.context || {}, null, 2)}</pre>
+      </div>
+    </div>
+  `;
+  
+  showModal(`Error #${index + 1}`, content);
+}
+
+function showModal(title, content) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-content').innerHTML = content;
+  document.getElementById('details-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('details-modal').classList.add('hidden');
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>
