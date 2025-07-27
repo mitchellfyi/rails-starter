@@ -4,6 +4,16 @@
 # Add these to your application's routes.rb file
 
 Rails.application.routes.draw do
+  # SystemPrompt management routes
+  resources :system_prompts do
+    member do
+      patch :activate
+      post :clone
+      get :diff
+      post :new_version
+    end
+  end
+
   # PromptTemplate management routes
   resources :prompt_templates do
     member do

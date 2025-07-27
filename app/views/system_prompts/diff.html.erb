@@ -1,0 +1,75 @@
+<h1>Version Diff: <%= @system_prompt.name %></h1>
+
+<% if @diff %>
+  <div class="mb-6 grid grid-cols-2 gap-4">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+      <h3 class="text-lg font-semibold text-red-800 mb-2">Previous Version</h3>
+      <p class="text-sm text-gray-600">Version <%= @diff[:previous][:version] %></p>
+    </div>
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+      <h3 class="text-lg font-semibold text-green-800 mb-2">Current Version</h3>
+      <p class="text-sm text-gray-600">Version <%= @diff[:current][:version] %></p>
+    </div>
+  </div>
+
+  <% if @diff[:changes].any? %>
+    <div class="space-y-6">
+      <% @diff[:changes].each do |field, (old_value, new_value)| %>
+        <div class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
+            <h3 class="font-semibold"><%= field.humanize %></h3>
+          </div>
+          
+          <div class="grid grid-cols-2">
+            <div class="p-4 bg-red-50">
+              <h4 class="text-sm font-medium text-red-800 mb-2">Previous</h4>
+              <% if field.in?(['associated_roles', 'associated_functions', 'associated_agents']) %>
+                <% if old_value.present? %>
+                  <ul class="text-sm">
+                    <% old_value.each do |item| %>
+                      <li class="text-red-700">• <%= item %></li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <span class="text-gray-500 text-sm">None</span>
+                <% end %>
+              <% else %>
+                <div class="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded border"><%= old_value %></div>
+              <% end %>
+            </div>
+            
+            <div class="p-4 bg-green-50 border-l border-gray-200">
+              <h4 class="text-sm font-medium text-green-800 mb-2">Current</h4>
+              <% if field.in?(['associated_roles', 'associated_functions', 'associated_agents']) %>
+                <% if new_value.present? %>
+                  <ul class="text-sm">
+                    <% new_value.each do |item| %>
+                      <li class="text-green-700">• <%= item %></li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <span class="text-gray-500 text-sm">None</span>
+                <% end %>
+              <% else %>
+                <div class="text-sm whitespace-pre-wrap font-mono bg-white p-2 rounded border"><%= new_value %></div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center py-8 text-gray-500">
+      <p>No changes detected between these versions.</p>
+    </div>
+  <% end %>
+<% else %>
+  <div class="text-center py-8 text-red-500">
+    <p>Unable to load version diff. The version may no longer exist.</p>
+  </div>
+<% end %>
+
+<div class="mt-8">
+  <%= link_to 'Back to System Prompt', system_prompt_path(@system_prompt), 
+              class: 'bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded' %>
+</div>
