@@ -1,95 +1,111 @@
-# RailsStarter Documentation
+# Rails SaaS Starter Template Documentation
 
-This documentation is auto-generated from installed Synth modules and OpenAPI specifications.
+Welcome to the comprehensive documentation for the Rails SaaS Starter Template. This documentation is organized to help you get started quickly and then dive deep into specific features.
 
-## Overview
+## 🚀 Quick Start
 
-This Rails SaaS application is built using the Rails SaaS Starter Template with the following installed modules:
+1. **Get Started Fast**: Run `bin/synth bootstrap` for interactive setup
+2. **Check System Health**: Run `bin/synth doctor` to validate your setup
+3. **Explore Modules**: Run `bin/synth list` to see available features
 
-- **Admin**: This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for...
-- **Ai**: This module adds first‑class AI integration to your Rails app with versioned prompt templates, variable interpolation...
-- **Ai-multitenant**: This module provides a comprehensive multi-tenant AI system with workspace-scoped AI configurations, an AI playground...
-- **Api**: Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.
-- **Auth**: This module provides comprehensive authentication features including user registration, login, OAuth integration, and...
-- **Deploy**: This module provides deployment configurations and CI/CD setups for three popular platforms:
-- **Docs**: This module provides comprehensive documentation generation and management tools for your Rails SaaS application, inc...
-- **Mcp**: This module provides a flexible context provider system for enriching AI prompts with dynamic data from databases, AP...
-- **Theme**: A comprehensive theming framework for customizing colors, fonts, logos, and branding elements in your Rails SaaS appl...
+## 📚 Documentation Structure
 
-## Quick Start
+### Getting Started
+- [Main README](../README.md) - Quick start and overview
+- [Usage Guide](guides/USAGE.md) - Detailed usage instructions
+- [Contributing Guide](guides/AGENTS.md) - How to contribute to the project
 
-### Prerequisites
+### Module Documentation
+- [Authentication (auth)](modules/auth.md) - User authentication with Devise & OAuth
+- [AI Integration (ai)](modules/ai.md) - LLM integration and prompt management
+- [Admin Panel (admin)](admin/ADMIN_PANEL.md) - Admin features and management
+- [API (api)](modules/api.md) - JSON:API with auto-generated docs
+- [Billing (billing)](modules/billing.md) - Stripe integration and subscriptions
+- [CMS/Blog (cms)](modules/cms.md) - Content management system
+- [Deployment (deploy)](modules/deploy.md) - Platform deployment guides
+- [All Modules](modules/README.md) - Complete module index
 
-- Ruby 3.3.0 or later
-- Node.js 18 or later
-- PostgreSQL 14+ with pgvector extension
-- Redis 6 or later
+### Implementation Guides
+- [AI Usage Estimator](implementation/AI_USAGE_ESTIMATOR_SUMMARY.md)
+- [Agent Implementation](implementation/AGENT_IMPLEMENTATION_SUMMARY.md)
+- [JSON API Implementation](implementation/JSON_API_IMPLEMENTATION.md)
+- [MCP Workspace Implementation](implementation/MCP_WORKSPACE_IMPLEMENTATION.md)
+- [Token Usage Tracking](implementation/TOKEN_USAGE_TRACKING.md)
+- [All Implementation Guides](implementation/) - Technical deep dives
 
-### Installation
+### Configuration & Setup
+- [Accessibility Guidelines](guides/ACCESSIBILITY.md)
+- [Bootstrap CLI](modules/BOOTSTRAP_CLI.md)
+- [Seeds & Sample Data](modules/SEEDS.md)
+- [System Prompts](modules/SYSTEM_PROMPTS.md)
+- [I18n Configuration](modules/I18N_SEEDS.md)
 
-```bash
-# Clone and setup
-git clone <repository-url>
-cd <app-name>
-bundle install
-yarn install
-
-# Database setup
-rails db:create
-rails db:migrate
-rails db:seed
-
-# Start development server
-bin/dev
-```
-
-## Module Documentation
-
-- [Admin](modules/admin.md)
-- [Ai](modules/ai.md)
-- [Ai-multitenant](modules/ai-multitenant.md)
-- [Api](modules/api.md)
-- [Auth](modules/auth.md)
-- [Deploy](modules/deploy.md)
-- [Docs](modules/docs.md)
-- [Mcp](modules/mcp.md)
-- [Theme](modules/theme.md)
-
-## API Documentation
-
-This application provides a JSON:API compliant REST API. 
-
-- **OpenAPI Specification**: [api.json](api.json)
-- **API Module Documentation**: [modules/api.md](modules/api.md)
-
-### Authentication
-
-Most API endpoints require authentication using Bearer tokens.
-
-### Base URL
-
-- Development: `http://localhost:3000/api`
-- Production: `https://your-domain.com/api`
-
-
-## Synth CLI
-
-Use the Synth CLI to manage modules:
+## 🔧 CLI Commands Reference
 
 ```bash
-# List available modules
-bin/synth list
+# Setup and getting started
+bin/synth bootstrap              # Interactive setup wizard  
+bin/synth doctor                 # System health check
 
-# Add new modules
-bin/synth add [module_name]
+# Module management
+bin/synth list                   # Show all modules
+bin/synth list --available       # Show only available modules
+bin/synth list --installed       # Show only installed modules
+bin/synth add billing            # Install billing module
+bin/synth remove cms --force     # Remove CMS module
+bin/synth info ai                # Show module details
 
-# Remove modules
-bin/synth remove [module_name]
-
-# Generate documentation
-bin/synth docs
+# Development and testing
+bin/synth test                   # Run all tests
+bin/synth test billing           # Run module-specific tests
 ```
+
+## 🎯 Feature Overview
+
+### Core Features (Always Available)
+- **Ruby on Rails 7** with modern conventions
+- **PostgreSQL** with pgvector for AI features
+- **Redis & Sidekiq** for background processing
+- **TailwindCSS** for styling
+- **Hotwire** (Turbo & Stimulus) for interactivity
+
+### Optional Modules
+- **🔐 Authentication** - Complete user auth with OAuth
+- **🤖 AI Integration** - Multi-provider LLM support
+- **💳 Billing** - Stripe subscriptions and payments
+- **👑 Admin Panel** - User management and system admin
+- **📡 API** - JSON:API with OpenAPI documentation
+- **📝 CMS/Blog** - Content management and blogging
+- **🚀 Deployment** - Platform-specific deploy configs
+
+## 📖 Popular Documentation Paths
+
+### For New Users
+1. [README](../README.md) → Quick start
+2. [Bootstrap CLI](modules/BOOTSTRAP_CLI.md) → Setup guidance
+3. [Usage Guide](guides/USAGE.md) → Detailed usage
+
+### For Developers
+1. [Contributing](guides/AGENTS.md) → Development guidelines
+2. [Implementation Guides](implementation/) → Technical details
+3. [Module Documentation](modules/) → Feature-specific docs
+
+### For AI Features
+1. [AI Module](modules/ai.md) → LLM integration
+2. [System Prompts](modules/SYSTEM_PROMPTS.md) → Prompt management
+3. [Agent Implementation](implementation/AGENT_IMPLEMENTATION_SUMMARY.md) → Technical details
+
+## 🆘 Getting Help
+
+1. **CLI Help**: Run `bin/synth help` for command reference
+2. **System Check**: Run `bin/synth doctor` to diagnose issues
+3. **Module Info**: Run `bin/synth info MODULE_NAME` for specific help
+4. **Documentation**: Browse the organized docs in this directory
+
+## 📋 What's New
+
+See [CHANGELOG](CHANGELOG.md) for recent updates and changes.
 
 ---
 
-*Documentation generated on 2025-07-27 15:22:22 by `bin/synth docs`*
+**Ready to dive in?** Start with the [main README](../README.md) or run `bin/synth bootstrap` to get started! 🚀
