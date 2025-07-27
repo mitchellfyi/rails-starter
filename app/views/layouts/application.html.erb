@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-white">
+  <head>
+    <title>Rails SaaS Starter Template</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              gray: {
+                50: '#f9fafb',
+                100: '#f3f4f6',
+                200: '#e5e7eb',
+                300: '#d1d5db',
+                400: '#9ca3af',
+                500: '#6b7280',
+                600: '#4b5563',
+                700: '#374151',
+                800: '#1f2937',
+                900: '#111827',
+                950: '#030712',
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Custom styles for markdown content -->
+    <style>
+      .prose {
+        max-width: none;
+      }
+      .prose h1 {
+        @apply text-3xl font-bold text-gray-900 mb-4;
+      }
+      .prose h2 {
+        @apply text-2xl font-semibold text-gray-900 mb-3 mt-8;
+      }
+      .prose h3 {
+        @apply text-xl font-semibold text-gray-900 mb-2 mt-6;
+      }
+      .prose p {
+        @apply text-gray-600 mb-4 leading-relaxed;
+      }
+      .prose ul {
+        @apply list-disc list-inside text-gray-600 mb-4 space-y-1;
+      }
+      .prose ol {
+        @apply list-decimal list-inside text-gray-600 mb-4 space-y-1;
+      }
+      .prose li {
+        @apply ml-4;
+      }
+      .prose code {
+        @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm;
+      }
+      .prose pre {
+        @apply bg-gray-900 text-gray-100 p-4 rounded-lg mb-4 overflow-x-auto;
+      }
+      .prose pre code {
+        @apply bg-transparent text-gray-100 p-0;
+      }
+      .prose blockquote {
+        @apply border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-4;
+      }
+      .prose a {
+        @apply text-blue-600 hover:text-blue-800 underline;
+      }
+      .prose table {
+        @apply w-full border-collapse border border-gray-300 mb-4;
+      }
+      .prose th, .prose td {
+        @apply border border-gray-300 px-4 py-2 text-left;
+      }
+      .prose th {
+        @apply bg-gray-50 font-semibold;
+      }
+    </style>
+  </head>
+
+  <body class="h-full">
+    <%= yield %>
+  </body>
+</html>
