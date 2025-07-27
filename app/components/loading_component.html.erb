@@ -1,0 +1,65 @@
+<div class="<%= container_classes %>">
+  <% case variant %>
+  <% when :spinner %>
+    <div class="flex flex-col items-center space-y-2">
+      <div class="<%= spinner_classes %>"></div>
+      <% if text.present? %>
+        <p class="<%= text_classes %> text-gray-600"><%= text %></p>
+      <% end %>
+    </div>
+    
+  <% when :dots %>
+    <div class="flex flex-col items-center space-y-2">
+      <div class="flex space-x-1">
+        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+        <div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+      </div>
+      <% if text.present? %>
+        <p class="<%= text_classes %> text-gray-600"><%= text %></p>
+      <% end %>
+    </div>
+    
+  <% when :pulse %>
+    <div class="w-full max-w-sm mx-auto">
+      <div class="animate-pulse">
+        <div class="flex space-x-4">
+          <div class="rounded-full bg-gray-300 h-10 w-10"></div>
+          <div class="flex-1 space-y-2 py-1">
+            <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+            <div class="h-4 bg-gray-300 rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  <% when :skeleton %>
+    <div class="w-full max-w-md mx-auto">
+      <div class="animate-pulse space-y-3">
+        <% skeleton_lines.times do |i| %>
+          <div class="h-4 bg-gray-300 rounded <%= i == skeleton_lines - 1 ? 'w-2/3' : 'w-full' %>"></div>
+        <% end %>
+      </div>
+    </div>
+    
+  <% when :bars %>
+    <div class="flex items-end space-x-1">
+      <% 5.times do |i| %>
+        <div class="bg-blue-600 rounded-sm animate-pulse" 
+             style="width: 4px; height: <%= 8 + (i * 4) %>px; animation-delay: <%= i * 100 %>ms;"></div>
+      <% end %>
+    </div>
+    <% if text.present? %>
+      <p class="<%= text_classes %> text-gray-600 mt-2"><%= text %></p>
+    <% end %>
+    
+  <% else %>
+    <!-- Default spinner -->
+    <div class="flex flex-col items-center space-y-2">
+      <div class="<%= spinner_classes %>"></div>
+      <% if text.present? %>
+        <p class="<%= text_classes %> text-gray-600"><%= text %></p>
+      <% end %>
+    </div>
+  <% end %>
+</div>

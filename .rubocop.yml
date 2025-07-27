@@ -1,0 +1,88 @@
+# RuboCop configuration for Rails SaaS Starter Template
+# This configuration enforces Ruby and Rails best practices while being practical for rapid development
+
+require:
+  - rubocop-rails
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 3.2
+  TargetRailsVersion: 7.1
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - 'node_modules/**/*'
+    - 'tmp/**/*'
+    - 'log/**/*'
+    - 'db/migrate/*'
+    - 'db/schema.rb'
+    - 'config/boot.rb'
+    - 'config/environment.rb'
+    - 'config/environments/*'
+    - 'config/initializers/*'
+    - 'bin/*'
+    - 'Gemfile.lock'
+    - 'spec/rails_helper.rb'
+    - 'spec/spec_helper.rb'
+
+# Disable some cops that are too strict for a starter template
+Layout/LineLength:
+  Max: 120
+  AllowedPatterns: ['\A#']
+
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/MethodLength:
+  Max: 30
+
+Metrics/BlockLength:
+  Exclude:
+    - 'config/routes.rb'
+    - 'spec/**/*'
+    - 'test/**/*'
+    - 'scaffold/**/*'
+    - '*.gemspec'
+
+Metrics/AbcSize:
+  Max: 20
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+Rails/I18nLocaleTexts:
+  Enabled: false
+
+Rails/FilePath:
+  Enabled: false
+
+Rails/OutputSafety:
+  Enabled: false
+
+Rails/SkipsModelValidations:
+  Enabled: false
+
+# Performance optimizations
+Performance/StringReplacement:
+  Enabled: true
+
+Performance/RedundantStringChars:
+  Enabled: true
+
+Performance/StartWith:
+  Enabled: true
+
+Performance/EndWith:
+  Enabled: true
