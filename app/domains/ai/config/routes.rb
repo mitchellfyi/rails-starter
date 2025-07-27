@@ -35,6 +35,20 @@ Rails.application.routes.draw do
 
   # Workspace-scoped AI resources
   resources :workspaces, param: :slug do
+    # AI Routing Policies management
+    resources :ai_routing_policies do
+      member do
+        get :preview
+      end
+    end
+    
+    # Workspace Spending Limits management
+    resource :workspace_spending_limit, path: 'spending_limit', only: [:show, :edit, :update] do
+      member do
+        post :reset_spending
+      end
+    end
+    
     # AI Datasets management
     resources :ai_datasets do
       member do

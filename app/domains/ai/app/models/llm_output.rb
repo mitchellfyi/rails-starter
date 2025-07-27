@@ -3,6 +3,7 @@
 class LLMOutput < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :agent, optional: true
+  belongs_to :workspace, optional: true
   belongs_to :prompt_template, foreign_key: :template_name, primary_key: :slug, optional: true
   belongs_to :prompt_execution, optional: true
 
@@ -24,6 +25,9 @@ class LLMOutput < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :by_template, ->(template) { where(template_name: template) }
   scope :by_model, ->(model) { where(model_name: model) }
+  scope :with_cost_warnings, -> { where(cost_warning_triggered: true) }
+  scope :for_workspace, ->(workspace) { where(workspace: workspace) }
+  scope :high_cost, ->(threshold) { where('estimated_cost > ? OR actual_cost > ?', threshold, threshold) }
 
   # Re-run the same job with identical parameters
   def re_run!
@@ -123,5 +127,55 @@ class LLMOutput < ApplicationRecord
     
     # Simple estimation: ~4 characters per token for English text
     raw_response.length / 4
+  end
+
+  # Get routing decision details
+  def routing_decision
+    return {} unless super.present?
+    JSON.parse(super)
+  rescue JSON::ParserError
+    {}
+  end
+
+  def routing_decision=(value)
+    super(value.is_a?(Hash) ? value.to_json : value)
+  end
+
+  # Get the actual cost or estimated cost
+  def effective_cost
+    actual_cost || estimated_cost || 0.0
+  end
+
+  # Check if this request had cost issues
+  def cost_issue?
+    cost_warning_triggered? || effective_cost > 0.05
+  end
+
+  # Update actual cost and workspace spending
+  def update_actual_cost!(cost, input_tokens: nil, output_tokens: nil)
+    update!(
+      actual_cost: cost,
+      input_tokens: input_tokens,
+      output_tokens: output_tokens
+    )
+
+    # Update workspace spending if workspace is present
+    if workspace&.workspace_spending_limit
+      workspace.workspace_spending_limit.add_spending!(cost)
+    end
+  end
+
+  # Format routing decision for display
+  def routing_summary
+    decision = routing_decision
+    return "Direct request" if decision.empty?
+
+    parts = []
+    parts << "Primary: #{decision['primary_model']}" if decision['primary_model']
+    parts << "Attempts: #{decision['total_attempts']}" if decision['total_attempts']
+    parts << "Final: #{decision['final_model']}" if decision['final_model']
+    parts << "Cost warning" if cost_warning_triggered?
+    
+    parts.join(", ")
   end
 end

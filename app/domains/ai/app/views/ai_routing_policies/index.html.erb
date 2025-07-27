@@ -1,0 +1,118 @@
+<% content_for :title, "AI Routing Policies" %>
+
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-gray-900">AI Routing Policies</h1>
+      <%= link_to "New Policy", new_workspace_ai_routing_policy_path(@workspace), 
+                  class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+    </div>
+
+    <!-- Spending Overview -->
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-4 py-5 sm:p-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Spending Overview</h3>
+        
+        <% if @spending_limit.persisted? %>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-gray-900">$<%= @spending_limit.current_daily_spend || 0 %></div>
+              <div class="text-sm text-gray-500">Daily Spend</div>
+              <% if @spending_limit.daily_limit %>
+                <div class="text-xs text-gray-400">Limit: $<%= @spending_limit.daily_limit %></div>
+              <% end %>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-gray-900">$<%= @spending_limit.current_weekly_spend || 0 %></div>
+              <div class="text-sm text-gray-500">Weekly Spend</div>
+              <% if @spending_limit.weekly_limit %>
+                <div class="text-xs text-gray-400">Limit: $<%= @spending_limit.weekly_limit %></div>
+              <% end %>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-gray-900">$<%= @spending_limit.current_monthly_spend || 0 %></div>
+              <div class="text-sm text-gray-500">Monthly Spend</div>
+              <% if @spending_limit.monthly_limit %>
+                <div class="text-xs text-gray-400">Limit: $<%= @spending_limit.monthly_limit %></div>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <p class="text-gray-500">No spending limits configured.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Routing Policies -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <% if @ai_routing_policies.any? %>
+          <% @ai_routing_policies.each do |policy| %>
+            <li>
+              <div class="px-4 py-4 sm:px-6">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                      <p class="text-lg font-medium text-blue-600">
+                        <%= link_to policy.name, [@workspace, policy] %>
+                      </p>
+                      <div class="ml-2 flex-shrink-0 flex">
+                        <% if policy.enabled? %>
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Enabled
+                          </span>
+                        <% else %>
+                          <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Disabled
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                    
+                    <div class="mt-2 text-sm text-gray-500">
+                      <p><strong>Primary Model:</strong> <%= policy.primary_model %></p>
+                      <% if policy.fallback_models.any? %>
+                        <p><strong>Fallbacks:</strong> <%= policy.fallback_models.join(", ") %></p>
+                      <% end %>
+                      <p><strong>Cost Thresholds:</strong> 
+                        Warn at $<%= policy.cost_threshold_warning %>, 
+                        Block at $<%= policy.cost_threshold_block %>
+                      </p>
+                    </div>
+                    
+                    <% if policy.description.present? %>
+                      <p class="mt-2 text-sm text-gray-700"><%= policy.description %></p>
+                    <% end %>
+                  </div>
+                  
+                  <div class="ml-6 flex items-center space-x-2">
+                    <%= link_to "Preview", preview_workspace_ai_routing_policy_path(@workspace, policy), 
+                                class: "text-indigo-600 hover:text-indigo-900 text-sm", 
+                                data: { turbo_method: :get } %>
+                    <%= link_to "Edit", edit_workspace_ai_routing_policy_path(@workspace, policy), 
+                                class: "text-indigo-600 hover:text-indigo-900 text-sm" %>
+                    <%= link_to "Delete", [@workspace, policy], 
+                                class: "text-red-600 hover:text-red-900 text-sm",
+                                data: { 
+                                  turbo_method: :delete, 
+                                  turbo_confirm: "Are you sure?"
+                                } %>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        <% else %>
+          <li>
+            <div class="px-4 py-8 text-center">
+              <p class="text-gray-500">No routing policies configured.</p>
+              <p class="text-sm text-gray-400 mt-2">
+                Create a routing policy to enable model fallbacks and cost controls.
+              </p>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+</div>
