@@ -1,6 +1,6 @@
 {
   "manifest_version": "1.0.0",
-  "generated_at": "2025-07-27T15:32:42Z",
+  "generated_at": "2025-07-27T15:35:29Z",
   "synth_cli_version": "1.0.0",
   "application": {
     "name": "RailsStarter",
@@ -636,7 +636,7 @@
     "feature_modules": 5,
     "ui_modules": 1,
     "tooling_modules": 2,
-    "last_validated": "2025-07-27T15:32:42Z",
+    "last_validated": "2025-07-27T15:35:29Z",
     "validation_status": "healthy"
   }
 }
