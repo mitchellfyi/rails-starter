@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-white">
+  <head>
+    <title>Documentation - Rails SaaS Starter Template</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    
+    <!-- Embedded Tailwind-like styles -->
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #374151; }
+      .bg-white { background-color: #ffffff; }
+      .bg-gray-50 { background-color: #f9fafb; }
+      .bg-gray-75 { background-color: rgba(249, 250, 251, 0.75); }
+      .bg-gray-900 { background-color: #111827; }
+      .text-gray-400 { color: #9ca3af; }
+      .text-gray-600 { color: #4b5563; }
+      .text-gray-700 { color: #374151; }
+      .text-gray-900 { color: #111827; }
+      .text-white { color: #ffffff; }
+      .text-indigo-600 { color: #2563eb; }
+      .text-sm { font-size: 0.875rem; }
+      .text-base { font-size: 1rem; }
+      .text-lg { font-size: 1.125rem; }
+      .text-xl { font-size: 1.25rem; }
+      .text-2xl { font-size: 1.5rem; }
+      .text-3xl { font-size: 1.875rem; }
+      .font-medium { font-weight: 500; }
+      .font-semibold { font-weight: 600; }
+      .font-bold { font-weight: 700; }
+      .p-2 { padding: 0.5rem; }
+      .p-4 { padding: 1rem; }
+      .p-6 { padding: 1.5rem; }
+      .px-4 { padding-left: 1rem; padding-right: 1rem; }
+      .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+      .px-8 { padding-left: 2rem; padding-right: 2rem; }
+      .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+      .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+      .py-16 { padding-top: 4rem; padding-bottom: 4rem; }
+      .pt-4 { padding-top: 1rem; }
+      .pt-14 { padding-top: 3.5rem; }
+      .mt-4 { margin-top: 1rem; }
+      .mt-6 { margin-top: 1.5rem; }
+      .mt-8 { margin-top: 2rem; }
+      .mb-4 { margin-bottom: 1rem; }
+      .mb-6 { margin-bottom: 1.5rem; }
+      .mb-16 { margin-bottom: 4rem; }
+      .mr-4 { margin-right: 1rem; }
+      .ml-4 { margin-left: 1rem; }
+      .max-w-3xl { max-width: 48rem; }
+      .max-w-7xl { max-width: 80rem; }
+      .mx-auto { margin-left: auto; margin-right: auto; }
+      .w-full { width: 100%; }
+      .w-5 { width: 1.25rem; }
+      .w-8 { width: 2rem; }
+      .w-72 { width: 18rem; }
+      .w-80 { width: 20rem; }
+      .h-5 { height: 1.25rem; }
+      .h-8 { height: 2rem; }
+      .h-14 { height: 3.5rem; }
+      .h-full { height: 100%; }
+      .min-h-screen { min-height: 100vh; }
+      .flex { display: flex; }
+      .inline-flex { display: inline-flex; }
+      .grid { display: grid; }
+      .hidden { display: none; }
+      .items-center { align-items: center; }
+      .justify-between { justify-content: space-between; }
+      .gap-2 { gap: 0.5rem; }
+      .gap-4 { gap: 1rem; }
+      .gap-5 { gap: 1.25rem; }
+      .gap-8 { gap: 2rem; }
+      .border { border-width: 1px; }
+      .border-b { border-bottom-width: 1px; }
+      .border-l { border-left-width: 1px; }
+      .border-gray-200 { border-color: #e5e7eb; }
+      .border-gray-900\/5 { border-color: rgba(17, 24, 39, 0.05); }
+      .rounded-lg { border-radius: 0.5rem; }
+      .rounded-full { border-radius: 9999px; }
+      .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+      .overflow-hidden { overflow: hidden; }
+      .overflow-y-auto { overflow-y: auto; }
+      .cursor-pointer { cursor: pointer; }
+      .relative { position: relative; }
+      .absolute { position: absolute; }
+      .fixed { position: fixed; }
+      .inset-x-0 { left: 0; right: 0; }
+      .inset-y-0 { top: 0; bottom: 0; }
+      .top-0 { top: 0; }
+      .left-0 { left: 0; }
+      .left-72 { left: 18rem; }
+      .left-80 { left: 20rem; }
+      .z-30 { z-index: 30; }
+      .z-40 { z-index: 40; }
+      .z-50 { z-index: 50; }
+      .transition { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+      .backdrop-blur-sm { backdrop-filter: blur(4px); }
+      
+      a { color: #2563eb; text-decoration: none; }
+      a:hover { color: #1d4ed8; text-decoration: underline; }
+      
+      .sidebar-nav { list-style: none; }
+      .sidebar-nav li { position: relative; }
+      .sidebar-nav a { 
+        display: flex; 
+        width: 100%; 
+        align-items: center; 
+        padding-left: 0.875rem; 
+        color: #374151; 
+      }
+      .sidebar-nav a:hover { color: #111827; }
+      .sidebar-nav a.active { 
+        font-weight: 600; 
+        color: #2563eb; 
+      }
+      .sidebar-nav a::before {
+        content: '';
+        position: absolute;
+        left: -1px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #e5e7eb;
+        pointer-events: none;
+      }
+      .sidebar-nav a.active::before {
+        background-color: #2563eb;
+      }
+      
+      .prose h1 { font-size: 1.875rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
+      .prose h2 { font-size: 1.5rem; font-weight: 600; color: #111827; margin-bottom: 0.75rem; margin-top: 2rem; }
+      .prose h3 { font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 0.5rem; margin-top: 1.5rem; }
+      .prose p { color: #4b5563; margin-bottom: 1rem; line-height: 1.75; }
+      .prose ul { list-style-type: disc; list-style-position: inside; color: #4b5563; margin-bottom: 1rem; }
+      .prose ul li { margin-left: 1rem; margin-bottom: 0.25rem; }
+      .prose code { background-color: #f3f4f6; color: #1f2937; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875rem; }
+      .prose pre { background-color: #111827; color: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; overflow-x: auto; }
+      .prose pre code { background-color: transparent; color: #f3f4f6; padding: 0; }
+      .prose blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; font-style: italic; color: #4b5563; margin-bottom: 1rem; }
+      
+      @media (min-width: 1024px) {
+        .lg\\:flex { display: flex; }
+        .lg\\:hidden { display: none; }
+        .lg\\:fixed { position: fixed; }
+        .lg\\:inset-y-0 { top: 0; bottom: 0; }
+        .lg\\:left-0 { left: 0; }
+        .lg\\:left-72 { left: 18rem; }
+        .lg\\:z-30 { z-index: 30; }
+        .lg\\:z-40 { z-index: 40; }
+        .lg\\:block { display: block; }
+        .lg\\:w-72 { width: 18rem; }
+        .lg\\:overflow-y-auto { overflow-y: auto; }
+        .lg\\:bg-gray-50\\/75 { background-color: rgba(249, 250, 251, 0.75); }
+        .lg\\:backdrop-blur-sm { backdrop-filter: blur(4px); }
+        .lg\\:px-8 { padding-left: 2rem; padding-right: 2rem; }
+        .lg\\:mt-4 { margin-top: 1rem; }
+        .lg\\:mt-6 { margin-top: 1.5rem; }
+        .lg\\:mt-8 { margin-top: 2rem; }
+        .lg\\:mx-0 { margin-left: 0; margin-right: 0; }
+        .lg\\:bg-transparent { background-color: transparent; }
+        .lg\\:backdrop-blur-none { backdrop-filter: none; }
+        .lg\\:border-none { border: none; }
+        .lg\\:pl-72 { padding-left: 18rem; }
+        .xl\\:pl-80 { padding-left: 20rem; }
+        .xl\\:w-80 { width: 20rem; }
+        .xl\\:left-80 { left: 20rem; }
+        .xl\\:ml-0 { margin-left: 0; }
+        .xl\\:mr-\\[15\\.5rem\\] { margin-right: 15.5rem; }
+        .xl\\:max-w-none { max-width: none; }
+        .xl\\:pr-16 { padding-right: 4rem; }
+      }
+      
+      @media (max-width: 767px) {
+        .md\\:hidden { display: none; }
+        .md\\:block { display: block; }
+      }
+    </style>
+  </head>
+
+  <body class="h-full">
+    <!-- Documentation layout inspired by Syntax TailwindUI -->
+    <div class="bg-white">
+      <!-- Navigation header -->
+      <div class="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 transition lg:left-72 lg:z-30 lg:px-8 xl:left-80">
+        <div class="flex items-center gap-5 lg:hidden">
+          <button type="button" class="-m-3 p-3 md:hidden" aria-label="Toggle navigation">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke="currentColor" class="h-6 w-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div class="ml-4 flex text-sm whitespace-nowrap">
+            <div class="flex items-center">
+              Rails SaaS Starter
+              <svg width="3" height="6" aria-hidden="true" class="ml-4 text-gray-400">
+                <path d="M0 0L3 3L0 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <div class="font-semibold text-gray-900 ml-4">
+              AI Module Documentation
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-5">
+          <nav class="hidden md:block">
+            <ul class="flex items-center gap-8">
+              <li>
+                <a class="text-sm text-gray-600 hover:text-gray-900" href="/">Home</a>
+              </li>
+              <li>
+                <a class="text-sm text-gray-600 hover:text-gray-900" href="/docs">Documentation</a>
+              </li>
+              <li>
+                <a class="text-sm text-gray-600 hover:text-gray-900" href="https://github.com/mitchellfyi/rails-starter">GitHub</a>
+              </li>
+            </ul>
+          </nav>
+          <div class="hidden min-w-0">
+            <a class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900" target="_blank" rel="noreferrer" href="https://github.com/mitchellfyi/rails-starter">
+              <svg viewBox="0 0 16 16" aria-hidden="true" class="h-5 w-5">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+              </svg>
+              GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:block lg:w-72 lg:overflow-y-auto lg:bg-gray-50/75 lg:backdrop-blur-sm xl:w-80">
+        <div class="hidden lg:flex lg:flex-col">
+          <div class="flex flex-col gap-4 px-6 pt-4">
+            <a class="flex items-center gap-2" href="/">
+              <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600">
+                <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div class="text-sm font-semibold text-gray-900">Rails SaaS Starter</div>
+            </a>
+          </div>
+          
+          <!-- Search -->
+          <div class="px-6 pt-4">
+            <div class="relative">
+              <svg width="20" height="20" fill="currentColor" class="absolute inset-y-0 left-3 h-full w-5 text-gray-400" aria-hidden="true">
+                <path d="m19 19-3.5-3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                <circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></circle>
+              </svg>
+              <input placeholder="Find something..." class="block w-full rounded-lg bg-white py-2 pl-10 pr-4 text-base text-gray-900 border border-gray-200" type="text">
+            </div>
+          </div>
+
+          <!-- Navigation -->
+          <nav class="lg:mt-6 lg:px-6">
+            <div class="lg:mt-4">
+              <!-- Getting Started Section -->
+              <div class="relative mt-6 lg:mt-8">
+                <div class="absolute inset-x-0 top-0 bg-gray-50/90 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none">
+                  <div class="mx-4 lg:mx-0">
+                    <div class="flex h-8 items-center border-b border-gray-900/5 lg:border-none">
+                      <h2 class="text-sm font-semibold text-gray-900">Getting Started</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-8 lg:mt-4">
+                  <ul class="border-l border-gray-200 sidebar-nav">
+                    <li class="relative">
+                      <a href="/docs/README" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Overview
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/setup" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Setup Guide
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/configuration" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Configuration
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/testing" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Testing
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Architecture Section -->
+              <div class="relative mt-6 lg:mt-8">
+                <div class="absolute inset-x-0 top-0 bg-gray-50/90 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none">
+                  <div class="mx-4 lg:mx-0">
+                    <div class="flex h-8 items-center border-b border-gray-900/5 lg:border-none">
+                      <h2 class="text-sm font-semibold text-gray-900">Architecture</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-8 lg:mt-4">
+                  <ul class="border-l border-gray-200 sidebar-nav">
+                    <li class="relative">
+                      <a href="/docs/domain-architecture" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Domain Architecture
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/responsive-design" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Responsive Design
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Modules Section -->
+              <div class="relative mt-6 lg:mt-8">
+                <div class="absolute inset-x-0 top-0 bg-gray-50/90 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none">
+                  <div class="mx-4 lg:mx-0">
+                    <div class="flex h-8 items-center border-b border-gray-900/5 lg:border-none">
+                      <h2 class="text-sm font-semibold text-gray-900">Modules</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-8 lg:mt-4">
+                  <ul class="border-l border-gray-200 sidebar-nav">
+                    <li class="relative">
+                      <a href="/docs/ai-module" class="active flex w-full items-center pl-4 font-semibold text-indigo-600">
+                        AI Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/admin-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Admin Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/api-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        API Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/auth-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Auth Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/theme-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Theme Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/mcp-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        MCP Module
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/deploy-module" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Deploy Module
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Implementation Guides Section -->
+              <div class="relative mt-6 lg:mt-8">
+                <div class="absolute inset-x-0 top-0 bg-gray-50/90 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none">
+                  <div class="mx-4 lg:mx-0">
+                    <div class="flex h-8 items-center border-b border-gray-900/5 lg:border-none">
+                      <h2 class="text-sm font-semibold text-gray-900">Implementation Guides</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-8 lg:mt-4">
+                  <ul class="border-l border-gray-200 sidebar-nav">
+                    <li class="relative">
+                      <a href="/docs/agent-implementation" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Agent Implementation
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/ai-usage-estimator" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        AI Usage Estimator
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/mcp-workspace" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        MCP Workspace
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/system-prompts" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        System Prompts
+                      </a>
+                    </li>
+                    <li class="relative">
+                      <a href="/docs/token-usage" class="flex w-full items-center pl-4 text-gray-700 hover:text-gray-900">
+                        Token Usage Tracking
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="lg:pl-72 xl:pl-80">
+        <div class="mx-auto max-w-3xl pt-14 xl:ml-0 xl:mr-[15.5rem] xl:max-w-none xl:pr-16">
+          <main class="px-4 py-16 lg:px-8">
+            <article class="prose max-w-none">
+              <div class="mb-6">
+                <p class="text-sm font-medium text-indigo-600">Module Documentation</p>
+                <h1 class="text-3xl font-bold text-gray-900">AI Module</h1>
+                <p class="text-lg text-gray-700">
+                  First‑class AI integration to your Rails app with versioned prompt templates, variable interpolation, LLM job system, and multi‑context provider support.
+                </p>
+              </div>
+
+              <div class="prose">
+                <h2>Features</h2>
+                <ul>
+                  <li><strong>Prompt Templates</strong> with versioning, variable interpolation, tags, output types (JSON, Markdown, HTML partial), previews, and diffs</li>
+                  <li><strong>Asynchronous LLM Jobs</strong> with Sidekiq: <code>LLMJob.perform_later(template:, model:, context:, format:)</code> executes prompts, logs inputs/outputs, handles retries with exponential backoff, and stores results in <code>LLMOutput</code></li>
+                  <li><strong>Multi‑Context Provider (MCP)</strong> for dynamic prompt context. Fetch data from database queries, HTTP APIs (GitHub, Slack), file/document parsing, semantic memory via embeddings, and code introspection</li>
+                  <li><strong>Usage Tracking</strong> with detailed analytics, cost estimation, and spending limits</li>
+                  <li><strong>Multi-tenant Support</strong> with workspace-level AI configuration and isolation</li>
+                </ul>
+
+                <h2>Installation</h2>
+                <p>Add the AI module to your Rails SaaS Starter application:</p>
+                <pre><code>bin/synth add ai</code></pre>
+
+                <p>This installs:</p>
+                <ul>
+                  <li>Prompt template management system</li>
+                  <li>LLM job processing with Sidekiq</li>
+                  <li>Usage analytics and cost tracking</li>
+                  <li>Multi-context provider integration</li>
+                  <li>Workspace-level AI configuration</li>
+                </ul>
+
+                <h2>Quick Start</h2>
+
+                <h3>1. Configure API Keys</h3>
+                <p>Set your AI provider API keys in your environment:</p>
+                <pre><code># .env
+OPENAI_API_KEY=your_openai_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key</code></pre>
+
+                <h3>2. Create a Prompt Template</h3>
+                <pre><code>template = PromptTemplate.create!(
+  name: "Blog Post Generator",
+  description: "Generates blog posts on given topics",
+  prompt_text: "Write a blog post about {{topic}} in {{style}} style. Target audience: {{audience}}",
+  output_type: "markdown",
+  variables: ["topic", "style", "audience"]
+)</code></pre>
+
+                <h3>3. Execute LLM Jobs</h3>
+                <pre><code># Synchronous execution
+result = LLMJob.perform_now(
+  template: template,
+  model: "gpt-4",
+  context: {
+    topic: "Rails best practices",
+    style: "technical",
+    audience: "developers"
+  }
+)
+
+# Asynchronous execution
+LLMJob.perform_later(
+  template: template,
+  model: "gpt-4",
+  context: {
+    topic: "Rails best practices", 
+    style: "technical",
+    audience: "developers"
+  }
+)</code></pre>
+
+                <h3>4. Access Results</h3>
+                <pre><code># Get the latest output for a template
+output = template.llm_outputs.latest
+puts output.generated_text
+puts output.actual_cost
+puts output.token_usage</code></pre>
+
+                <h2>Prompt Templates</h2>
+
+                <h3>Template Variables</h3>
+                <p>Use double curly braces for variable interpolation:</p>
+                <pre><code>prompt_text = "Analyze the following {{data_type}}: {{content}}"</code></pre>
+
+                <h3>Output Types</h3>
+                <ul>
+                  <li><code>text</code> - Plain text output</li>
+                  <li><code>markdown</code> - Markdown formatted text</li>
+                  <li><code>json</code> - Structured JSON data</li>
+                  <li><code>html_partial</code> - HTML partial for rendering</li>
+                </ul>
+
+                <h3>Template Versioning</h3>
+                <pre><code># Create a new version of an existing template
+new_version = existing_template.create_new_version!(
+  prompt_text: "Updated prompt with better instructions..."
+)
+
+# Compare versions
+diff = template.diff_with_version(previous_version.id)</code></pre>
+
+                <h2>Multi-Context Provider (MCP)</h2>
+
+                <p>The MCP system allows you to enrich prompts with dynamic data from various sources:</p>
+
+                <h3>Database Context</h3>
+                <pre><code>context.fetch(:user_profile, user_id: current_user.id)
+context.fetch(:recent_orders, limit: 10)</code></pre>
+
+                <h3>API Context</h3>
+                <pre><code>context.fetch(:github_repos, username: "mitchellfyi")
+context.fetch(:slack_messages, channel: "#general", limit: 20)</code></pre>
+
+                <h3>File Context</h3>
+                <pre><code>context.fetch(:document_content, file_path: "docs/api.md")
+context.fetch(:code_analysis, file_pattern: "**/*.rb")</code></pre>
+
+                <h3>Custom Context Providers</h3>
+                <pre><code>class CustomDataProvider
+  def self.fetch(key, params = {})
+    case key
+    when :customer_data
+      Customer.includes(:orders).find(params[:id])
+    when :analytics_summary
+      AnalyticsService.summary(params[:date_range])
+    end
+  end
+end
+
+# Register the provider
+MCP.register_provider(:custom, CustomDataProvider)</code></pre>
+
+                <h2>Usage Analytics</h2>
+
+                <h3>Workspace Usage Summary</h3>
+                <pre><code>workspace = Workspace.find(1)
+summary = workspace.usage_summary
+
+# Returns:
+# {
+#   total_requests: 1250,
+#   total_cost: 45.67,
+#   tokens_used: 125000,
+#   usage_percentage: 75.5,
+#   top_models: ["gpt-4", "gpt-3.5-turbo"],
+#   monthly_limit: 100.00
+# }</code></pre>
+
+                <h3>Usage Trends</h3>
+                <pre><code>trend_data = workspace.usage_trend(days: 30)
+# Returns daily usage statistics for charting</code></pre>
+
+                <h3>Cost Estimation</h3>
+                <pre><code>cost = LLMCostEstimator.estimate(
+  model: "gpt-4",
+  input_tokens: 1000,
+  output_tokens: 500
+)
+# Returns estimated cost in USD</code></pre>
+
+                <h2>Workspace Configuration</h2>
+
+                <h3>Per-Workspace AI Settings</h3>
+                <pre><code>workspace.workspace_ai_config.update!(
+  default_model: "gpt-4",
+  temperature: 0.7,
+  max_tokens: 2000,
+  allowed_models: ["gpt-4", "gpt-3.5-turbo", "claude-3"],
+  monthly_credit_limit: 100.00
+)</code></pre>
+
+                <h3>Spending Limits</h3>
+                <pre><code>workspace.workspace_spending_limit.update!(
+  enabled: true,
+  daily_limit: 10.00,
+  weekly_limit: 50.00,
+  monthly_limit: 200.00,
+  auto_disable_on_limit: true
+)</code></pre>
+
+                <h2>API Endpoints</h2>
+
+                <p>The AI module provides JSON:API compliant endpoints:</p>
+
+                <ul>
+                  <li><code>GET /api/v1/prompt_templates</code> - List templates</li>
+                  <li><code>POST /api/v1/prompt_templates</code> - Create template</li>
+                  <li><code>PUT /api/v1/prompt_templates/:id</code> - Update template</li>
+                  <li><code>POST /api/v1/llm_jobs</code> - Execute LLM job</li>
+                  <li><code>GET /api/v1/llm_outputs</code> - List outputs</li>
+                  <li><code>GET /api/v1/usage_analytics</code> - Get usage data</li>
+                </ul>
+
+                <h2>Testing</h2>
+
+                <p>The AI module includes comprehensive test coverage:</p>
+
+                <pre><code># Run AI module tests
+bin/synth test ai
+
+# Test specific components
+rspec app/domains/ai/test/models/
+rspec app/domains/ai/test/services/
+rspec app/domains/ai/test/jobs/</code></pre>
+
+                <h3>Test Utilities</h3>
+                <pre><code># Stub LLM API calls in tests
+stub_llm_request(
+  model: "gpt-4",
+  response: "Generated content",
+  tokens: { input: 100, output: 50 },
+  cost: 0.02
+)</code></pre>
+
+                <h2>Configuration</h2>
+
+                <h3>Model Configurations</h3>
+                <pre><code># config/initializers/ai.rb
+Rails.application.configure do
+  config.ai = ActiveSupport::OrderedOptions.new
+  
+  config.ai.default_model = "gpt-3.5-turbo"
+  config.ai.default_temperature = 0.7
+  config.ai.default_max_tokens = 1000
+  
+  config.ai.cost_tracking_enabled = true
+  config.ai.usage_analytics_enabled = true
+  
+  config.ai.providers = {
+    openai: {
+      api_key: ENV['OPENAI_API_KEY'],
+      models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo']
+    },
+    anthropic: {
+      api_key: ENV['ANTHROPIC_API_KEY'],
+      models: ['claude-3-sonnet', 'claude-3-opus']
+    }
+  }
+end</code></pre>
+
+                <h2>Performance</h2>
+
+                <ul>
+                  <li><strong>Async Processing</strong>: All LLM jobs run asynchronously via Sidekiq</li>
+                  <li><strong>Rate Limiting</strong>: Built-in rate limiting per workspace</li>
+                  <li><strong>Caching</strong>: Template compilation and context data caching</li>
+                  <li><strong>Monitoring</strong>: Comprehensive metrics and alerting</li>
+                </ul>
+
+                <h2>Troubleshooting</h2>
+
+                <h3>Common Issues</h3>
+
+                <blockquote>
+                  <p><strong>Q:</strong> LLM jobs are failing with API errors</p>
+                  <p><strong>A:</strong> Check your API keys are set correctly and you have sufficient credits with your AI provider.</p>
+                </blockquote>
+
+                <blockquote>
+                  <p><strong>Q:</strong> Template variables aren't being replaced</p>
+                  <p><strong>A:</strong> Ensure variable names in the template match the context keys exactly (case-sensitive).</p>
+                </blockquote>
+
+                <blockquote>
+                  <p><strong>Q:</strong> Usage analytics not updating</p>
+                  <p><strong>A:</strong> Verify that background jobs are processing and the database has the latest migrations.</p>
+                </blockquote>
+
+                <h3>Debug Mode</h3>
+                <pre><code># Enable debug logging for AI operations
+Rails.logger.level = :debug
+ENV['AI_DEBUG'] = 'true'</code></pre>
+
+                <h2>Version History</h2>
+
+                <ul>
+                  <li><strong>v1.0.0</strong> - Initial release with core AI functionality</li>
+                  <li><strong>v1.1.0</strong> - Added multi-tenant support and workspace isolation</li>
+                  <li><strong>v1.2.0</strong> - Enhanced MCP system with more providers</li>
+                  <li><strong>v1.3.0</strong> - Advanced usage analytics and cost tracking</li>
+                </ul>
+              </div>
+            </article>
+          </main>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
