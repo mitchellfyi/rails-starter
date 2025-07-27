@@ -19,8 +19,9 @@ jobs:
         
     services:
       postgres:
-        image: postgres:${{ matrix.postgres-version }}
+        image: pgvector/pgvector:pg${{ matrix.postgres-version }}
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: rails_test
         options: >-
@@ -62,11 +63,15 @@ jobs:
       with:
         node-version: '20'
 
+    - name: Unfreeze Bundler
+      run: bundle config set frozen false
+
     - name: Install PostgreSQL extensions
       run: |
         sudo apt-get update
         sudo apt-get install -y postgresql-client
-        PGPASSWORD=postgres psql -h localhost -U postgres -d rails_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        # The pgvector image should already have the extension, but ensure it's created
+        PGPASSWORD=postgres psql -h localhost -U postgres -d rails_test -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Vector extension already exists or not needed"
 
     - name: Install Rails Edge
       run: |
@@ -78,6 +83,7 @@ jobs:
 
     - name: Generate new Rails app from template
       run: |
+        bundle config set frozen false
         mkdir -p /tmp/test_app
         cd /tmp/test_app
         rails new myapp --dev -m $GITHUB_WORKSPACE/scaffold/template.rb \
@@ -121,7 +127,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: /tmp/test_app/myapp/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('/tmp/test_app/myapp/yarn.lock') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('/tmp/test_app/myapp/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
@@ -129,6 +135,7 @@ jobs:
       working-directory: /tmp/test_app/myapp
       run: |
         bundle config path vendor/bundle
+        bundle config set frozen false
         bundle install --jobs 4 --retry 3
         # Install TOML gem for deployment config validation
         gem install toml-rb --no-document
