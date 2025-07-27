@@ -4,13 +4,26 @@ module Synth
   module Commands
     # Base class for all Synth CLI commands
     class BaseCommand
-      TEMPLATE_PATH = File.expand_path('../../../scaffold/lib/templates/synth', __dir__)
-      REGISTRY_PATH = File.expand_path('../../../scaffold/config/synth_modules.json', __dir__)
-      
       attr_reader :verbose
 
       def initialize(verbose: false)
         @verbose = verbose
+      end
+
+      def template_path
+        if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
+          File.expand_path('lib/templates/synth', Rails.root)
+        else
+          File.expand_path('lib/templates/synth', Dir.pwd)
+        end
+      end
+
+      def registry_path
+        if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
+          File.expand_path('config/synth_modules.json', Rails.root)
+        else
+          File.expand_path('config/synth_modules.json', Dir.pwd)
+        end
       end
 
       protected
@@ -20,10 +33,10 @@ module Synth
       end
 
       def load_registry
-        return { 'installed' => {} } unless File.exist?(REGISTRY_PATH)
+        return { 'installed' => {} } unless File.exist?(registry_path)
         
         begin
-          JSON.parse(File.read(REGISTRY_PATH))
+          JSON.parse(File.read(registry_path))
         rescue JSON::ParserError
           log_verbose "⚠️  Registry file corrupted, resetting..."
           { 'installed' => {} }
@@ -31,8 +44,8 @@ module Synth
       end
 
       def save_registry(registry)
-        FileUtils.mkdir_p(File.dirname(REGISTRY_PATH))
-        File.write(REGISTRY_PATH, JSON.pretty_generate(registry))
+        FileUtils.mkdir_p(File.dirname(registry_path))
+        File.write(registry_path, JSON.pretty_generate(registry))
       end
 
       def update_registry(module_name, info)
@@ -68,10 +81,10 @@ module Synth
       end
 
       def get_available_modules
-        return [] unless Dir.exist?(TEMPLATE_PATH)
+        return [] unless Dir.exist?(template_path)
         
-        Dir.children(TEMPLATE_PATH).filter_map do |module_name|
-          module_path = File.join(TEMPLATE_PATH, module_name)
+        Dir.children(template_path).filter_map do |module_name|
+          module_path = File.join(template_path, module_name)
           next unless File.directory?(module_path)
           
           readme_path = File.join(module_path, 'README.md')
@@ -88,12 +101,12 @@ module Synth
       def show_available_modules
         puts '📦 Available modules:'
         
-        unless Dir.exist?(TEMPLATE_PATH)
-          puts '  (templates directory not found)'
+        unless Dir.exist?(template_path)
+          puts "  (templates directory not found at #{template_path})"
           return
         end
 
-        modules = Dir.children(TEMPLATE_PATH).select { |d| File.directory?(File.join(TEMPLATE_PATH, d)) }
+        modules = Dir.children(template_path).select { |d| File.directory?(File.join(template_path, d)) }
         
         if modules.empty?
           puts '  (no modules found)'
@@ -101,7 +114,7 @@ module Synth
         end
 
         modules.sort.each do |module_name|
-          module_path = File.join(TEMPLATE_PATH, module_name)
+          module_path = File.join(template_path, module_name)
           readme_path = File.join(module_path, 'README.md')
           version_path = File.join(module_path, 'VERSION')
           

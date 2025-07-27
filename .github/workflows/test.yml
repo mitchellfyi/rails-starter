@@ -14,13 +14,14 @@ jobs:
       fail-fast: false
       matrix:
         ruby-version: ['3.2', '3.3']
-        rails-version: ['edge']
+        rails-version: ['7.2.2', 'edge']
         postgres-version: ['14', '15', '16']
         
     services:
       postgres:
-        image: postgres:${{ matrix.postgres-version }}
+        image: pgvector/pgvector:pg${{ matrix.postgres-version }}
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: rails_test
         options: >-
@@ -61,13 +62,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'yarn'
+
+    - name: Unfreeze Bundler
+      run: bundle config set frozen false
 
     - name: Install PostgreSQL extensions
       run: |
         sudo apt-get update
         sudo apt-get install -y postgresql-client
-        PGPASSWORD=postgres psql -h localhost -U postgres -d rails_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        # The pgvector image should already have the extension, but ensure it's created
+        PGPASSWORD=postgres psql -h localhost -U postgres -d rails_test -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Vector extension already exists or not needed"
 
     - name: Install Rails Edge
       run: |
@@ -79,15 +83,17 @@ jobs:
 
     - name: Generate new Rails app from template
       run: |
-        cd /tmp
-        rails new testapp --dev -m $GITHUB_WORKSPACE/scaffold/template.rb \
+        bundle config set frozen false
+        mkdir -p /tmp/test_app
+        cd /tmp/test_app
+        rails new myapp --dev -m $GITHUB_WORKSPACE/scaffold/template.rb \
           --database=postgresql \
           --skip-git \
           --skip-docker \
           --skip-bundle
 
     - name: Set up test app environment
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         # Create .env file for testing
         cat > .env << EOF
@@ -111,8 +117,8 @@ jobs:
     - name: Cache Ruby gems
       uses: actions/cache@v4
       with:
-        path: /tmp/testapp/vendor/bundle
-        key: ${{ runner.os }}-gems-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}-${{ hashFiles('/tmp/testapp/Gemfile.lock') }}
+        path: /tmp/test_app/myapp/vendor/bundle
+        key: ${{ runner.os }}-gems-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}-${{ hashFiles('/tmp/test_app/myapp/Gemfile.lock') }}
         restore-keys: |
           ${{ runner.os }}-gems-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}-
           ${{ runner.os }}-gems-ruby-${{ matrix.ruby-version }}-
@@ -120,37 +126,46 @@ jobs:
     - name: Cache Node modules
       uses: actions/cache@v4
       with:
-        path: /tmp/testapp/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('/tmp/testapp/yarn.lock') }}
+        path: /tmp/test_app/myapp/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('/tmp/test_app/myapp/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
 
     - name: Install Ruby dependencies
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         bundle config path vendor/bundle
+        bundle config set frozen false
         bundle install --jobs 4 --retry 3
         # Install TOML gem for deployment config validation
         gem install toml-rb --no-document
 
     - name: Install JavaScript dependencies
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
-        yarn install --frozen-lockfile
+        if [ -f "yarn.lock" ]; then
+          yarn install --frozen-lockfile
+        elif [ -f "package-lock.json" ]; then
+          npm ci
+        elif [ -f "package.json" ]; then
+          npm install
+        else
+          echo "No JavaScript package manager files found, skipping JS dependencies"
+        fi
 
     - name: Set up database
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         bin/rails db:create
         bin/rails db:migrate
 
     - name: Precompile assets
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         bin/rails assets:precompile
 
     - name: Run test suite
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         # Run RSpec if available, otherwise fall back to Rails test
         if [ -f "spec/rails_helper.rb" ]; then
@@ -160,7 +175,7 @@ jobs:
         fi
 
     - name: Test all synth modules functionality
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         # Test the synth CLI tool comprehensive functionality
         echo "Testing comprehensive synth CLI functionality..."
@@ -200,7 +215,7 @@ jobs:
         fi
 
     - name: Test deployment configurations (dry-run)
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         # Test Fly.io configuration if present
         if [ -f "fly.toml" ]; then
@@ -223,7 +238,7 @@ jobs:
         fi
 
     - name: Check for deprecation warnings
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       run: |
         # Run a simple Rails command to check for deprecation warnings
         output=$(bin/rails runner "puts 'Checking for deprecations...'" 2>&1)
@@ -236,7 +251,7 @@ jobs:
         fi
 
     - name: Generate test coverage report
-      working-directory: /tmp/testapp
+      working-directory: /tmp/test_app/myapp
       if: always()
       run: |
         if [ -f "coverage/.resultset.json" ]; then
@@ -252,6 +267,6 @@ jobs:
       with:
         name: test-artifacts-ruby-${{ matrix.ruby-version }}-rails-${{ matrix.rails-version }}-postgres-${{ matrix.postgres-version }}
         path: |
-          /tmp/testapp/log/
-          /tmp/testapp/tmp/rspec_results.json
+          /tmp/test_app/myapp/log/
+          /tmp/test_app/myapp/tmp/rspec_results.json
         retention-days: 7

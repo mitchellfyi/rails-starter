@@ -5,8 +5,6 @@ gem 'pg', '~> 1.5'
 gem 'pgvector', '~> 0.5'
 gem 'redis', '~> 5.4'
 gem 'sidekiq', '~> 8.0'
-gem 'devise', '~> 4.9'
-gem 'devise-two-factor', '~> 5.1'
 
 # Authentication and authorization
 gem 'devise', '~> 4.9'
@@ -30,7 +28,6 @@ gem 'jsonapi-serializer', '~> 3.2'
 gem 'rswag', '~> 2.14'
 
 # Utilities
-gem 'friendly_id', '~> 5.5'
 gem 'image_processing', '~> 1.13'
 gem 'bootsnap', '~> 1.18', require: false
 

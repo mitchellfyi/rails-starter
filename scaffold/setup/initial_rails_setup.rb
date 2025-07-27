@@ -20,7 +20,13 @@ initializer 'postgresql.rb', <<~RUBY
   # Enable pgvector extension for vector embeddings
   Rails.application.configure do
     config.after_initialize do
-      ActiveRecord::Base.connection.execute('CREATE EXTENSION IF NOT EXISTS vector;') if Rails.env.development?
+      if Rails.env.development? || Rails.env.test?
+        begin
+          ActiveRecord::Base.connection.execute('CREATE EXTENSION IF NOT EXISTS vector;')
+        rescue ActiveRecord::StatementInvalid => e
+          Rails.logger.warn "Could not create vector extension: #{e.message}"
+        end
+      end
     end
   end
 RUBY

@@ -10,7 +10,11 @@ gem 'flipper', '~> 1.3'
 gem 'flipper-ui', '~> 1.3' 
 gem 'flipper-active_record', '~> 1.3'
 gem 'paper_trail', '~> 15.0'
-gem 'pundit', '~> 2.4'
+
+unless File.read('Gemfile').include?('pundit')
+  gem 'pundit', '~> 2.1'  # Use consistent version with main template
+end
+
 gem 'request_store'
 gem 'kaminari'
 
