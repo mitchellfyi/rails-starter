@@ -29,6 +29,12 @@
                      data: { confirm: "Are you sure you want to process this dataset?" } %>
         <% end %>
         
+        <% if @ai_dataset.dataset_type == 'fine-tune' && @ai_dataset.metadata['openai_job_id'].present? %>
+          <%= link_to "Check Status", check_status_workspace_ai_dataset_path(@workspace, @ai_dataset),
+                     method: :post,
+                     class: "bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+        <% end %>
+        
         <%= link_to "Edit", edit_workspace_ai_dataset_path(@workspace, @ai_dataset),
                    class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
       </div>
@@ -81,6 +87,27 @@
               <dt class="text-sm font-medium text-gray-500">Error Message</dt>
               <dd class="mt-1 text-sm text-red-600"><%= @ai_dataset.error_message %></dd>
             </div>
+          <% end %>
+          
+          <% if @ai_dataset.dataset_type == 'fine-tune' && @ai_dataset.metadata['openai_job_id'].present? %>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">OpenAI Job ID</dt>
+              <dd class="mt-1 text-sm text-gray-900 font-mono"><%= @ai_dataset.metadata['openai_job_id'] %></dd>
+            </div>
+            
+            <% if @ai_dataset.metadata['job_status'].present? %>
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Job Status</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @ai_dataset.metadata['job_status'].titleize %></dd>
+              </div>
+            <% end %>
+            
+            <% if @ai_dataset.fine_tuned_model_id.present? %>
+              <div class="sm:col-span-2">
+                <dt class="text-sm font-medium text-gray-500">Fine-tuned Model</dt>
+                <dd class="mt-1 text-sm text-gray-900 font-mono"><%= @ai_dataset.fine_tuned_model_id %></dd>
+              </div>
+            <% end %>
           <% end %>
         </dl>
       </div>

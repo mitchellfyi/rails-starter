@@ -111,28 +111,24 @@ class AiDataset < ApplicationRecord
   def initiate_fine_tuning!
     return unless dataset_type == 'fine-tune' && can_process?
 
-    mark_processing!
-    
-    # This would integrate with OpenAI fine-tuning API
-    # For now, we'll just mark as completed
-    # In a real implementation, this would:
-    # 1. Upload files to OpenAI
-    # 2. Create fine-tuning job
-    # 3. Monitor job status
-    # 4. Store fine-tuned model ID
-    
-    begin
-      # Placeholder for fine-tuning logic
-      Rails.logger.info "Initiating fine-tuning for dataset #{id}"
-      
-      # Simulate processing
-      sleep(1) if Rails.env.development?
-      
-      mark_completed!
-    rescue => error
-      mark_failed!(error.message)
-      raise
-    end
+    OpenaiFineTuningService.create_fine_tuning_job(self)
+  end
+
+  # Check fine-tuning job status
+  def check_fine_tuning_status!
+    return unless dataset_type == 'fine-tune' && metadata['openai_job_id'].present?
+
+    OpenaiFineTuningService.check_job_status(self)
+  end
+
+  # Get fine-tuned model ID if available
+  def fine_tuned_model_id
+    metadata['fine_tuned_model']
+  end
+
+  # Check if fine-tuned model is available
+  def fine_tuned_model_available?
+    fine_tuned_model_id.present? && ready?
   end
 
   private

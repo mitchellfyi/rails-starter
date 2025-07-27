@@ -29,6 +29,7 @@ Rails.application.routes.draw do
     resources :ai_datasets do
       member do
         post :process
+        post :check_status
         get 'download/:file_id', to: 'ai_datasets#download', as: 'download_file'
       end
     end
@@ -77,6 +78,7 @@ Rails.application.routes.draw do
         resources :ai_datasets, only: [:index, :show, :create, :update, :destroy] do
           member do
             post :process
+            post :check_status
           end
         end
         

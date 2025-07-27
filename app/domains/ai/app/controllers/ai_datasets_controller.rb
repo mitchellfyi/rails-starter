@@ -4,7 +4,7 @@ class AiDatasetsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :authorize_workspace_access!
-  before_action :set_ai_dataset, only: [:show, :edit, :update, :destroy, :process, :download]
+  before_action :set_ai_dataset, only: [:show, :edit, :update, :destroy, :process, :check_status, :download]
 
   def index
     @ai_datasets = @workspace.ai_datasets
@@ -67,6 +67,21 @@ class AiDatasetsController < ApplicationController
       redirect_to [@workspace, @ai_dataset], notice: notice
     rescue => error
       redirect_to [@workspace, @ai_dataset], alert: "Processing failed: #{error.message}"
+    end
+  end
+
+  def check_status
+    return redirect_to [@workspace, @ai_dataset], alert: 'Not a fine-tuning dataset.' unless @ai_dataset.dataset_type == 'fine-tune'
+
+    begin
+      status = @ai_dataset.check_fine_tuning_status!
+      if status
+        redirect_to [@workspace, @ai_dataset], notice: "Status updated: #{status['status']}"
+      else
+        redirect_to [@workspace, @ai_dataset], alert: 'No fine-tuning job found.'
+      end
+    rescue => error
+      redirect_to [@workspace, @ai_dataset], alert: "Status check failed: #{error.message}"
     end
   end
 
