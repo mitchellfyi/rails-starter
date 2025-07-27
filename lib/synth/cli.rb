@@ -4,6 +4,8 @@ require 'thor'
 require 'fileutils'
 require 'json'
 require 'pathname'
+require 'securerandom'
+require 'io/console'
 
 module Synth
   class CLI < Thor
@@ -11,6 +13,31 @@ module Synth
     REGISTRY_PATH = File.expand_path('../../scaffold/config/synth_modules.json', __dir__)
     
     class_option :verbose, type: :boolean, aliases: '-v', desc: 'Enable verbose output'
+
+    desc 'bootstrap', 'Interactive wizard to setup new Rails SaaS application'
+    method_option :skip_modules, type: :boolean, desc: 'Skip module selection'
+    method_option :skip_credentials, type: :boolean, desc: 'Skip API credentials setup'
+    def bootstrap
+      puts "🚀 Welcome to Rails SaaS Starter Bootstrap Wizard!"
+      puts "=" * 60
+      puts ""
+      
+      # Collect configuration through interactive prompts
+      config = collect_bootstrap_config
+      
+      # Generate and configure the application
+      setup_application(config)
+      
+      puts ""
+      puts "🎉 Bootstrap complete! Your Rails SaaS application is ready."
+      puts "📋 Next steps:"
+      puts "   1. Review the generated .env file and add any missing credentials"
+      puts "   2. Run: rails db:create db:migrate db:seed"
+      puts "   3. Start your application: rails server"
+      puts "   4. Access admin panel: http://localhost:3000/admin"
+      puts "      Email: #{config[:owner_email]}"
+      puts "      Password: #{config[:admin_password]}"
+    end
 
     desc 'list', 'List available and installed modules'
     method_option :available, type: :boolean, aliases: '-a', desc: 'Show only available modules'
@@ -648,6 +675,361 @@ module Synth
         log_message += " - #{message}" if message
         f.puts log_message
       end
+    end
+
+    # Bootstrap wizard helper methods
+    def collect_bootstrap_config
+      config = {}
+      
+      puts "🔧 Application Configuration"
+      puts "-" * 30
+      config[:app_name] = prompt_for_input("Application name", "Rails SaaS Starter")
+      config[:app_domain] = prompt_for_input("Domain (e.g., myapp.com)", "localhost:3000")
+      config[:environment] = prompt_for_choice("Environment", %w[development staging production], "development")
+      
+      puts ""
+      puts "👥 Team Configuration"
+      puts "-" * 20
+      config[:team_name] = prompt_for_input("Team/Organization name", "My Team")
+      config[:owner_email] = prompt_for_input("Owner email address", "admin@#{config[:app_domain]}")
+      config[:admin_password] = generate_secure_password
+      puts "   Generated admin password: #{config[:admin_password]}"
+      
+      unless options[:skip_modules]
+        puts ""
+        puts "📦 Module Selection"
+        puts "-" * 18
+        config[:modules] = select_modules
+      else
+        config[:modules] = []
+      end
+      
+      unless options[:skip_credentials]
+        puts ""
+        puts "🔑 API Credentials"
+        puts "-" * 17
+        config[:credentials] = collect_api_credentials(config[:modules])
+      else
+        config[:credentials] = {}
+      end
+      
+      if config[:modules].include?('ai')
+        puts ""
+        puts "🤖 AI Configuration"
+        puts "-" * 18
+        config[:llm_provider] = select_llm_provider
+      end
+      
+      config
+    end
+
+    def prompt_for_input(prompt, default = nil)
+      print "#{prompt}"
+      print " [#{default}]" if default
+      print ": "
+      
+      input = STDIN.gets.chomp
+      input.empty? && default ? default : input
+    end
+
+    def prompt_for_choice(prompt, choices, default = nil)
+      puts "#{prompt}:"
+      choices.each_with_index do |choice, index|
+        marker = choice == default ? " (default)" : ""
+        puts "  #{index + 1}. #{choice}#{marker}"
+      end
+      
+      print "Select (1-#{choices.length}): "
+      choice_index = STDIN.gets.chomp.to_i
+      
+      if choice_index.between?(1, choices.length)
+        choices[choice_index - 1]
+      elsif default
+        default
+      else
+        prompt_for_choice(prompt, choices, default)
+      end
+    end
+
+    def select_modules
+      available_modules = get_available_modules
+      return [] if available_modules.empty?
+      
+      puts "Available modules:"
+      available_modules.each_with_index do |mod, index|
+        puts "  #{index + 1}. #{mod[:name].ljust(15)} - #{mod[:description]}"
+      end
+      
+      puts "  #{available_modules.length + 1}. Install all modules"
+      puts "  #{available_modules.length + 2}. Skip module installation"
+      
+      print "Select modules (comma-separated numbers): "
+      selection = STDIN.gets.chomp
+      
+      return [] if selection.empty?
+      
+      selected_indices = selection.split(',').map(&:strip).map(&:to_i)
+      
+      if selected_indices.include?(available_modules.length + 1)
+        # Install all modules
+        available_modules.map { |mod| mod[:name] }
+      elsif selected_indices.include?(available_modules.length + 2)
+        # Skip installation
+        []
+      else
+        # Install selected modules
+        selected_indices.filter_map do |index|
+          available_modules[index - 1]&.dig(:name) if index.between?(1, available_modules.length)
+        end
+      end
+    end
+
+    def get_available_modules
+      return [] unless Dir.exist?(TEMPLATE_PATH)
+      
+      Dir.children(TEMPLATE_PATH).filter_map do |module_name|
+        module_path = File.join(TEMPLATE_PATH, module_name)
+        next unless File.directory?(module_path)
+        
+        readme_path = File.join(module_path, 'README.md')
+        description = if File.exist?(readme_path)
+          File.readlines(readme_path).first&.strip&.gsub(/^#\s*/, '') || 'No description'
+        else
+          'No description'
+        end
+        
+        { name: module_name, description: description }
+      end
+    end
+
+    def collect_api_credentials(selected_modules)
+      credentials = {}
+      
+      # Basic credentials that are commonly needed
+      credentials[:stripe] = collect_stripe_credentials if selected_modules.include?('billing')
+      credentials[:openai] = collect_openai_credentials if selected_modules.include?('ai')
+      credentials[:github] = collect_github_credentials if needs_github_credentials?(selected_modules)
+      credentials[:smtp] = collect_smtp_credentials
+      
+      credentials.compact
+    end
+
+    def collect_stripe_credentials
+      puts "\n💳 Stripe Configuration (for billing):"
+      {
+        publishable_key: prompt_for_input("Stripe publishable key (pk_test_...)", ""),
+        secret_key: prompt_for_input("Stripe secret key (sk_test_...)", ""),
+        webhook_secret: prompt_for_input("Stripe webhook secret (whsec_...)", "")
+      }
+    end
+
+    def collect_openai_credentials
+      puts "\n🤖 OpenAI Configuration:"
+      {
+        api_key: prompt_for_input("OpenAI API key (sk-...)", ""),
+        organization_id: prompt_for_input("OpenAI Organization ID (optional)", "")
+      }
+    end
+
+    def collect_github_credentials
+      puts "\n🐙 GitHub Configuration:"
+      {
+        client_id: prompt_for_input("GitHub OAuth Client ID", ""),
+        client_secret: prompt_for_input("GitHub OAuth Client Secret", ""),
+        token: prompt_for_input("GitHub Personal Access Token (optional)", "")
+      }
+    end
+
+    def collect_smtp_credentials
+      puts "\n📧 Email Configuration:"
+      {
+        host: prompt_for_input("SMTP host", "smtp.gmail.com"),
+        port: prompt_for_input("SMTP port", "587"),
+        username: prompt_for_input("SMTP username", ""),
+        password: prompt_for_input("SMTP password", ""),
+        domain: prompt_for_input("Email domain", "")
+      }
+    end
+
+    def needs_github_credentials?(modules)
+      modules.any? { |mod| %w[ai cms].include?(mod) }
+    end
+
+    def select_llm_provider
+      providers = %w[openai anthropic cohere huggingface]
+      prompt_for_choice("Preferred LLM provider", providers, "openai")
+    end
+
+    def generate_secure_password
+      SecureRandom.alphanumeric(16)
+    end
+
+    def setup_application(config)
+      puts ""
+      puts "🔧 Setting up application..."
+      
+      # Generate .env file
+      generate_env_file(config)
+      
+      # Install selected modules
+      install_selected_modules(config[:modules])
+      
+      # Generate seed data
+      generate_seed_data(config)
+      
+      puts "✅ Application setup complete!"
+    end
+
+    def generate_env_file(config)
+      puts "   📝 Generating .env file..."
+      
+      env_template_path = File.expand_path('../../scaffold/lib/templates/.env.example', __dir__)
+      unless File.exist?(env_template_path)
+        puts "   ⚠️  .env template not found, creating basic .env file"
+        create_basic_env_file(config)
+        return
+      end
+      
+      env_content = File.read(env_template_path)
+      
+      # Replace placeholders with actual values
+      env_content = substitute_env_values(env_content, config)
+      
+      File.write('.env', env_content)
+      puts "   ✅ .env file created"
+    end
+
+    def substitute_env_values(content, config)
+      substitutions = {
+        'Rails SaaS Starter' => config[:app_name],
+        'your_domain.com' => config[:app_domain],
+        'localhost:3000' => config[:app_domain],
+        'development' => config[:environment],
+        'noreply@your_domain.com' => "noreply@#{config[:app_domain]}"
+      }
+      
+      # Add API credentials
+      if config[:credentials]
+        substitutions.merge!(build_credential_substitutions(config[:credentials]))
+      end
+      
+      substitutions.each do |placeholder, value|
+        content = content.gsub(placeholder, value) if value && !value.empty?
+      end
+      
+      content
+    end
+
+    def build_credential_substitutions(credentials)
+      substitutions = {}
+      
+      if credentials[:stripe]
+        substitutions['pk_test_your_stripe_publishable_key'] = credentials[:stripe][:publishable_key]
+        substitutions['sk_test_your_stripe_secret_key'] = credentials[:stripe][:secret_key]
+        substitutions['whsec_your_webhook_secret'] = credentials[:stripe][:webhook_secret]
+      end
+      
+      if credentials[:openai]
+        substitutions['sk-your_openai_api_key_here'] = credentials[:openai][:api_key]
+        substitutions['org-your_openai_org_id'] = credentials[:openai][:organization_id]
+      end
+      
+      if credentials[:github]
+        substitutions['your_github_client_id'] = credentials[:github][:client_id]
+        substitutions['your_github_client_secret'] = credentials[:github][:client_secret]
+        substitutions['ghp_your_github_personal_access_token'] = credentials[:github][:token]
+      end
+      
+      if credentials[:smtp]
+        substitutions['smtp.example.com'] = credentials[:smtp][:host]
+        substitutions['587'] = credentials[:smtp][:port]
+        substitutions['your_smtp_username'] = credentials[:smtp][:username]
+        substitutions['your_smtp_password'] = credentials[:smtp][:password]
+      end
+      
+      substitutions.compact
+    end
+
+    def create_basic_env_file(config)
+      basic_env = <<~ENV
+        # Basic Rails SaaS Configuration
+        RAILS_ENV=#{config[:environment]}
+        SECRET_KEY_BASE=#{SecureRandom.hex(64)}
+        
+        # Application Configuration
+        APP_NAME=#{config[:app_name]}
+        APP_HOST=#{config[:app_domain]}
+        
+        # Database Configuration
+        DATABASE_URL=sqlite3:db/#{config[:environment]}.sqlite3
+        
+        # Admin Configuration
+        ADMIN_EMAIL=#{config[:owner_email]}
+        ADMIN_PASSWORD=#{config[:admin_password]}
+        TEAM_NAME=#{config[:team_name]}
+      ENV
+      
+      File.write('.env', basic_env)
+    end
+
+    def install_selected_modules(modules)
+      return if modules.empty?
+      
+      puts "   📦 Installing selected modules..."
+      modules.each do |module_name|
+        puts "      Installing #{module_name}..."
+        begin
+          install_module(module_name, File.join(TEMPLATE_PATH, module_name))
+        rescue => e
+          puts "      ⚠️  Failed to install #{module_name}: #{e.message}"
+        end
+      end
+    end
+
+    def generate_seed_data(config)
+      puts "   🌱 Generating seed data..."
+      
+      seed_content = build_seed_content(config)
+      
+      seeds_file = 'db/seeds.rb'
+      if File.exist?(seeds_file)
+        existing_content = File.read(seeds_file)
+        unless existing_content.include?('# Bootstrap generated seeds')
+          File.write(seeds_file, "#{existing_content}\n#{seed_content}")
+        end
+      else
+        File.write(seeds_file, seed_content)
+      end
+      
+      puts "   ✅ Seed data generated"
+    end
+
+    def build_seed_content(config)
+      <<~SEEDS
+        # Bootstrap generated seeds
+        # Created by Rails SaaS Starter Bootstrap Wizard
+        
+        # Create admin user
+        admin_user = User.find_or_create_by(email: '#{config[:owner_email]}') do |user|
+          user.password = '#{config[:admin_password]}'
+          user.password_confirmation = '#{config[:admin_password]}'
+          user.confirmed_at = Time.current
+          user.admin = true
+        end
+        
+        puts "Created admin user: \#{admin_user.email}" if admin_user.persisted?
+        
+        # Create default team
+        if defined?(Team)
+          team = Team.find_or_create_by(name: '#{config[:team_name]}') do |t|
+            t.owner = admin_user
+          end
+          
+          puts "Created team: \#{team.name}" if team.persisted?
+        end
+        
+        puts "Bootstrap seeds completed!"
+      SEEDS
     end
   end
 end
