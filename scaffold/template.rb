@@ -25,8 +25,7 @@ def load_template_file(file_path)
   load File.expand_path(file_path, __dir__)
 end
 
-say "
- Setting up Rails SaaS Starter Template..."
+say "🔧 Setting up Rails SaaS Starter Template..."
 
 # Show Ruby version information
 say_status :ruby, "Ruby #{RUBY_VERSION} detected"
@@ -44,10 +43,10 @@ after_bundle do
   end
 
   load_template_file 'setup/initial_rails_setup.rb'
+  load_template_file 'setup/synth_cli_setup.rb'
 
   # Install core modules using bin/synth
-  say "
- Installing core modules..."
+  say "🔧 Installing core modules..."
   run 'bin/synth add auth'
   run 'bin/synth add workspace'
   run 'bin/synth add onboarding'
@@ -62,14 +61,12 @@ after_bundle do
   run 'bin/synth add testing'
   run 'bin/synth add theme'
 
-  load_template_file 'setup/synth_cli_setup.rb'
   load_template_file 'setup/environment_config.rb'
   load_template_file 'setup/api_serializers.rb'
   load_template_file 'setup/base_routes.rb'
 
   # Run database setup
-  say "
-  Setting up database..."
+  say "🗄️  Setting up database..."
   rails_command 'db:create'
   rails_command 'db:migrate'
 
@@ -82,8 +79,16 @@ after_bundle do
 
     bundle install
 
-    # Install or update JavaScript dependencies
-    yarn install --frozen-lockfile || npm install
+    # Install or update JavaScript dependencies if needed
+    if [ -f "yarn.lock" ]; then
+      yarn install --frozen-lockfile
+    elif [ -f "package-lock.json" ]; then
+      npm ci
+    elif [ -f "package.json" ]; then
+      npm install
+    else
+      echo "No JavaScript package manager files found, using Rails asset pipeline"
+    fi
 
     # Copy environment variables if .env doesn't exist
     if [ ! -f .env ]; then
@@ -193,17 +198,14 @@ after_bundle do
   MD
 
   say ""
-  say "
- Rails SaaS Starter Template setup complete!"
+  say "✅ Rails SaaS Starter Template setup complete!"
   say ""
-  say "
- Next steps:"
+  say "📋 Next steps:"
   say "   1. cd into your application directory"
   say "   2. Run 'bin/setup' to complete configuration"  
   say "   3. Update .env with your actual values"
   say "   4. Run 'bin/dev' to start the development server"
   say ""
-  say "
- Check README_SETUP.md for detailed instructions"
+  say "📖 Check README_SETUP.md for detailed instructions"
   say ""
 end

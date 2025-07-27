@@ -7,7 +7,7 @@ module Synth
     # Command to install modules
     class AddCommand < BaseCommand
       def execute(module_name, options = {})
-        module_template_path = File.join(TEMPLATE_PATH, module_name)
+        module_template_path = File.join(template_path, module_name)
         
         unless Dir.exist?(module_template_path)
           puts "❌ Module '#{module_name}' not found in templates"
@@ -44,8 +44,11 @@ module Synth
           # Create basic directories if they don't exist
           create_basic_directories
           
-          # Copy module files to app/domains
+          # Copy module files to app/domains first
           copy_module_files(module_name, module_template_path)
+          
+          # Execute install.rb script with Rails generator context
+          execute_install_script(install_file)
           
           # Update registry
           update_registry(module_name, {
@@ -64,6 +67,24 @@ module Synth
           log_module_action(:error, module_name, e.message)
           false
         end
+      end
+
+      def execute_install_script(install_file)
+        # Load and execute the installer in the context of a Rails generator
+        # This allows the install scripts to use Rails generator methods like add_gem, after_bundle, etc.
+        require 'rails/generators'
+        require 'rails/generators/base'
+        
+        generator_class = Class.new(Rails::Generators::Base) do
+          include Rails::Generators::Actions
+          
+          def self.source_root
+            Rails.root
+          end
+        end
+        
+        generator = generator_class.new
+        generator.instance_eval(File.read(install_file))
       end
 
       def create_basic_directories

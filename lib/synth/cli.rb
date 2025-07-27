@@ -31,6 +31,23 @@ module Synth
       new.execute(args)
     end
 
+    def initialize
+      load_rails_environment
+    end
+
+    def load_rails_environment
+      # Try to load Rails if we're in a Rails app directory
+      if File.exist?('config/application.rb') && !defined?(Rails)
+        begin
+          ENV['RAILS_ENV'] ||= 'development'
+          require './config/environment'
+        rescue LoadError, StandardError => e
+          warn "⚠️  Failed to load Rails environment: #{e.message}"
+          warn e.backtrace.join("\n") if e.backtrace
+        end
+      end
+    end
+
     def execute(args)
       command_name = args.first
       verbose = args.include?('--verbose') || args.include?('-v')

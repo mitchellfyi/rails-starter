@@ -4,8 +4,11 @@
 
 say_status :billing_gems, "Installing billing module gems"
 
-# Stripe and billing related gems
-gem 'stripe', '~> 10.0'
+# Stripe and billing related gems (check if not already present)
+unless File.read('Gemfile').include?('stripe')
+  gem 'stripe', '~> 15.3'  # Use consistent version with main template
+end
+
 gem 'stripe_event', '~> 2.7'
 gem 'money-rails', '~> 1.15'
 

@@ -5,12 +5,28 @@
 
 say_status :auth, "Installing authentication module with Devise and OmniAuth"
 
-# Add authentication gems
-add_gem 'devise', '~> 4.9'
-add_gem 'omniauth', '~> 2.1'
-add_gem 'omniauth-google-oauth2', '~> 1.1'
-add_gem 'omniauth-github', '~> 2.0'
-add_gem 'omniauth-rails_csrf_protection', '~> 1.0'
+# Add authentication gems (only if not already present)
+unless File.read('Gemfile').include?('devise')
+  add_gem 'devise', '~> 4.9'
+end
+
+unless File.read('Gemfile').include?('omniauth')
+  add_gem 'omniauth', '~> 2.1'
+end
+
+unless File.read('Gemfile').include?('omniauth-google-oauth2')
+  add_gem 'omniauth-google-oauth2', '~> 1.1'
+end
+
+unless File.read('Gemfile').include?('omniauth-github')
+  add_gem 'omniauth-github', '~> 2.0'
+end
+
+unless File.read('Gemfile').include?('omniauth-rails-csrf-protection')
+  add_gem 'omniauth-rails-csrf-protection', '~> 1.0'
+end
+
+# Always add 2FA specific gems as they're specific to this module
 add_gem 'rotp', '~> 6.3' # For 2FA
 add_gem 'rqrcode', '~> 2.2' # For QR codes
 
