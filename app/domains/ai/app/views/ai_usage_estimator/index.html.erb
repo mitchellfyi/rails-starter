@@ -1,0 +1,285 @@
+<% content_for :title, "AI Usage Simulator & Planner" %>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">AI Usage Simulator & Planner</h1>
+    <p class="mt-2 text-gray-600">Preview token usage and costs before running AI jobs</p>
+  </div>
+
+  <!-- Tabs for Single vs Batch Estimation -->
+  <div class="mb-8">
+    <nav class="flex space-x-8" aria-label="Tabs">
+      <button id="single-tab" class="estimation-tab border-b-2 border-blue-500 py-2 px-1 text-sm font-medium text-blue-600 whitespace-nowrap" onclick="showTab('single')">
+        Single Estimation
+      </button>
+      <button id="batch-tab" class="estimation-tab border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap" onclick="showTab('batch')">
+        Batch Estimation
+      </button>
+    </nav>
+  </div>
+
+  <!-- Single Estimation Form -->
+  <div id="single-estimation" class="estimation-content">
+    <%= form_with url: ai_usage_estimator_estimate_path, method: :post, local: true, id: "single-estimation-form", class: "space-y-6" do |form| %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Left Column: Form -->
+        <div class="space-y-6">
+          <!-- AI Credential Selection -->
+          <% if @ai_credentials.any? %>
+            <div>
+              <%= form.label :ai_credential_id, "AI Credential (Optional)", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.select :ai_credential_id, 
+                    options_from_collection_for_select(@ai_credentials, :id, :display_name), 
+                    { prompt: "Use default pricing" }, 
+                    { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" } %>
+              <p class="mt-1 text-xs text-gray-500">Select a specific credential for accurate pricing, or leave blank for standard estimates.</p>
+            </div>
+          <% end %>
+
+          <!-- Model Selection -->
+          <div>
+            <%= form.label :model, "AI Model", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :model, 
+                  options_for_select(@available_models.map { |m| [m, m] }), 
+                  { prompt: "Select a model" }, 
+                  { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500", required: true } %>
+          </div>
+
+          <!-- Format Selection -->
+          <div>
+            <%= form.label :format, "Output Format", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :format, 
+                  options_for_select([
+                    ["Text", "text"],
+                    ["JSON", "json"], 
+                    ["Markdown", "markdown"],
+                    ["HTML", "html"]
+                  ], "text"), 
+                  {}, 
+                  { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" } %>
+          </div>
+
+          <!-- Template -->
+          <div>
+            <%= form.label :template, "Prompt Template", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.text_area :template, 
+                  rows: 6, 
+                  placeholder: "Enter your prompt template here. Use {{variable}} for context variables.",
+                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500",
+                  required: true %>
+          </div>
+
+          <!-- Context Variables -->
+          <div>
+            <%= form.label :context, "Context Variables (JSON)", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.text_area :context, 
+                  rows: 4, 
+                  placeholder: '{"variable1": "value1", "variable2": "value2"}',
+                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm" %>
+            <p class="mt-1 text-xs text-gray-500">Provide context variables as JSON. These will replace {{variable}} placeholders in your template.</p>
+          </div>
+
+          <div class="flex space-x-4">
+            <%= form.submit "Estimate Usage", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+            <button type="button" id="use-sample-btn" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              Use Sample
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Sample Templates -->
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Sample Templates</h3>
+          <div class="space-y-4">
+            <% @sample_templates.each_with_index do |sample, index| %>
+              <div class="sample-template cursor-pointer p-4 bg-white rounded border hover:border-blue-300" data-template="<%= sample[:template] %>" data-context="<%= sample[:sample_context].to_json %>">
+                <h4 class="font-medium text-gray-900"><%= sample[:name] %></h4>
+                <p class="text-sm text-gray-600 mt-1"><%= truncate(sample[:template], length: 100) %></p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Batch Estimation Form -->
+  <div id="batch-estimation" class="estimation-content hidden">
+    <%= form_with url: ai_usage_estimator_batch_estimate_path, method: :post, local: true, multipart: true, id: "batch-estimation-form", class: "space-y-6" do |form| %>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Left Column: Form -->
+        <div class="space-y-6">
+          <!-- AI Credential Selection -->
+          <% if @ai_credentials.any? %>
+            <div>
+              <%= form.label :ai_credential_id, "AI Credential (Optional)", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.select :ai_credential_id, 
+                    options_from_collection_for_select(@ai_credentials, :id, :display_name), 
+                    { prompt: "Use default pricing" }, 
+                    { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" } %>
+            </div>
+          <% end %>
+
+          <!-- Model Selection -->
+          <div>
+            <%= form.label :model, "AI Model", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :model, 
+                  options_for_select(@available_models.map { |m| [m, m] }), 
+                  { prompt: "Select a model" }, 
+                  { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500", required: true } %>
+          </div>
+
+          <!-- Format Selection -->
+          <div>
+            <%= form.label :format, "Output Format", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :format, 
+                  options_for_select([
+                    ["Text", "text"],
+                    ["JSON", "json"], 
+                    ["Markdown", "markdown"],
+                    ["HTML", "html"]
+                  ], "text"), 
+                  {}, 
+                  { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" } %>
+          </div>
+
+          <!-- Template -->
+          <div>
+            <%= form.label :template, "Prompt Template", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.text_area :template, 
+                  rows: 4, 
+                  placeholder: "Enter your prompt template here. Use {{variable}} for context variables.",
+                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500",
+                  required: true %>
+          </div>
+
+          <!-- File Upload or Manual Input -->
+          <div>
+            <div class="mb-4">
+              <div class="flex items-center space-x-4 mb-4">
+                <label class="inline-flex items-center">
+                  <input type="radio" name="input_method" value="file" class="form-radio" checked>
+                  <span class="ml-2">Upload File</span>
+                </label>
+                <label class="inline-flex items-center">
+                  <input type="radio" name="input_method" value="manual" class="form-radio">
+                  <span class="ml-2">Manual Input</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="file-input-section">
+              <%= form.label :file, "Data File (CSV or JSON)", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.file_field :file, 
+                    accept: ".csv,.json",
+                    class: "mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" %>
+              <p class="mt-1 text-xs text-gray-500">Upload a CSV or JSON file containing context variables for each estimation.</p>
+            </div>
+
+            <div id="manual-input-section" class="hidden">
+              <%= form.label :inputs, "Input Data (JSON Array)", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.text_area :inputs, 
+                    rows: 6, 
+                    placeholder: '[{"variable1": "value1"}, {"variable1": "value2"}]',
+                    class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm" %>
+              <p class="mt-1 text-xs text-gray-500">Provide an array of context objects. Each object will generate one estimation.</p>
+            </div>
+          </div>
+
+          <%= form.submit "Estimate Batch Usage", class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+        </div>
+
+        <!-- Right Column: Format Examples -->
+        <div class="bg-gray-50 p-6 rounded-lg">
+          <h3 class="text-lg font-medium text-gray-900 mb-4">Input Format Examples</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <h4 class="font-medium text-gray-700">CSV Format:</h4>
+              <pre class="mt-2 text-xs bg-white p-3 rounded border overflow-x-auto"><code>name,content,style
+"John","Hello world","formal"
+"Jane","How are you?","casual"</code></pre>
+            </div>
+
+            <div>
+              <h4 class="font-medium text-gray-700">JSON Format:</h4>
+              <pre class="mt-2 text-xs bg-white p-3 rounded border overflow-x-auto"><code>[
+  {"name": "John", "content": "Hello world", "style": "formal"},
+  {"name": "Jane", "content": "How are you?", "style": "casual"}
+]</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+function showTab(tabName) {
+  // Hide all content
+  document.querySelectorAll('.estimation-content').forEach(content => {
+    content.classList.add('hidden');
+  });
+  
+  // Remove active styling from all tabs
+  document.querySelectorAll('.estimation-tab').forEach(tab => {
+    tab.classList.remove('border-blue-500', 'text-blue-600');
+    tab.classList.add('border-transparent', 'text-gray-500');
+  });
+  
+  // Show selected content
+  document.getElementById(tabName + '-estimation').classList.remove('hidden');
+  
+  // Style active tab
+  const activeTab = document.getElementById(tabName + '-tab');
+  activeTab.classList.remove('border-transparent', 'text-gray-500');
+  activeTab.classList.add('border-blue-500', 'text-blue-600');
+}
+
+// Sample template selection
+document.addEventListener('DOMContentLoaded', function() {
+  // Sample template clicks
+  document.querySelectorAll('.sample-template').forEach(template => {
+    template.addEventListener('click', function() {
+      const templateText = this.getAttribute('data-template');
+      const contextText = this.getAttribute('data-context');
+      
+      document.getElementById('single-estimation-form').querySelector('textarea[name="template"]').value = templateText;
+      document.getElementById('single-estimation-form').querySelector('textarea[name="context"]').value = contextText;
+      
+      // Remove highlight from all templates and add to clicked one
+      document.querySelectorAll('.sample-template').forEach(t => t.classList.remove('border-blue-500'));
+      this.classList.add('border-blue-500');
+    });
+  });
+
+  // Use sample button
+  document.getElementById('use-sample-btn').addEventListener('click', function() {
+    const firstSample = document.querySelector('.sample-template');
+    if (firstSample) {
+      firstSample.click();
+    }
+  });
+
+  // Batch input method toggle
+  document.querySelectorAll('input[name="input_method"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const fileSection = document.getElementById('file-input-section');
+      const manualSection = document.getElementById('manual-input-section');
+      
+      if (this.value === 'file') {
+        fileSection.classList.remove('hidden');
+        manualSection.classList.add('hidden');
+        document.getElementById('batch-estimation-form').querySelector('input[name="file"]').required = true;
+        document.getElementById('batch-estimation-form').querySelector('textarea[name="inputs"]').required = false;
+      } else {
+        fileSection.classList.add('hidden');
+        manualSection.classList.remove('hidden');
+        document.getElementById('batch-estimation-form').querySelector('input[name="file"]').required = false;
+        document.getElementById('batch-estimation-form').querySelector('textarea[name="inputs"]').required = true;
+      }
+    });
+  });
+});
+</script>
