@@ -33,6 +33,26 @@ class LLMJob < ApplicationJob
     }
 
     workspace = workspace_id ? Workspace.find_by(id: workspace_id) : nil
+    
+    # Check rate limits before processing
+    if workspace&.workspace_spending_limit&.rate_limit_enabled?
+      spending_limit = workspace.workspace_spending_limit
+      
+      if spending_limit.would_be_rate_limited?
+        if spending_limit.block_when_rate_limited?
+          raise StandardError.new("Rate limit exceeded for workspace #{workspace_id}")
+        else
+          Rails.logger.warn "Rate limit exceeded but not blocking", {
+            workspace_id: workspace_id,
+            job_id: job_id
+          }
+        end
+      end
+      
+      # Record the request attempt
+      spending_limit.add_request!
+    end
+
     routing_policy = workspace&.ai_routing_policies&.enabled&.first
 
     # Build MCP context with base data

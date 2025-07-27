@@ -33,6 +33,14 @@ Rails.application.routes.draw do
     end
   end
 
+  # AI Usage Estimator routes
+  resources :ai_usage_estimator, only: [:index] do
+    collection do
+      post :estimate
+      post :batch_estimate
+    end
+  end
+
   # Workspace-scoped AI resources
   resources :workspaces, param: :slug do
     # AI Routing Policies management
@@ -96,6 +104,13 @@ Rails.application.routes.draw do
 
       # Endpoint to queue LLM jobs directly
       post 'llm_jobs', to: 'llm_jobs#create'
+      
+      # AI Usage Estimator API endpoints
+      namespace :ai_usage_estimator do
+        post :estimate
+        post :batch_estimate
+        get :models
+      end
       
       # Workspace-scoped API endpoints
       resources :workspaces, param: :slug do

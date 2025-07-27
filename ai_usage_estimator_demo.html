@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Usage Simulator & Planner - Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">AI Usage Simulator & Planner</h1>
+            <p class="mt-2 text-gray-600">Preview token usage and costs before running AI jobs</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-8">
+            <nav class="flex space-x-8" aria-label="Tabs">
+                <button class="border-b-2 border-blue-500 py-2 px-1 text-sm font-medium text-blue-600 whitespace-nowrap">
+                    Single Estimation
+                </button>
+                <button class="border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap">
+                    Batch Estimation
+                </button>
+            </nav>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Form -->
+            <div class="space-y-6">
+                <!-- Model Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">AI Model</label>
+                    <select class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option selected>gpt-4</option>
+                        <option>gpt-3.5-turbo</option>
+                        <option>claude-3-opus</option>
+                    </select>
+                </div>
+
+                <!-- Format Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Output Format</label>
+                    <select class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option>text</option>
+                        <option>json</option>
+                        <option selected>markdown</option>
+                        <option>html</option>
+                    </select>
+                </div>
+
+                <!-- Template -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Prompt Template</label>
+                    <textarea rows="6" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Enter your prompt template here...">Please summarize the following content in {{style}} style:
+
+{{content}}</textarea>
+                </div>
+
+                <!-- Context Variables -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Context Variables (JSON)</label>
+                    <textarea rows="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono text-sm">{
+  "content": "Artificial Intelligence (AI) is transforming industries across the globe. From healthcare to finance, AI technologies are enabling unprecedented automation, insights, and efficiency gains.",
+  "style": "bullet points"
+}</textarea>
+                    <p class="mt-1 text-xs text-gray-500">Provide context variables as JSON. These will replace {{variable}} placeholders in your template.</p>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Estimate Usage
+                    </button>
+                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Use Sample
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="space-y-6">
+                <!-- Cost Summary Card -->
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-8 text-white">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold">$0.0506</div>
+                            <div class="text-blue-100">Total Cost</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold">885</div>
+                            <div class="text-blue-100">Total Tokens</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-xl font-semibold">GPT-4</div>
+                            <div class="text-blue-100">Model</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Breakdown -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Token Breakdown</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                            <span class="text-sm font-medium text-gray-700">Input Tokens</span>
+                            <span class="text-lg font-semibold text-gray-900">85</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                            <span class="text-sm font-medium text-gray-700">Estimated Output Tokens</span>
+                            <span class="text-lg font-semibold text-gray-900">800</span>
+                        </div>
+                        <div class="border-t pt-3">
+                            <div class="flex justify-between items-center p-3 bg-blue-50 rounded">
+                                <span class="text-sm font-medium text-blue-700">Total Tokens</span>
+                                <span class="text-lg font-semibold text-blue-900">885</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Breakdown -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Cost Breakdown</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                            <span class="text-sm font-medium text-gray-700">Input Cost</span>
+                            <span class="text-lg font-semibold text-gray-900">$0.002550</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                            <span class="text-sm font-medium text-gray-700">Output Cost</span>
+                            <span class="text-lg font-semibold text-gray-900">$0.048000</span>
+                        </div>
+                        <div class="border-t pt-3">
+                            <div class="flex justify-between items-center p-3 bg-green-50 rounded">
+                                <span class="text-sm font-medium text-green-700">Total Cost</span>
+                                <span class="text-lg font-semibold text-green-900">$0.050550</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing Information -->
+                    <div class="mt-4 p-3 bg-gray-50 rounded">
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Pricing (per 1,000 tokens)</h4>
+                        <div class="text-xs text-gray-600 space-y-1">
+                            <div>Input: $0.0300</div>
+                            <div>Output: $0.0600</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+                    <div class="space-y-3">
+                        <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m6-6V7a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2v-5"></path>
+                            </svg>
+                            Run This Job Now
+                        </button>
+                        
+                        <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            Copy Estimation Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Notice -->
+    <div class="fixed bottom-4 right-4 bg-blue-100 border border-blue-200 rounded-lg p-4 max-w-sm">
+        <div class="flex items-start">
+            <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+                <h4 class="text-sm font-medium text-blue-800">Demo Interface</h4>
+                <p class="text-xs text-blue-700 mt-1">This shows the AI Usage Estimator UI with sample data. Real implementation includes interactive forms and live calculations.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
