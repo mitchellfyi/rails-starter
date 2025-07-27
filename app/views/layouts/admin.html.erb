@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Admin Panel - Rails SaaS Starter</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,64 +7,124 @@
     <%= csp_meta_tag %>
     
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "admin", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
-    
-    <style>
-      .admin-nav { background: #1f2937; color: white; padding: 1rem; }
-      .admin-nav a { color: #d1d5db; text-decoration: none; margin-right: 1.5rem; }
-      .admin-nav a:hover { color: white; }
-      .admin-content { padding: 2rem; }
-      .card { background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1rem; }
-      .btn { padding: 0.5rem 1rem; border-radius: 0.25rem; text-decoration: none; display: inline-block; }
-      .btn-primary { background: #3b82f6; color: white; }
-      .btn-success { background: #10b981; color: white; }
-      .btn-danger { background: #ef4444; color: white; }
-      .btn-secondary { background: #6b7280; color: white; }
-      .table { width: 100%; border-collapse: collapse; }
-      .table th, .table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
-      .table th { background: #f9fafb; font-weight: 600; }
-      .filter-form { background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
-      .form-group { margin-bottom: 1rem; }
-      .form-control { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; }
-      .alert { padding: 1rem; border-radius: 0.25rem; margin-bottom: 1rem; }
-      .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-      .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    </style>
+    <%= javascript_include_tag "admin", "data-turbo-track": "reload" %>
   </head>
 
   <body>
-    <!-- Admin Navigation -->
-    <nav class="admin-nav">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <%= link_to "Dashboard", admin_root_path %>
-          <%= link_to "Audit Logs", admin_audit_path %>
-          <%= link_to "Feature Flags", admin_feature_flags_path %>
-          <%= link_to "MCP Fetchers", admin_mcp_fetchers_path %>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main-content" class="skip-link sr-only">Skip to main content</a>
+    
+    <div class="admin-layout">
+      <!-- Sidebar -->
+      <aside class="admin-sidebar" role="navigation" aria-label="Admin navigation">
+        <div class="sidebar-content">
+          <div class="sidebar-brand">
+            <h1>Admin Panel</h1>
+          </div>
+          
+          <nav>
+            <ul class="sidebar-nav" role="menubar">
+              <li class="sidebar-nav-item" role="none">
+                <%= link_to admin_root_path, 
+                    class: "sidebar-nav-link", 
+                    role: "menuitem",
+                    title: "Dashboard (Alt+D)" do %>
+                  <svg class="sidebar-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v14H8V5z"></path>
+                  </svg>
+                  Dashboard
+                <% end %>
+              </li>
+              
+              <li class="sidebar-nav-item" role="none">
+                <%= link_to admin_audit_path, 
+                    class: "sidebar-nav-link", 
+                    role: "menuitem",
+                    title: "Audit Logs (Alt+A)" do %>
+                  <svg class="sidebar-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Audit Logs
+                <% end %>
+              </li>
+              
+              <li class="sidebar-nav-item" role="none">
+                <%= link_to admin_feature_flags_path, 
+                    class: "sidebar-nav-link", 
+                    role: "menuitem",
+                    title: "Feature Flags (Alt+F)" do %>
+                  <svg class="sidebar-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H21l-3 6 3 6h-8.5l-1-2H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                  </svg>
+                  Feature Flags
+                <% end %>
+              </li>
+              
+              <li class="sidebar-nav-item" role="none">
+                <%= link_to admin_mcp_fetchers_path, 
+                    class: "sidebar-nav-link", 
+                    role: "menuitem" do %>
+                  <svg class="sidebar-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                  </svg>
+                  MCP Fetchers
+                <% end %>
+              </li>
+              
+              <li class="sidebar-nav-item" role="none">
+                <%= link_to admin_usage_path, 
+                    class: "sidebar-nav-link", 
+                    role: "menuitem" do %>
+                  <svg class="sidebar-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
+                  Usage Analytics
+                <% end %>
+              </li>
+            </ul>
+          </nav>
         </div>
-        <div>
-          <span style="margin-right: 1rem;">Admin: <%= current_user&.email %></span>
-          <%= link_to "← Back to Site", root_path %>
+      </aside>
+
+      <!-- Header -->
+      <header class="admin-header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+          <h1 class="header-title">
+            <%= content_for?(:page_title) ? yield(:page_title) : "Dashboard" %>
+          </h1>
         </div>
-      </div>
-    </nav>
+        
+        <div class="header-right">
+          <span class="header-user">Admin: <%= current_user&.email %></span>
+          <%= link_to "← Back to Site", root_path, class: "header-link" %>
+        </div>
+      </header>
 
-    <!-- Flash Messages -->
-    <% if notice %>
-      <div class="alert alert-success" style="margin: 1rem;">
-        <%= notice %>
-      </div>
-    <% end %>
+      <!-- Main Content -->
+      <main id="main-content" class="admin-main" tabindex="-1">
+        <!-- Flash Messages -->
+        <% if notice %>
+          <div class="alert alert-success" role="alert">
+            <%= notice %>
+          </div>
+        <% end %>
 
-    <% if alert %>
-      <div class="alert alert-danger" style="margin: 1rem;">
-        <%= alert %>
-      </div>
-    <% end %>
+        <% if alert %>
+          <div class="alert alert-danger" role="alert">
+            <%= alert %>
+          </div>
+        <% end %>
 
-    <!-- Main Content -->
-    <main class="admin-content">
-      <%= yield %>
-    </main>
+        <%= yield %>
+      </main>
+    </div>
   </body>
 </html>

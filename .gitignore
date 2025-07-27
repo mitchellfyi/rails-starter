@@ -76,3 +76,7 @@ config/deploy.yml
 
 # Kamal deployment files
 .kamal/
+
+# Preview and temporary files
+*_preview.html
+admin_dashboard_preview.html
