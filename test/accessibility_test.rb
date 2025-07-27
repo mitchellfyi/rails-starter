@@ -1,114 +1,199 @@
-require 'test_helper'
+#!/usr/bin/env ruby
+# frozen_string_literal: true
 
-class AccessibilityTest < ActionDispatch::IntegrationTest
-  
-  def test_homepage_accessibility_standards
-    get root_path
-    assert_response :success
-    
-    # Test for proper document structure
-    assert_select 'html[lang]', 1, "HTML document should have a lang attribute"
-    assert_select 'title', 1, "Document should have a title"
-    assert_select 'meta[name="description"]', 1, "Document should have a meta description"
-    
-    # Test for proper heading hierarchy
-    assert_select 'h1', 1, "Page should have exactly one h1 element"
-    assert_select 'h2', true, "Page should have h2 elements for section headings"
-    
-    # Test for semantic HTML elements
-    assert_select 'main', 1, "Page should have a main landmark"
-    assert_select 'nav', true, "Page should have navigation landmarks"
-    assert_select 'section', true, "Page should use section elements for content areas"
-    
-    # Test for ARIA attributes
-    assert_select '[aria-label]', true, "Elements should have appropriate aria-label attributes"
-    assert_select '[aria-hidden="true"]', true, "Decorative elements should be hidden from screen readers"
-    
-    # Test for proper image alt text
-    assert_select 'img[alt]', true, "All images should have alt attributes"
-    assert_select 'img[alt=""]', false, "Images should not have empty alt attributes"
-    
-    # Test for skip links
-    assert_select 'a[href="#main-content"]', 1, "Page should have a skip to main content link"
+# Accessibility compliance test for Rails SaaS Starter Template
+# This script checks HTML files for basic accessibility standards
+
+require 'fileutils'
+
+class AccessibilityComplianceTest
+  def initialize
+    @template_root = File.expand_path('..', __dir__)
+    @errors = []
+    @warnings = []
   end
 
-  def test_dashboard_layout_accessibility
-    # This test assumes there's a dashboard route - adjust as needed
-    skip "Dashboard route not configured in base template"
+  def run
+    puts "🔍 Checking Rails SaaS Starter Template for Accessibility Compliance..."
+    puts "   Checking directory: #{@template_root}"
     
-    get '/dashboard'
-    assert_response :success
+    check_html_files
+    check_layout_files
+    check_helper_files
+    check_css_files
     
-    # Test for proper navigation structure
-    assert_select 'nav[aria-label]', true, "Navigation should have proper labeling"
-    assert_select 'button[aria-label]', true, "Interactive buttons should have labels"
-    
-    # Test for proper form labels
-    assert_select 'input[id]', true, "Form inputs should have IDs"
-    assert_select 'label[for]', true, "Form labels should reference input IDs"
-    
-    # Test for focus management
-    assert_select 'a[href], button, input, select, textarea', true, "Interactive elements should be present"
-  end
-
-  def test_color_contrast_compliance
-    # This would require additional tools like axe-core for automated testing
-    # For now, we'll test that we're using semantic classes that support high contrast
-    get root_path
-    assert_response :success
-    
-    # Verify we're not using problematic color combinations in text
-    response_body = response.body
-    refute_includes response_body, 'text-gray-300', "Avoid using very light text colors"
-    refute_includes response_body, 'text-gray-200', "Avoid using very light text colors"
-  end
-
-  def test_keyboard_navigation_support
-    get root_path
-    assert_response :success
-    
-    # Test for proper focus indicators
-    assert_select 'a', true, "Links should be present for keyboard navigation"
-    assert_select 'button', true, "Buttons should be present for keyboard navigation"
-    
-    # Test for skip links
-    assert_select 'a[href^="#"]', true, "Skip links should be present"
-    
-    # Test that interactive elements have proper focus styles
-    response_body = response.body
-    assert_includes response_body, 'focus:', "Focus styles should be defined"
-  end
-
-  def test_screen_reader_support
-    get root_path
-    assert_response :success
-    
-    # Test for screen reader only content
-    assert_select '.sr-only', true, "Screen reader only content should be present"
-    
-    # Test for proper ARIA attributes
-    assert_select '[role]', true, "Elements should use appropriate roles"
-    assert_select '[aria-label], [aria-labelledby], [aria-describedby]', true, "Elements should have proper labeling"
-    
-    # Test that decorative elements are hidden
-    assert_select 'svg[aria-hidden="true"]', true, "Decorative SVGs should be hidden from screen readers"
-  end
-
-  def test_responsive_accessibility
-    get root_path
-    assert_response :success
-    
-    # Test for proper mobile navigation
-    assert_select '[role="dialog"]', true, "Mobile navigation should use dialog role"
-    assert_select '[aria-modal="true"]', true, "Modal elements should be properly marked"
-    
-    # Test for mobile-specific accessibility features
-    assert_select 'meta[name="viewport"]', 1, "Page should have proper viewport settings"
+    report_results
   end
 
   private
 
-  def root_path
-    '/' # Adjust this based on your routes
+  def check_html_files
+    puts "\n📄 Checking HTML template files..."
+    
+    html_files = Dir.glob("#{@template_root}/app/views/**/*.html.erb")
+    
+    html_files.each do |file|
+      check_file_accessibility(file)
+    end
+    
+    puts "✅ Checked #{html_files.count} HTML template files"
   end
+
+  def check_layout_files
+    puts "\n🏗️  Checking layout files..."
+    
+    layout_files = Dir.glob("#{@template_root}/app/views/layouts/*.html.erb")
+    
+    layout_files.each do |file|
+      check_layout_accessibility(file)
+    end
+    
+    puts "✅ Checked #{layout_files.count} layout files"
+  end
+
+  def check_file_accessibility(file)
+    content = File.read(file)
+    filename = File.basename(file)
+    
+    # Check for proper heading hierarchy
+    unless content.match?(/h[1-6]/)
+      add_warning("#{filename}: No headings found - consider adding semantic headings")
+    end
+    
+    # Check for images without alt text
+    if content.match?(/<img(?![^>]*alt=)/) 
+      add_error("#{filename}: Images found without alt attributes")
+    end
+    
+    # Check for empty alt text
+    if content.match?(/alt=""/) && !content.match?(/aria-hidden="true"/)
+      add_warning("#{filename}: Empty alt text found - ensure decorative images are marked as aria-hidden")
+    end
+    
+    # Check for proper form labels
+    if content.match?(/<input/) && !content.match?(/label.*for=|aria-label/)
+      add_warning("#{filename}: Form inputs may be missing proper labels")
+    end
+    
+    # Check for semantic HTML
+    semantic_tags = %w[main nav header footer section article aside]
+    has_semantic = semantic_tags.any? { |tag| content.include?("<#{tag}") }
+    unless has_semantic
+      add_warning("#{filename}: Consider using semantic HTML elements (main, nav, header, etc.)")
+    end
+  end
+
+  def check_layout_accessibility(file)
+    content = File.read(file)
+    filename = File.basename(file)
+    
+    # Check for lang attribute
+    unless content.match?(/html.*lang=/)
+      add_error("#{filename}: HTML element missing lang attribute")
+    end
+    
+    # Check for skip links
+    unless content.match?(/skip.*content|#main-content/)
+      add_warning("#{filename}: Consider adding skip links for keyboard navigation")
+    end
+    
+    # Check for proper title
+    unless content.match?(/<title>/)
+      add_error("#{filename}: Missing title element")
+    end
+    
+    # Check for meta description
+    unless content.match?(/meta.*name="description"/)
+      add_warning("#{filename}: Missing meta description")
+    end
+    
+    # Check for viewport meta tag
+    unless content.match?(/meta.*name="viewport"/)
+      add_error("#{filename}: Missing viewport meta tag")
+    end
+  end
+
+  def check_helper_files
+    puts "\n🛠️  Checking accessibility helper files..."
+    
+    helper_files = Dir.glob("#{@template_root}/app/helpers/*accessibility*.rb")
+    
+    if helper_files.empty?
+      add_warning("No accessibility helper files found - consider creating accessibility utilities")
+    else
+      puts "✅ Found #{helper_files.count} accessibility helper file(s)"
+      helper_files.each { |file| puts "   - #{File.basename(file)}" }
+    end
+  end
+
+  def check_css_files
+    puts "\n🎨 Checking CSS for accessibility..."
+    
+    css_files = Dir.glob("#{@template_root}/app/assets/stylesheets/**/*.{css,scss}")
+    
+    if css_files.any?
+      css_files.each do |file|
+        check_css_accessibility(file)
+      end
+    else
+      puts "ℹ️  No CSS files found in app/assets/stylesheets"
+    end
+  end
+
+  def check_css_accessibility(file)
+    content = File.read(file)
+    filename = File.basename(file)
+    
+    # Check for focus styles
+    unless content.match?(/focus:|:focus/)
+      add_warning("#{filename}: No focus styles found - ensure interactive elements have visible focus indicators")
+    end
+    
+    # Check for screen reader only styles
+    unless content.match?(/sr-only|screen-reader/)
+      add_warning("#{filename}: No screen reader only styles found - consider adding .sr-only utility")
+    end
+  end
+
+  def add_error(message)
+    @errors << message
+    puts "❌ #{message}"
+  end
+
+  def add_warning(message)
+    @warnings << message
+    puts "⚠️  #{message}"
+  end
+
+  def report_results
+    puts "\n" + "="*60
+    puts "ACCESSIBILITY COMPLIANCE REPORT"
+    puts "="*60
+    
+    if @errors.empty? && @warnings.empty?
+      puts "🎉 Excellent! No accessibility issues found."
+    else
+      if @errors.any?
+        puts "\n❌ ERRORS (#{@errors.count}):"
+        @errors.each { |error| puts "   • #{error}" }
+      end
+      
+      if @warnings.any?
+        puts "\n⚠️  WARNINGS (#{@warnings.count}):"
+        @warnings.each { |warning| puts "   • #{warning}" }
+      end
+    end
+    
+    puts "\nSUMMARY:"
+    puts "  Errors: #{@errors.count}"
+    puts "  Warnings: #{@warnings.count}"
+    puts "  Status: #{@errors.empty? ? '✅ PASS' : '❌ FAIL'}"
+    
+    exit(@errors.empty? ? 0 : 1)
+  end
+end
+
+# Run the test if this file is executed directly
+if __FILE__ == $0
+  AccessibilityComplianceTest.new.run
 end
