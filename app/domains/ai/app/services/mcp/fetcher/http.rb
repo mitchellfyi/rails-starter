@@ -2,6 +2,7 @@
 
 require 'net/http'
 require 'json'
+require Rails.root.join('lib', 'api_client_factory') if defined?(Rails)
 
 module Mcp
   module Fetcher
@@ -46,18 +47,24 @@ module Mcp
           cache_ttl: cache_ttl, rate_limit_key: rate_limit_key, max_retries: max_retries
         )
 
-        # Check rate limiting
+        # Use stub client in test environment
+        if ApiClientFactory.stub_mode?
+          client = ApiClientFactory.http_client
+          return client.request(method, url, headers: headers, body: body, params: params)
+        end
+
+        # Check rate limiting (only in non-test environments)
         if rate_limit_key && rate_limited?(rate_limit_key)
           raise StandardError, "Rate limit exceeded for #{rate_limit_key}"
         end
 
-        # Check cache first
+        # Check cache first (only in non-test environments)
         if cache_key && cached_response = get_cached_response(cache_key)
           Rails.logger.info("MCP HTTP: Using cached response for #{cache_key}")
           return cached_response
         end
 
-        # Make the HTTP request with retries
+        # Make the HTTP request with retries (only in non-test environments)
         response_data = nil
         max_retries.times do |attempt|
           begin

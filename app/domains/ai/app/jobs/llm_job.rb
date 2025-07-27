@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require Rails.root.join('lib', 'api_client_factory') if defined?(Rails)
+
 class LLMJob < ApplicationJob
   queue_as :default
 
@@ -129,24 +131,53 @@ class LLMJob < ApplicationJob
   end
 
   def call_llm_api(model, prompt, format)
-    # This would integrate with actual LLM providers (OpenAI, Claude, etc.)
-    # For now, return a mock response
-    case format
-    when 'json'
-      parsed = { "response" => "Mock JSON response for: #{prompt[0..50]}..." }
-      raw = parsed.to_json
-    when 'markdown'
-      raw = "# Mock Markdown Response\n\nFor prompt: #{prompt[0..50]}..."
-      parsed = raw
-    else
-      raw = "Mock text response for: #{prompt[0..50]}..."
-      parsed = raw
+    # Use API client factory to get appropriate client based on environment
+    client = ApiClientFactory.openai_client
+    
+    begin
+      # Prepare messages for chat completion
+      messages = [
+        { role: 'user', content: prompt }
+      ]
+      
+      # Call the API
+      response = client.completions(
+        model: model,
+        messages: messages,
+        max_tokens: determine_max_tokens(format),
+        temperature: 0.7
+      )
+      
+      # Extract response content
+      raw_response = response.dig('choices', 0, 'message', 'content') || ''
+      
+      # Parse response based on format
+      parsed_response = case format
+                       when 'json'
+                         begin
+                           JSON.parse(raw_response)
+                         rescue JSON::ParserError
+                           { "response" => raw_response, "format_error" => "Invalid JSON response" }
+                         end
+                       else
+                         raw_response
+                       end
+      
+      {
+        raw: raw_response,
+        parsed: parsed_response
+      }
+    rescue => e
+      Rails.logger.error("LLM API call failed: #{e.message}")
+      
+      # Fallback response
+      fallback_response = generate_fallback_response(prompt, format)
+      {
+        raw: fallback_response,
+        parsed: fallback_response,
+        error: e.message
+      }
     end
-
-    {
-      raw: raw,
-      parsed: parsed
-    }
   end
 
   def store_output(template:, model:, context:, format:, prompt:, raw_response:, parsed_output:, user_id:, agent_id:)
@@ -163,5 +194,27 @@ class LLMJob < ApplicationJob
       job_id: job_id,
       status: 'completed'
     )
+  end
+
+  def determine_max_tokens(format)
+    case format
+    when 'json'
+      500
+    when 'markdown'
+      1000
+    else
+      200
+    end
+  end
+
+  def generate_fallback_response(prompt, format)
+    case format
+    when 'json'
+      { "response" => "Fallback response for: #{prompt[0..50]}...", "error" => "API unavailable" }.to_json
+    when 'markdown'
+      "# Fallback Response\n\nAPI temporarily unavailable for prompt: #{prompt[0..50]}..."
+    else
+      "Fallback response for: #{prompt[0..50]}..."
+    end
   end
 end
