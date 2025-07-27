@@ -6,6 +6,11 @@ require 'fileutils'
 require 'json'
 require 'pathname'
 
+# Load the manifest manager
+lib_path = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
+require 'synth_manifest'
+
 # Documentation generator for Synth modules
 class DocumentationGenerator
   DOMAINS_PATH = File.expand_path('../app/domains', __dir__)
@@ -564,6 +569,8 @@ class SynthCLI
     when 'upgrade'
       module_name = args[1..-1].find { |arg| !arg.start_with?('--') && !arg.start_with?('-') }
       cli.upgrade(module_name)
+    when 'manifest'
+      cli.manifest
     when 'plan'
       module_name = args[1]
       operation = args[2] || 'install'
@@ -669,6 +676,7 @@ class SynthCLI
     results << check_ruby_version
     results << check_template_structure
     results << check_registry_integrity
+    results << check_manifest_status
     results << check_environment_variables
     results << check_api_keys
     results << check_pending_migrations
@@ -699,6 +707,31 @@ class SynthCLI
     # Regenerate documentation after upgrade
     puts "📚 Regenerating documentation after upgrade..."
     docs
+  end
+
+  def manifest
+    subcommand = ARGV[1]
+    
+    case subcommand
+    when 'generate', 'gen'
+      generate_manifest
+    when 'validate', 'check'
+      validate_manifest
+    when 'info'
+      show_manifest_info
+    when 'ui-data'
+      show_ui_data
+    else
+      puts "📋 Synth Manifest Commands:"
+      puts ""
+      puts "  bin/synth manifest generate    Generate synth.json from current system state"
+      puts "  bin/synth manifest validate    Validate synth.json against current system"
+      puts "  bin/synth manifest info        Show manifest summary information"
+      puts "  bin/synth manifest ui-data     Show UI metadata for module management interface"
+      puts ""
+      puts "The synth.json manifest tracks module configurations, hooks, and metadata"
+      puts "for clean installs, upgrades, and future UI-based module toggling."
+    end
   end
 
   def plan(module_name, operation = 'install')
@@ -744,6 +777,137 @@ class SynthCLI
     end
   end
 
+  def generate_manifest
+    puts "📋 Generating synth.json manifest..."
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest = manifest_manager.generate!
+      
+      puts "✅ Generated synth.json manifest with #{manifest[:modules].size} modules"
+      puts "📄 Manifest location: synth.json"
+      puts ""
+      puts "Next steps:"
+      puts "  • Run 'bin/synth manifest validate' to verify the manifest"
+      puts "  • Run 'bin/synth doctor' for enhanced system validation"
+      puts "  • Commit synth.json to track your module configuration"
+    rescue => e
+      puts "❌ Error generating manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def validate_manifest
+    puts "🔍 Validating synth.json manifest..."
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      result = manifest_manager.validate!
+      
+      if result[:valid]
+        puts "✅ Manifest validation passed"
+        if result[:warnings].any?
+          puts "⚠️  Warnings:"
+          result[:warnings].each { |warning| puts "    #{warning}" }
+        end
+      else
+        puts "❌ Manifest validation failed"
+        result[:errors].each { |error| puts "    Error: #{error}" }
+        result[:warnings].each { |warning| puts "    Warning: #{warning}" }
+        exit 1
+      end
+    rescue => e
+      puts "❌ Error validating manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def show_manifest_info
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest = manifest_manager.load
+      
+      if manifest.empty?
+        puts "📋 No synth.json manifest found"
+        puts "   Run 'bin/synth manifest generate' to create one"
+        return
+      end
+      
+      puts "📋 Synth Manifest Summary"
+      puts "=" * 50
+      puts "Manifest Version: #{manifest[:manifest_version]}"
+      puts "Generated: #{manifest[:generated_at]}"
+      puts "Application: #{manifest.dig(:application, :name)}"
+      puts "Ruby: #{manifest.dig(:application, :ruby_version)}"
+      puts "Rails: #{manifest.dig(:application, :rails_version)}"
+      puts ""
+      
+      metadata = manifest[:registry_metadata]
+      if metadata
+        puts "Registry Statistics:"
+        puts "  Total Modules: #{metadata[:total_modules]}"
+        puts "  Core Modules: #{metadata[:core_modules]}"
+        puts "  Feature Modules: #{metadata[:feature_modules]}"
+        puts "  UI Modules: #{metadata[:ui_modules]}"
+        puts "  Tooling Modules: #{metadata[:tooling_modules]}"
+        puts "  Last Validated: #{metadata[:last_validated]}"
+        puts "  Status: #{metadata[:validation_status]}"
+      end
+      
+    rescue => e
+      puts "❌ Error reading manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def show_ui_data
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      ui_data = manifest_manager.ui_modules_data
+      
+      if ui_data.empty?
+        puts "📋 No modules found in manifest"
+        puts "   Run 'bin/synth manifest generate' to create manifest"
+        return
+      end
+      
+      puts "🖥️  UI Module Data (for future module management interface)"
+      puts "=" * 70
+      
+      # Group by category
+      categories = ui_data.group_by { |mod| mod[:category] }
+      
+      categories.each do |category, modules|
+        puts "\n#{category.upcase} MODULES:"
+        modules.each do |mod|
+          status_icon = mod[:health_status] == 'healthy' ? '✅' : '❌'
+          toggle_icon = mod[:toggleable] ? '🔄' : '🔒'
+          admin_icon = mod[:admin_only] ? '👑' : '👤'
+          
+          puts "  #{status_icon} #{toggle_icon} #{admin_icon} #{mod[:display_name]}"
+          puts "      Name: #{mod[:name]}"
+          puts "      Description: #{mod[:description]}"
+          puts "      Version: #{mod[:version]}"
+          puts "      Icon: #{mod[:icon]} (#{mod[:color]})"
+          puts "      Status: #{mod[:status]} (#{mod[:health_status]})"
+          puts "      Required: #{mod[:required]}"
+          puts "      Installed: #{mod[:installed_at]}" if mod[:installed_at]
+          puts ""
+        end
+      end
+      
+      puts "Legend: ✅ Healthy ❌ Unhealthy 🔄 Toggleable 🔒 Fixed 👑 Admin 👤 User"
+      
+    rescue => e
+      puts "❌ Error generating UI data: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
   def show_help
     puts <<~HELP
       bin/synth - Rails SaaS Starter Template Module Manager
@@ -761,8 +925,15 @@ class SynthCLI
         docs                  Generate documentation from installed modules and OpenAPI schema
         plan MODULE [OP]      Preview changes for install/upgrade operation (OP: install|upgrade)
         upgrade [MODULE]      Upgrade one or all installed modules to latest versions
+        manifest              Manage the synth.json manifest file
         doctor                Validate setup and configuration
         help                  Show this help message
+      
+      MANIFEST COMMANDS:
+        manifest generate     Generate synth.json from current system state
+        manifest validate     Validate synth.json against current system
+        manifest info         Show manifest summary information
+        manifest ui-data      Show UI metadata for module management interface
       
       OPTIONS:
         --verbose, -v         Enable verbose output
@@ -789,6 +960,8 @@ class SynthCLI
         bin/synth info ai
         bin/synth test billing
         bin/synth docs
+        bin/synth manifest generate
+        bin/synth manifest validate
         bin/synth plan billing            # Preview billing module installation
         bin/synth plan ai upgrade         # Preview AI module upgrade
         bin/synth upgrade
@@ -1246,6 +1419,9 @@ class SynthCLI
       puts "✅ Successfully installed #{module_name} module!"
       log_module_action(:install, module_name, version)
       
+      # Update manifest after successful installation
+      update_manifest_after_change('install', module_name)
+      
     rescue StandardError => e
       puts "❌ Error installing module: #{e.message}"
       puts e.backtrace.first(5).join("\n") if @verbose
@@ -1275,6 +1451,9 @@ class SynthCLI
       
       puts "✅ Successfully removed #{module_name} module!"
       log_module_action(:remove, module_name)
+      
+      # Update manifest after successful removal
+      update_manifest_after_change('remove', module_name)
       
     rescue StandardError => e
       puts "❌ Error removing module: #{e.message}"
@@ -1595,6 +1774,41 @@ class SynthCLI
     end
   end
 
+  def check_manifest_status
+    puts "\nChecking synth.json manifest:"
+    
+    manifest_path = File.expand_path('../synth.json', __dir__)
+    
+    unless File.exist?(manifest_path)
+      puts "⚠️  synth.json manifest not found"
+      puts "💡 Run 'bin/synth manifest generate' to create comprehensive module manifest"
+      return true # Not critical for basic operation
+    end
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: false)
+      result = manifest_manager.validate!
+      
+      if result[:valid]
+        puts "✅ synth.json manifest is valid"
+        if result[:warnings].any?
+          puts "⚠️  Manifest warnings:"
+          result[:warnings].each { |warning| puts "   #{warning}" }
+        end
+        return true
+      else
+        puts "❌ synth.json manifest validation failed:"
+        result[:errors].each { |error| puts "   #{error}" }
+        puts "💡 Run 'bin/synth manifest generate' to regenerate the manifest"
+        return false
+      end
+    rescue => e
+      puts "❌ Error validating manifest: #{e.message}"
+      puts "💡 Run 'bin/synth manifest generate' to regenerate the manifest"
+      return false
+    end
+  end
+
   def check_environment_variables
     puts "\nChecking environment variables:"
     
@@ -1776,6 +1990,17 @@ class SynthCLI
       log_message = "[#{timestamp}] [#{action.to_s.upcase}] Module: #{module_name}"
       log_message += " - #{message}" if message
       f.puts log_message
+    end
+  end
+
+  def update_manifest_after_change(action, module_name)
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest_manager.generate!
+      puts "📋 Updated synth.json manifest" if @verbose
+    rescue => e
+      puts "⚠️  Warning: Could not update manifest: #{e.message}" if @verbose
+      # Don't fail the operation if manifest update fails
     end
   end
 
