@@ -163,6 +163,9 @@ class LLMOutput < ApplicationRecord
     if workspace&.workspace_spending_limit
       workspace.workspace_spending_limit.add_spending!(cost)
     end
+
+    # Also track in workspace monthly usage for credit/billing purposes
+    workspace&.add_usage!(cost)
   end
 
   # Format routing decision for display
