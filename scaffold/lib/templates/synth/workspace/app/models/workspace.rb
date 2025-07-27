@@ -9,6 +9,8 @@ class Workspace < ApplicationRecord
   has_many :invitations, dependent: :destroy
   has_many :workspace_roles, dependent: :destroy
   has_many :impersonations, dependent: :destroy
+  has_many :ai_credentials, dependent: :destroy
+  has_many :llm_outputs, dependent: :nullify
 
   validates :name, presence: true, length: { minimum: 1, maximum: 255 }
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-]+\z/ }

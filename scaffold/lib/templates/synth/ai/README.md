@@ -1,8 +1,61 @@
-# AI Module - Enhanced LLM Job System with PromptTemplate Versioning
+# AI Module - Enhanced LLM Job System with Per-Workspace AI Configuration
 
-This module adds first‑class AI integration to your Rails app with **versioned prompt templates**, variable interpolation, comprehensive audit history, preview functionality, and a management interface with safety features.
+This module adds first‑class AI integration to your Rails app with **per-workspace AI configuration**, **versioned prompt templates**, variable interpolation, comprehensive audit history, preview functionality, and a management interface with safety features.
 
 ## Features
+
+### 🏢 Per-Workspace AI Configuration
+
+Each workspace can manage their own AI providers, API keys, and model settings:
+
+#### AiProvider Model
+- **Multi-provider support** - OpenAI, Anthropic, Cohere with extensible architecture
+- **Provider-specific configuration** - Custom API endpoints, supported models, default settings
+- **Connectivity testing** - Built-in "ping" functionality to validate provider access
+- **Priority ordering** - Organize providers by preference in admin interfaces
+
+#### AiCredential Model (Per Workspace)
+- **Encrypted API keys** - Secure storage using Rails' built-in encryption
+- **Model preferences** - Configure preferred models per credential
+- **Temperature/token controls** - Fine-tune model behavior per workspace
+- **Provider-specific settings** - Custom configuration per AI provider
+- **System prompts** - Default prompts for consistent behavior
+- **Usage tracking** - Monitor credential usage and last access times
+- **Connection validation** - Test credentials with comprehensive health checks
+
+#### Workspace-Scoped Execution
+- **LLMJob.for(workspace).run(...)** - Automatic credential selection and scoping
+- **Provider selection** - Choose specific AI providers per job
+- **Fallback handling** - Automatic failover to backup credentials
+- **Usage monitoring** - Track AI usage per workspace
+
+### 🔧 AI Provider Management
+
+#### Admin Interface
+- **Provider configuration** - Manage available AI providers system-wide
+- **Model support** - Configure which models each provider supports
+- **API endpoint management** - Custom endpoints for enterprise/self-hosted providers
+- **Default settings** - System-wide defaults for temperature, max tokens, etc.
+
+#### Workspace Admin Interface
+- **Credential management** - Per-workspace AI credential configuration
+- **Connection testing** - Validate API keys and model access
+- **Usage analytics** - Monitor AI usage and costs per workspace
+- **Default preferences** - Set workspace-specific AI defaults
+
+### 🧪 Validation & Testing ("Ping" Functionality)
+
+#### Comprehensive Testing
+- **Basic connectivity** - Verify API endpoints and authentication
+- **Model validation** - Test access to specific models
+- **End-to-end testing** - Full prompt execution with simple test cases
+- **Error diagnosis** - Detailed error reporting for troubleshooting
+
+#### AiProviderTestService
+- **Multi-level testing** - Progressive validation from basic to complex
+- **Result storage** - Test history and status tracking
+- **Performance metrics** - Response time and reliability monitoring
+- **Automated testing** - Scheduled health checks for critical credentials
 
 ### 🎯 Enhanced PromptTemplate System
 
@@ -41,20 +94,20 @@ Enhanced execution tracking with comprehensive audit capabilities:
 - **Error handling** - Capture and display execution errors with context
 - **User association** - Link executions to users for accountability
 - **Preview executions** - Track template testing separately from live runs
-This module adds a comprehensive asynchronous LLM job system to your Rails app with Sidekiq, featuring retry/backoff, structured logging, output storage, and user feedback controls.
-
-## Features
+- **Workspace association** - Link executions to specific workspaces
+- **Credential tracking** - Record which AI credential was used
 
 ### 🔄 Asynchronous Job Processing
 - **LLMJob**: Sidekiq-powered background job for AI prompt execution
 - **Retry Logic**: Exponential backoff with jitter (5 retries max, up to 5 minutes delay)
 - **Queue Management**: Configurable queue priorities (high, default, low)
+- **Workspace Integration**: Automatic credential selection based on workspace
 
 ### 📊 Output Storage & Management
 - **LLMOutput Model**: Stores job results with full context
 - **Multiple Formats**: Support for text, JSON, Markdown, and HTML outputs
 - **Status Tracking**: pending → processing → completed/failed
-- **Associations**: Links to users and agents
+- **Associations**: Links to users, agents, workspaces, and credentials
 
 ### 👍 User Feedback System
 - **Thumbs Up/Down**: Simple feedback mechanism
@@ -66,6 +119,7 @@ This module adds a comprehensive asynchronous LLM job system to your Rails app w
 - **Structured Logging**: JSON logs for job execution, errors, and feedback
 - **Error Handling**: Graceful failure handling with detailed error messages
 - **Job Tracking**: Unique job IDs for tracing and debugging
+- **Workspace Analytics**: Per-workspace usage and performance metrics
 
 ## Installation
 
@@ -77,11 +131,11 @@ bin/synth add ai
 
 This command will:
 - Add necessary gems (`ruby-openai`, `paper_trail`) to your Gemfile
-- Create models for `PromptTemplate` and `PromptExecution`
+- Create models for `PromptTemplate`, `PromptExecution`, `AiProvider`, and `AiCredential`
 - Generate migrations for database tables and versioning
-- Add controllers and views for template management
+- Add controllers and views for template and credential management
 - Create comprehensive test coverage
-- Add example seed data with sample templates
+- Add example seed data with sample templates and AI providers
 
 After installation, run:
 
@@ -91,6 +145,154 @@ rails db:seed
 ```
 
 ## Usage
+
+### Setting Up AI Providers and Credentials
+
+```ruby
+# Create AI providers (usually done via seeds or admin interface)
+openai = AiProvider.create!(
+  name: 'OpenAI',
+  slug: 'openai',
+  api_base_url: 'https://api.openai.com',
+  supported_models: ['gpt-4', 'gpt-3.5-turbo'],
+  default_config: { temperature: 0.7, max_tokens: 4096 }
+)
+
+# Workspace admin creates credentials
+credential = workspace.ai_credentials.create!(
+  ai_provider: openai,
+  name: 'Production OpenAI',
+  api_key: ENV['OPENAI_API_KEY'],
+  preferred_model: 'gpt-4',
+  temperature: 0.8,
+  max_tokens: 2048,
+  is_default: true
+)
+```
+
+### Workspace-Scoped LLM Execution
+
+```ruby
+# Simple workspace-scoped execution
+LLMJob.for(workspace).run(
+  template: "Write a summary about {{topic}}",
+  context: { topic: "Ruby on Rails" },
+  provider: "openai",
+  user: current_user
+)
+
+# With specific model and format
+LLMJob.for(workspace).run(
+  template: "Generate JSON data for {{entity}}",
+  context: { entity: "user profile" },
+  provider: "openai",
+  model: "gpt-3.5-turbo",
+  format: "json",
+  user: current_user
+)
+
+# Check available providers for workspace
+runner = LLMJob.for(workspace)
+puts runner.available_providers # => ["openai", "anthropic"]
+puts runner.configured? # => true
+```
+
+### Direct Credential Usage
+
+```ruby
+# Get default credential for a provider
+credential = AiCredential.default_for(workspace, "openai")
+
+# Or get the best available credential
+credential = AiCredential.best_for(workspace, "openai")
+
+# Execute via credential
+credential.create_job_runner.run(
+  template: "Hello {{name}}",
+  context: { name: "World" },
+  user: current_user
+)
+
+# Synchronous execution (for testing)
+result = credential.create_job_runner.run_sync(
+  template: "Test prompt",
+  context: {},
+  user: current_user
+)
+```
+
+### Connection Testing and Validation
+
+```ruby
+# Test a specific credential
+result = credential.test_connection
+if result[:success]
+  puts "✅ Connection successful: #{result[:message]}"
+else
+  puts "❌ Connection failed: #{result[:error]}"
+end
+
+# Test all credentials for a workspace
+runner = LLMJob.for(workspace)
+test_results = runner.test_all_credentials
+test_results.each do |provider, results|
+  puts "#{provider.capitalize}:"
+  results.each do |test|
+    status = test[:test_result][:success] ? "✅" : "❌"
+    puts "  #{status} #{test[:credential_name]}"
+  end
+end
+
+# Check if credential passed last test
+if credential.test_successful?
+  puts "Last test passed at #{credential.last_tested_at}"
+else
+  puts "Last test failed or never tested"
+end
+```
+
+### Advanced Configuration
+
+```ruby
+# Create credential with provider-specific settings
+anthropic_credential = workspace.ai_credentials.create!(
+  ai_provider: anthropic_provider,
+  name: 'Claude Production',
+  api_key: ENV['ANTHROPIC_API_KEY'],
+  preferred_model: 'claude-3-opus-20240229',
+  temperature: 0.3,
+  max_tokens: 1000,
+  system_prompt: 'You are a helpful assistant specialized in technical documentation.',
+  provider_config: {
+    top_p: 0.9,
+    top_k: 40
+  }
+)
+
+# Use custom configuration in job
+LLMJob.perform_later(
+  template: "Explain {{concept}}",
+  model: anthropic_credential.preferred_model,
+  context: { concept: "dependency injection" },
+  format: "markdown",
+  user_id: user.id,
+  ai_credential_id: anthropic_credential.id,
+  workspace_id: workspace.id
+)
+```
+
+### Legacy Usage (Backward Compatibility)
+
+```ruby
+# Original LLMJob usage still works
+LLMJob.perform_later(
+  template: "Hello {{name}}",
+  model: "gpt-4",
+  context: { name: "World" },
+  format: "text",
+  user_id: current_user.id
+)
+```
 
 ### Creating Prompt Templates
 

@@ -5,6 +5,8 @@ class LLMOutput < ApplicationRecord
   belongs_to :agent, optional: true
   belongs_to :prompt_template, foreign_key: :template_name, primary_key: :slug, optional: true
   belongs_to :prompt_execution, optional: true
+  belongs_to :ai_credential, optional: true
+  belongs_to :workspace, optional: true
 
   validates :template_name, presence: true
   validates :model_name, presence: true
