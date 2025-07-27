@@ -1,0 +1,176 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900"><%= @ai_dataset.name %></h1>
+        <div class="mt-1 flex items-center space-x-3">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                     <%= @ai_dataset.dataset_type == 'embedding' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' %>">
+            <%= @ai_dataset.dataset_type.titleize %>
+          </span>
+          
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                     <%= case @ai_dataset.processed_status
+                         when 'completed' then 'bg-green-100 text-green-800'
+                         when 'processing' then 'bg-yellow-100 text-yellow-800'
+                         when 'failed' then 'bg-red-100 text-red-800'
+                         else 'bg-gray-100 text-gray-800'
+                         end %>">
+            <%= @ai_dataset.processed_status.titleize %>
+          </span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3">
+        <% if @ai_dataset.can_process? %>
+          <%= link_to "Process Dataset", process_workspace_ai_dataset_path(@workspace, @ai_dataset),
+                     method: :post,
+                     class: "bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium",
+                     data: { confirm: "Are you sure you want to process this dataset?" } %>
+        <% end %>
+        
+        <%= link_to "Edit", edit_workspace_ai_dataset_path(@workspace, @ai_dataset),
+                   class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dataset Details -->
+  <div class="p-6">
+    <% if @ai_dataset.description.present? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-900 mb-2">Description</h3>
+        <p class="text-sm text-gray-700"><%= @ai_dataset.description %></p>
+      </div>
+    <% end %>
+
+    <!-- Processing Status -->
+    <div class="mb-6">
+      <h3 class="text-sm font-medium text-gray-900 mb-3">Processing Status</h3>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Status</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @ai_dataset.processed_status.titleize %></dd>
+          </div>
+          
+          <div>
+            <dt class="text-sm font-medium text-gray-500">File Count</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= pluralize(@ai_dataset.file_count, 'file') %></dd>
+          </div>
+          
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Total Size</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @ai_dataset.total_file_size_human %></dd>
+          </div>
+          
+          <div>
+            <dt class="text-sm font-medium text-gray-500">Created By</dt>
+            <dd class="mt-1 text-sm text-gray-900"><%= @ai_dataset.created_by.name %></dd>
+          </div>
+          
+          <% if @ai_dataset.processed_at %>
+            <div>
+              <dt class="text-sm font-medium text-gray-500">Last Processed</dt>
+              <dd class="mt-1 text-sm text-gray-900"><%= time_ago_in_words(@ai_dataset.processed_at) %> ago</dd>
+            </div>
+          <% end %>
+          
+          <% if @ai_dataset.error_message.present? %>
+            <div class="sm:col-span-2">
+              <dt class="text-sm font-medium text-gray-500">Error Message</dt>
+              <dd class="mt-1 text-sm text-red-600"><%= @ai_dataset.error_message %></dd>
+            </div>
+          <% end %>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Files -->
+    <% if @ai_dataset.files.any? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Files</h3>
+        <div class="space-y-2">
+          <% @ai_dataset.files.each do |file| %>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+              <div class="flex items-center space-x-3">
+                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-gray-900"><%= file.filename %></p>
+                  <p class="text-xs text-gray-500">
+                    <%= number_to_human_size(file.byte_size) %> • 
+                    <%= file.content_type %> • 
+                    Uploaded <%= time_ago_in_words(file.created_at) %> ago
+                  </p>
+                </div>
+              </div>
+              <%= link_to "Download", 
+                         download_file_workspace_ai_dataset_path(@workspace, @ai_dataset, file_id: file.id),
+                         class: "text-blue-600 hover:text-blue-800 text-sm" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Embedding Sources -->
+    <% if @ai_dataset.dataset_type == 'embedding' && @embedding_sources.any? %>
+      <div class="mb-6">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Embedding Sources Using This Dataset</h3>
+        <div class="space-y-2">
+          <% @embedding_sources.each do |source| %>
+            <div class="flex items-center justify-between p-3 bg-blue-50 rounded-md">
+              <div>
+                <p class="text-sm font-medium text-gray-900"><%= source.name %></p>
+                <p class="text-xs text-gray-500">
+                  Status: <%= source.status.titleize %> • 
+                  Workspace: <%= source.workspace.name %>
+                </p>
+              </div>
+              <%= link_to "View Source", [@workspace, source], 
+                         class: "text-blue-600 hover:text-blue-800 text-sm" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Dataset Type Information -->
+    <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-blue-800">
+            <%= @ai_dataset.dataset_type.titleize %> Dataset
+          </h3>
+          <div class="mt-2 text-sm text-blue-700">
+            <% if @ai_dataset.dataset_type == 'embedding' %>
+              <p>This dataset is configured for embedding generation and semantic search. When processed, files will be chunked and converted to vector embeddings for use in RAG (Retrieval-Augmented Generation) systems.</p>
+            <% else %>
+              <p>This dataset is configured for fine-tuning custom models. Files should be in the correct format for your chosen model provider (e.g., JSONL with prompt/completion pairs for OpenAI).</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-6 flex items-center justify-between">
+      <%= link_to "← Back to Datasets", workspace_ai_datasets_path(@workspace), 
+                  class: "text-blue-600 hover:text-blue-800 text-sm" %>
+      
+      <div class="flex space-x-3">
+        <%= link_to "Delete Dataset", [@workspace, @ai_dataset],
+                   method: :delete,
+                   class: "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium",
+                   data: { confirm: "Are you sure you want to delete this dataset? This action cannot be undone." } %>
+      </div>
+    </div>
+  </div>
+</div>

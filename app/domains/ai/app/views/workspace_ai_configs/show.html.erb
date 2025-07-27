@@ -1,0 +1,239 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">AI Configuration</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Configure AI models, RAG settings, and instructions for this workspace
+        </p>
+      </div>
+      <%= link_to "Edit Configuration", edit_workspace_workspace_ai_config_path(@workspace), 
+                  class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+    </div>
+  </div>
+
+  <!-- Configuration Summary -->
+  <div class="p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Models -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">AI Models</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Chat Model:</span>
+            <span class="font-medium"><%= @summary[:models][:chat] %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Embedding Model:</span>
+            <span class="font-medium"><%= @summary[:models][:embedding] %></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Settings</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Temperature:</span>
+            <span class="font-medium"><%= @summary[:settings][:temperature] %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">Max Tokens:</span>
+            <span class="font-medium"><%= number_with_delimiter(@summary[:settings][:max_tokens]) %></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-600">RAG Enabled:</span>
+            <span class="font-medium">
+              <% if @summary[:settings][:rag_enabled] %>
+                <span class="text-green-600">Yes</span>
+              <% else %>
+                <span class="text-red-600">No</span>
+              <% end %>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sources -->
+      <div class="bg-gray-50 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Knowledge Sources</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-600">Active Sources:</span>
+            <span class="font-medium"><%= @summary[:sources] %></span>
+          </div>
+          <div class="text-xs text-gray-500">
+            <% if @summary[:last_updated] %>
+              Last updated <%= time_ago_in_words(@summary[:last_updated]) %> ago
+              <% if @summary[:updated_by] %>
+                by <%= @summary[:updated_by] %>
+              <% end %>
+            <% else %>
+              Never updated
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <% if @ai_config.instructions.present? %>
+      <div class="mt-6">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Workspace Instructions</h3>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-700 whitespace-pre-wrap"><%= @ai_config.instructions %></div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Active Embedding Sources -->
+    <div class="mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-medium text-gray-900">Active Embedding Sources</h3>
+        <%= link_to "Manage Sources", workspace_workspace_embedding_sources_path(@workspace),
+                   class: "text-blue-600 hover:text-blue-800 text-sm" %>
+      </div>
+      
+      <% if @embedding_sources.any? %>
+        <div class="space-y-3">
+          <% @embedding_sources.each do |source| %>
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                             <%= source.source_type == 'dataset' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' %>">
+                    <%= source.source_type.titleize %>
+                  </span>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-900"><%= source.name %></p>
+                  <% if source.description.present? %>
+                    <p class="text-xs text-gray-500"><%= truncate(source.description, length: 80) %></p>
+                  <% end %>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  Active
+                </span>
+                <%= link_to "View", [@workspace, source], 
+                           class: "text-blue-600 hover:text-blue-800 text-sm" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-6">
+          <div class="text-gray-400">
+            <svg class="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-8v2m0 6v2" />
+            </svg>
+          </div>
+          <p class="mt-2 text-sm text-gray-500">No active embedding sources configured.</p>
+          <%= link_to "Add Source", new_workspace_workspace_embedding_source_path(@workspace),
+                     class: "mt-3 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200" %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- RAG Testing -->
+    <% if @ai_config.rag_enabled %>
+      <div class="mt-6">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Test RAG System</h3>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div id="rag-test-form" class="space-y-3">
+            <div>
+              <label for="test-query" class="block text-sm font-medium text-blue-800">Test Query</label>
+              <input type="text" id="test-query" 
+                     placeholder="Enter a test query to see how RAG retrieves context..."
+                     class="mt-1 block w-full border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <button onclick="testRag()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+              Test RAG
+            </button>
+          </div>
+          
+          <div id="rag-test-results" class="mt-4 hidden">
+            <h4 class="text-sm font-medium text-blue-800 mb-2">Results</h4>
+            <div id="rag-results-content" class="text-sm text-blue-700"></div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Actions -->
+    <div class="mt-8 flex items-center justify-between">
+      <div class="flex space-x-3">
+        <%= link_to "Reset to Defaults", reset_to_defaults_workspace_workspace_ai_config_path(@workspace),
+                   method: :post,
+                   class: "bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium",
+                   data: { confirm: "Are you sure you want to reset all AI configuration to defaults?" } %>
+      </div>
+      
+      <div class="flex space-x-3">
+        <%= link_to "Edit Configuration", edit_workspace_workspace_ai_config_path(@workspace),
+                   class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @ai_config.rag_enabled %>
+  <script>
+    function testRag() {
+      const query = document.getElementById('test-query').value;
+      if (!query.trim()) {
+        alert('Please enter a test query');
+        return;
+      }
+      
+      const resultsDiv = document.getElementById('rag-test-results');
+      const contentDiv = document.getElementById('rag-results-content');
+      
+      resultsDiv.classList.remove('hidden');
+      contentDiv.innerHTML = 'Testing RAG system...';
+      
+      fetch('<%= test_rag_workspace_workspace_ai_config_path(@workspace) %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ query: query })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          contentDiv.innerHTML = `
+            <div class="space-y-3">
+              <div>
+                <strong>Query:</strong> ${data.query}
+              </div>
+              <div>
+                <strong>Chunks Found:</strong> ${data.chunks_used} of ${data.total_chunks_found}
+              </div>
+              <div>
+                <strong>Sources:</strong> ${data.sources.length} active sources
+              </div>
+              <div>
+                <strong>Context Retrieved:</strong>
+                <pre class="mt-1 p-2 bg-white rounded text-xs overflow-auto max-h-32">${data.context || 'No context retrieved'}</pre>
+              </div>
+              <div>
+                <strong>System Prompt Preview:</strong>
+                <pre class="mt-1 p-2 bg-white rounded text-xs overflow-auto max-h-32">${data.system_prompt}</pre>
+              </div>
+            </div>
+          `;
+        } else {
+          contentDiv.innerHTML = `<div class="text-red-600">Error: ${data.error}</div>`;
+        }
+      })
+      .catch(error => {
+        contentDiv.innerHTML = `<div class="text-red-600">Error: ${error.message}</div>`;
+      });
+    }
+  </script>
+<% end %>

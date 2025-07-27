@@ -1,0 +1,245 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h1 class="text-xl font-semibold text-gray-900">Edit AI Configuration</h1>
+    <p class="mt-1 text-sm text-gray-500">
+      Configure AI models, RAG settings, and instructions for this workspace
+    </p>
+  </div>
+
+  <%= form_with model: [@workspace, @ai_config], local: true, class: "p-6" do |form| %>
+    <% if @ai_config.errors.any? %>
+      <div class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">
+              There were <%= pluralize(@ai_config.errors.count, "error") %> with your submission:
+            </h3>
+            <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+              <% @ai_config.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="space-y-8">
+      <!-- Basic Settings -->
+      <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Model Configuration</h3>
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <div>
+            <%= form.label :chat_model, "Chat Model", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :chat_model, 
+                            options_for_select(WorkspaceAiConfig::CHAT_MODELS.map { |model| [model, model] }, @ai_config.chat_model),
+                            {},
+                            { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
+            <p class="mt-1 text-xs text-gray-500">
+              The LLM model used for chat and completion tasks
+            </p>
+          </div>
+
+          <div>
+            <%= form.label :embedding_model, "Embedding Model", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.select :embedding_model, 
+                            options_for_select(WorkspaceAiConfig::EMBEDDING_MODELS.map { |model| [model, model] }, @ai_config.embedding_model),
+                            {},
+                            { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
+            <p class="mt-1 text-xs text-gray-500">
+              The model used for generating embeddings for RAG
+            </p>
+          </div>
+
+          <div>
+            <%= form.label :temperature, class: "block text-sm font-medium text-gray-700" %>
+            <%= form.number_field :temperature, 
+                                  step: 0.1, min: 0.0, max: 2.0,
+                                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+            <p class="mt-1 text-xs text-gray-500">
+              Controls randomness (0.0 = deterministic, 2.0 = very creative)
+            </p>
+          </div>
+
+          <div>
+            <%= form.label :max_tokens, "Max Tokens", class: "block text-sm font-medium text-gray-700" %>
+            <%= form.number_field :max_tokens, 
+                                  min: 1, max: 32000,
+                                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+            <p class="mt-1 text-xs text-gray-500">
+              Maximum tokens in the response (1-32000)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Workspace Instructions</h3>
+        <%= form.label :instructions, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_area :instructions, 
+                           rows: 8,
+                           class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm",
+                           placeholder: "Enter instructions that will be included in every AI conversation in this workspace. These act like system prompts and help guide the AI's behavior and responses." %>
+        <p class="mt-1 text-xs text-gray-500">
+          These instructions will be prepended to every AI conversation in this workspace. Use this to set context, define the AI's role, or specify formatting preferences.
+        </p>
+      </div>
+
+      <!-- RAG Configuration -->
+      <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">RAG (Retrieval-Augmented Generation)</h3>
+        
+        <div class="space-y-4">
+          <div class="flex items-center">
+            <%= form.check_box :rag_enabled, class: "rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" %>
+            <%= form.label :rag_enabled, "Enable RAG", class: "ml-2 text-sm font-medium text-gray-700" %>
+            <p class="ml-2 text-xs text-gray-500">
+              Use knowledge sources to augment AI responses with relevant context
+            </p>
+          </div>
+
+          <div id="rag-config" class="<%= 'hidden' unless @ai_config.rag_enabled %>">
+            <div class="bg-gray-50 rounded-lg p-4 space-y-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">
+                    Semantic Search Threshold
+                  </label>
+                  <input type="number" 
+                         step="0.1" min="0.0" max="1.0"
+                         value="<%= @ai_config.effective_rag_config[:semantic_search_threshold] %>"
+                         name="workspace_ai_config[rag_config][semantic_search_threshold]"
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <p class="mt-1 text-xs text-gray-500">
+                    Minimum similarity score for including context (0.0-1.0)
+                  </p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">
+                    Max Context Chunks
+                  </label>
+                  <input type="number" 
+                         min="1" max="50"
+                         value="<%= @ai_config.effective_rag_config[:max_context_chunks] %>"
+                         name="workspace_ai_config[rag_config][max_context_chunks]"
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <p class="mt-1 text-xs text-gray-500">
+                    Maximum number of relevant chunks to include
+                  </p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">
+                    Chunk Overlap
+                  </label>
+                  <input type="number" 
+                         min="0" max="500"
+                         value="<%= @ai_config.effective_rag_config[:chunk_overlap] %>"
+                         name="workspace_ai_config[rag_config][chunk_overlap]"
+                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <p class="mt-1 text-xs text-gray-500">
+                    Character overlap between text chunks
+                  </p>
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <div class="flex items-center">
+                  <input type="checkbox" 
+                         <%= 'checked' if @ai_config.effective_rag_config[:include_metadata] %>
+                         name="workspace_ai_config[rag_config][include_metadata]"
+                         class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                  <label class="ml-2 text-sm text-gray-700">Include metadata in context</label>
+                </div>
+
+                <div class="flex items-center">
+                  <input type="checkbox" 
+                         <%= 'checked' if @ai_config.effective_rag_config[:auto_embed_new_content] %>
+                         name="workspace_ai_config[rag_config][auto_embed_new_content]"
+                         class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                  <label class="ml-2 text-sm text-gray-700">Auto-embed new content</label>
+                </div>
+
+                <div class="flex items-center">
+                  <input type="checkbox" 
+                         <%= 'checked' if @ai_config.effective_rag_config[:rerank_results] %>
+                         name="workspace_ai_config[rag_config][rerank_results]"
+                         class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                  <label class="ml-2 text-sm text-gray-700">Re-rank search results</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Model Configuration -->
+      <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Advanced Model Settings</h3>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Top P</label>
+              <input type="number" 
+                     step="0.1" min="0.0" max="1.0"
+                     value="<%= @ai_config.effective_model_config[:top_p] %>"
+                     name="workspace_ai_config[model_config][top_p]"
+                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <p class="mt-1 text-xs text-gray-500">Nucleus sampling parameter</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Frequency Penalty</label>
+              <input type="number" 
+                     step="0.1" min="-2.0" max="2.0"
+                     value="<%= @ai_config.effective_model_config[:frequency_penalty] %>"
+                     name="workspace_ai_config[model_config][frequency_penalty]"
+                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <p class="mt-1 text-xs text-gray-500">Reduce repetitive text</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Presence Penalty</label>
+              <input type="number" 
+                     step="0.1" min="-2.0" max="2.0"
+                     value="<%= @ai_config.effective_model_config[:presence_penalty] %>"
+                     name="workspace_ai_config[model_config][presence_penalty]"
+                     class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <p class="mt-1 text-xs text-gray-500">Encourage topic diversity</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-8 flex items-center justify-between">
+      <%= link_to "Cancel", [@workspace, @ai_config], 
+                  class: "bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      
+      <div class="flex space-x-3">
+        <%= form.submit "Save Configuration",
+                        class: "bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  // Toggle RAG configuration visibility
+  document.getElementById('workspace_ai_config_rag_enabled').addEventListener('change', function() {
+    const ragConfig = document.getElementById('rag-config');
+    if (this.checked) {
+      ragConfig.classList.remove('hidden');
+    } else {
+      ragConfig.classList.add('hidden');
+    }
+  });
+</script>
