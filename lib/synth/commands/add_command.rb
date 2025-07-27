@@ -7,7 +7,7 @@ module Synth
     # Command to install modules
     class AddCommand < BaseCommand
       def execute(module_name, options = {})
-        module_template_path = File.join(TEMPLATE_PATH, module_name)
+        module_template_path = File.join(template_path, module_name)
         
         unless Dir.exist?(module_template_path)
           puts "❌ Module '#{module_name}' not found in templates"
