@@ -1,0 +1,205 @@
+<div class="mb-8">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Fallback AI Credentials</h1>
+      <p class="text-gray-600 mt-2">Manage shared API keys for trial and demo users</p>
+    </div>
+    <%= link_to "Add New Credential", new_admin_fallback_ai_credential_path, 
+                class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center">
+      <div class="text-2xl font-bold text-blue-600"><%= @stats[:total_credentials] %></div>
+      <div class="ml-3">
+        <p class="text-sm font-medium text-gray-500">Total Credentials</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center">
+      <div class="text-2xl font-bold text-green-600"><%= @stats[:active_credentials] %></div>
+      <div class="ml-3">
+        <p class="text-sm font-medium text-gray-500">Active</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center">
+      <div class="text-2xl font-bold text-purple-600"><%= @stats[:total_usage_today] %></div>
+      <div class="ml-3">
+        <p class="text-sm font-medium text-gray-500">Usage Today</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="bg-white rounded-lg shadow p-6">
+    <div class="flex items-center">
+      <div class="text-2xl font-bold text-orange-600"><%= @stats[:unique_users_today] %></div>
+      <div class="ml-3">
+        <p class="text-sm font-medium text-gray-500">Active Users</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="bg-white p-4 rounded-lg shadow mb-6">
+  <%= form_with url: admin_fallback_ai_credentials_path, method: :get, local: true, class: "flex space-x-4" do |f| %>
+    <div class="flex-1">
+      <%= f.label :provider, "Provider", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :provider, 
+                   options_for_select([['All Providers', '']] + @providers.map { |p| [p.name, p.slug] }, params[:provider]),
+                   {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+    </div>
+    <div class="flex-1">
+      <%= f.label :active, "Status", class: "block text-sm font-medium text-gray-700" %>
+      <%= f.select :active, 
+                   options_for_select([['All', ''], ['Active', 'true'], ['Inactive', 'false']], params[:active]),
+                   {}, { class: "mt-1 block w-full border-gray-300 rounded" } %>
+    </div>
+    <div class="flex items-end">
+      <%= f.submit "Filter", class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+      <%= link_to "Clear", admin_fallback_ai_credentials_path, 
+                  class: "ml-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" %>
+    </div>
+  <% end %>
+</div>
+
+<!-- Bulk Actions -->
+<%= form_with url: admin_fallback_ai_credentials_bulk_toggle_path, method: :patch, local: true, 
+              id: "bulk-actions-form", class: "mb-4" do |f| %>
+  <div class="bg-gray-50 p-4 rounded-lg flex justify-between items-center">
+    <div class="flex items-center space-x-4">
+      <span class="text-sm font-medium text-gray-700">Bulk Actions:</span>
+      <%= f.select :bulk_action, 
+                   options_for_select([['Select Action', ''], ['Activate', 'activate'], ['Deactivate', 'deactivate']]),
+                   {}, { class: "border-gray-300 rounded", id: "bulk-action-select" } %>
+      <%= f.submit "Apply", class: "bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700", 
+                            id: "bulk-submit", disabled: true %>
+    </div>
+    <div>
+      <%= link_to "Usage Report", admin_fallback_ai_credentials_usage_report_path, 
+                  class: "text-blue-600 hover:text-blue-800" %>
+    </div>
+  </div>
+<% end %>
+
+<!-- Credentials Table -->
+<div class="bg-white shadow overflow-hidden sm:rounded-md">
+  <% if @fallback_credentials.any? %>
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left">
+            <input type="checkbox" id="select-all" class="rounded border-gray-300">
+          </th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Limits</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @fallback_credentials.each do |credential| %>
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <input type="checkbox" name="credential_ids[]" value="<%= credential.id %>" 
+                     class="credential-checkbox rounded border-gray-300" form="bulk-actions-form">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900"><%= credential.name %></div>
+              <div class="text-sm text-gray-500"><%= credential.preferred_model %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <%= credential.ai_provider.name %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <% if credential.active? %>
+                <% if credential.available? %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Available
+                  </span>
+                <% else %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    Limited
+                  </span>
+                <% end %>
+              <% else %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Inactive
+                </span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <div>Total: <%= credential.total_usage_count %></div>
+              <div class="text-gray-500">Today: <%= credential.daily_usage_count %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <div>Daily: <%= credential.daily_limit || "∞" %></div>
+              <div class="text-gray-500">Total: <%= credential.usage_limit || "∞" %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+              <%= link_to "View", admin_fallback_ai_credential_path(credential), 
+                          class: "text-blue-600 hover:text-blue-900" %>
+              <%= link_to "Edit", edit_admin_fallback_ai_credential_path(credential), 
+                          class: "text-green-600 hover:text-green-900" %>
+              <%= link_to credential.active? ? "Deactivate" : "Activate", 
+                          admin_fallback_ai_credential_toggle_active_path(credential), 
+                          method: :patch,
+                          class: credential.active? ? "text-orange-600 hover:text-orange-900" : "text-green-600 hover:text-green-900",
+                          data: { confirm: "#{credential.active? ? 'Deactivate' : 'Activate'} this credential?" } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <div class="text-center py-12">
+      <div class="text-gray-400">
+        <i class="fas fa-key text-4xl mb-4"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No fallback credentials</h3>
+      <p class="text-gray-500 mb-4">Create fallback credentials to allow trial users to try AI features.</p>
+      <%= link_to "Add First Credential", new_admin_fallback_ai_credential_path, 
+                  class: "bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.credential-checkbox');
+  const bulkSubmit = document.getElementById('bulk-submit');
+  const bulkSelect = document.getElementById('bulk-action-select');
+
+  function updateBulkActions() {
+    const selectedCount = document.querySelectorAll('.credential-checkbox:checked').length;
+    const hasAction = bulkSelect.value !== '';
+    bulkSubmit.disabled = !(selectedCount > 0 && hasAction);
+  }
+
+  selectAll.addEventListener('change', function() {
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = this.checked;
+    });
+    updateBulkActions();
+  });
+
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateBulkActions);
+  });
+
+  bulkSelect.addEventListener('change', updateBulkActions);
+});
+</script>

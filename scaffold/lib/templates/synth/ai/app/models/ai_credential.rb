@@ -36,12 +36,41 @@ class AiCredential < ApplicationRecord
   end
   
   # Get the best available credential for a workspace and provider
-  def self.best_for(workspace, provider_slug)
-    default_for(workspace, provider_slug) || 
-    joins(:ai_provider)
-      .where(workspace: workspace, ai_providers: { slug: provider_slug }, active: true)
-      .order(:last_used_at)
-      .first
+  def self.best_for(workspace, provider_slug, allow_fallback: true)
+    # First try to get workspace-specific credentials
+    user_credential = default_for(workspace, provider_slug) || 
+      joins(:ai_provider)
+        .where(workspace: workspace, ai_providers: { slug: provider_slug }, active: true)
+        .order(:last_used_at)
+        .first
+    
+    # If no user credential and fallbacks are allowed, try fallback credentials
+    if user_credential.nil? && allow_fallback
+      return FallbackAiCredential.best_for_provider(provider_slug)
+    end
+    
+    user_credential
+  end
+  
+  # Get the best available credential for a workspace and provider, including fallbacks
+  def self.best_for_user(workspace, provider_slug, user: nil)
+    # First try user's own credentials
+    user_credential = best_for(workspace, provider_slug, allow_fallback: false)
+    return user_credential if user_credential
+    
+    # If no user credential, check if user can use fallback credentials
+    return nil unless user && workspace
+    
+    fallback_credential = FallbackAiCredential.best_for_provider(provider_slug)
+    return nil unless fallback_credential&.available?
+    
+    # Check if user has reached their daily limit for this fallback
+    if fallback_credential.daily_limit.present?
+      daily_usage = fallback_credential.daily_usage_for_user(user, workspace: workspace)
+      return nil if daily_usage >= fallback_credential.daily_limit
+    end
+    
+    fallback_credential
   end
   
   # Test the credential by pinging the provider
