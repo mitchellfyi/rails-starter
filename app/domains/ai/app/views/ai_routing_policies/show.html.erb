@@ -1,0 +1,196 @@
+<% content_for :title, @ai_routing_policy.name %>
+
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <%= link_to "← Back to Policies", workspace_ai_routing_policies_path(@workspace), 
+                class: "text-blue-600 hover:text-blue-900 mb-6 inline-block" %>
+    
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-gray-900"><%= @ai_routing_policy.name %></h1>
+      <div class="flex space-x-3">
+        <%= link_to "Edit", edit_workspace_ai_routing_policy_path(@workspace, @ai_routing_policy), 
+                    class: "bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+        <%= link_to "Test Preview", preview_workspace_ai_routing_policy_path(@workspace, @ai_routing_policy), 
+                    class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded",
+                    data: { turbo_method: :get, turbo_frame: "preview-results" } %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Policy Details -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Basic Info -->
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Policy Configuration</h3>
+            
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1">
+                  <% if @ai_routing_policy.enabled? %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      Enabled
+                    </span>
+                  <% else %>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                      Disabled
+                    </span>
+                  <% end %>
+                </dd>
+              </div>
+              
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Primary Model</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @ai_routing_policy.primary_model %></dd>
+              </div>
+              
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Warning Threshold</dt>
+                <dd class="mt-1 text-sm text-gray-900">$<%= @ai_routing_policy.cost_threshold_warning %></dd>
+              </div>
+              
+              <div>
+                <dt class="text-sm font-medium text-gray-500">Block Threshold</dt>
+                <dd class="mt-1 text-sm text-gray-900">$<%= @ai_routing_policy.cost_threshold_block %></dd>
+              </div>
+            </dl>
+
+            <% if @ai_routing_policy.fallback_models.any? %>
+              <div class="mt-6">
+                <dt class="text-sm font-medium text-gray-500">Fallback Models</dt>
+                <dd class="mt-2">
+                  <div class="flex flex-wrap gap-2">
+                    <% @ai_routing_policy.fallback_models.each_with_index do |model, index| %>
+                      <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                        <%= index + 1 %>. <%= model %>
+                      </span>
+                    <% end %>
+                  </div>
+                </dd>
+              </div>
+            <% end %>
+
+            <% if @ai_routing_policy.description.present? %>
+              <div class="mt-6">
+                <dt class="text-sm font-medium text-gray-500">Description</dt>
+                <dd class="mt-1 text-sm text-gray-900"><%= @ai_routing_policy.description %></dd>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Recent LLM Outputs -->
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Recent AI Requests</h3>
+            
+            <% if @recent_outputs.any? %>
+              <div class="space-y-4">
+                <% @recent_outputs.each do |output| %>
+                  <div class="border-l-4 <%= output.success? ? 'border-green-400' : 'border-red-400' %> pl-4">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <p class="text-sm font-medium text-gray-900">
+                          <%= output.template_name %> 
+                          <span class="text-gray-500">(<%= output.model_name %>)</span>
+                        </p>
+                        <p class="text-xs text-gray-500">
+                          <%= time_ago_in_words(output.created_at) %> ago
+                          <% if output.effective_cost > 0 %>
+                            • $<%= sprintf('%.4f', output.effective_cost) %>
+                          <% end %>
+                          <% if output.cost_warning_triggered? %>
+                            • ⚠️ Cost Warning
+                          <% end %>
+                        </p>
+                        <% if output.routing_summary != "Direct request" %>
+                          <p class="text-xs text-blue-600"><%= output.routing_summary %></p>
+                        <% end %>
+                      </div>
+                      <span class="px-2 py-1 text-xs rounded-full <%= output.success? ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                        <%= output.status.humanize %>
+                      </span>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-gray-500">No recent AI requests found.</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Spending Summary -->
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Workspace Spending</h3>
+            
+            <% if @spending_summary.any? %>
+              <div class="space-y-4">
+                <% %w[daily weekly monthly].each do |period| %>
+                  <% if @spending_summary[period.to_sym] %>
+                    <% data = @spending_summary[period.to_sym] %>
+                    <div>
+                      <div class="flex justify-between text-sm">
+                        <span class="text-gray-500"><%= period.humanize %></span>
+                        <span class="<%= data[:exceeded] ? 'text-red-600 font-bold' : 'text-gray-900' %>">
+                          $<%= sprintf('%.2f', data[:current]) %> / 
+                          <% if data[:limit] %>
+                            $<%= sprintf('%.2f', data[:limit]) %>
+                          <% else %>
+                            No limit
+                          <% end %>
+                        </span>
+                      </div>
+                      <% if data[:limit] %>
+                        <div class="mt-1 w-full bg-gray-200 rounded-full h-2">
+                          <% percentage = [(data[:current] / data[:limit] * 100), 100].min %>
+                          <div class="<%= percentage >= 100 ? 'bg-red-600' : percentage >= 80 ? 'bg-yellow-400' : 'bg-green-600' %> h-2 rounded-full" 
+                               style="width: <%= percentage %>%"></div>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-gray-500">No spending data available.</p>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Model Costs Reference -->
+        <div class="bg-gray-50 shadow rounded-lg">
+          <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Model Costs (per 1K tokens)</h3>
+            
+            <div class="space-y-3">
+              <% @ai_routing_policy.ordered_models.each do |model| %>
+                <% if AiRoutingPolicy::MODEL_COSTS[model] %>
+                  <% costs = AiRoutingPolicy::MODEL_COSTS[model] %>
+                  <div class="flex justify-between text-sm">
+                    <span class="font-medium text-gray-900"><%= model %></span>
+                    <span class="text-gray-500">
+                      $<%= costs[:input] %> / $<%= costs[:output] %>
+                    </span>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+            
+            <p class="mt-4 text-xs text-gray-500">
+              Costs shown as input / output per 1,000 tokens
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Preview Results -->
+    <div id="preview-results" class="mt-6"></div>
+  </div>
+</div>

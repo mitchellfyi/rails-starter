@@ -5,6 +5,9 @@ class Workspace < ApplicationRecord
   has_many :feature_flags, through: :workspace_feature_flags
   has_many :workspace_mcp_fetchers, dependent: :destroy
   has_many :mcp_fetchers, through: :workspace_mcp_fetchers
+  has_many :ai_routing_policies, dependent: :destroy
+  has_one :workspace_spending_limit, dependent: :destroy
+  has_many :llm_outputs, dependent: :destroy
   
   validates :name, presence: true
   

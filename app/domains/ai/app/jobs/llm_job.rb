@@ -19,7 +19,7 @@ class LLMJob < ApplicationJob
     delay
   end
 
-  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil, mcp_fetchers: [])
+  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil, mcp_fetchers: [], workspace_id: nil)
     Rails.logger.info "Starting LLMJob", {
       template: template,
       model: model,
@@ -28,8 +28,12 @@ class LLMJob < ApplicationJob
       user_id: user_id,
       agent_id: agent_id,
       mcp_fetchers: mcp_fetchers,
+      workspace_id: workspace_id,
       job_id: job_id
     }
+
+    workspace = workspace_id ? Workspace.find_by(id: workspace_id) : nil
+    routing_policy = workspace&.ai_routing_policies&.enabled&.first
 
     # Build MCP context with base data
     enriched_context = build_mcp_context(context, mcp_fetchers, user_id)
@@ -40,8 +44,25 @@ class LLMJob < ApplicationJob
     # Interpolate context variables into the template
     prompt = interpolate_template(prompt_template, enriched_context)
     
-    # Call the LLM API
-    response = call_llm_api(model, prompt, format)
+    # Estimate token usage and cost
+    input_tokens = estimate_tokens(prompt)
+    max_output_tokens = determine_max_tokens(format)
+    
+    # Execute with routing policy if available
+    if routing_policy
+      response, routing_decision = execute_with_routing_policy(
+        routing_policy, prompt, format, input_tokens, max_output_tokens
+      )
+    else
+      # Fallback to direct execution
+      response = call_llm_api(model, prompt, format)
+      routing_decision = { 
+        policy_used: false, 
+        primary_model: model, 
+        final_model: model,
+        total_attempts: 1 
+      }
+    end
     
     # Store the output
     llm_output = store_output(
@@ -53,13 +74,32 @@ class LLMJob < ApplicationJob
       raw_response: response[:raw],
       parsed_output: response[:parsed],
       user_id: user_id,
-      agent_id: agent_id
+      agent_id: agent_id,
+      workspace_id: workspace_id,
+      routing_decision: routing_decision,
+      estimated_cost: response[:estimated_cost],
+      input_tokens: input_tokens,
+      output_tokens: response[:output_tokens],
+      cost_warning_triggered: response[:cost_warning_triggered]
     )
+
+    # Update actual cost if available from API response
+    if response[:actual_cost]
+      llm_output.update_actual_cost!(
+        response[:actual_cost],
+        input_tokens: response[:input_tokens],
+        output_tokens: response[:output_tokens]
+      )
+    end
 
     Rails.logger.info "LLMJob completed successfully", {
       job_id: job_id,
       output_id: llm_output.id,
-      response_length: response[:raw]&.length || 0
+      response_length: response[:raw]&.length || 0,
+      routing_used: routing_policy.present?,
+      final_model: routing_decision[:final_model],
+      estimated_cost: response[:estimated_cost],
+      cost_warning: response[:cost_warning_triggered]
     }
 
     llm_output
@@ -180,7 +220,7 @@ class LLMJob < ApplicationJob
     end
   end
 
-  def store_output(template:, model:, context:, format:, prompt:, raw_response:, parsed_output:, user_id:, agent_id:)
+  def store_output(template:, model:, context:, format:, prompt:, raw_response:, parsed_output:, user_id:, agent_id:, workspace_id: nil, routing_decision: {}, estimated_cost: nil, input_tokens: nil, output_tokens: nil, cost_warning_triggered: false)
     LLMOutput.create!(
       template_name: template,
       model_name: model,
@@ -191,8 +231,14 @@ class LLMJob < ApplicationJob
       parsed_output: parsed_output,
       user_id: user_id,
       agent_id: agent_id,
+      workspace_id: workspace_id,
       job_id: job_id,
-      status: 'completed'
+      status: 'completed',
+      routing_decision: routing_decision,
+      estimated_cost: estimated_cost,
+      input_tokens: input_tokens,
+      output_tokens: output_tokens,
+      cost_warning_triggered: cost_warning_triggered
     )
   end
 
@@ -216,5 +262,151 @@ class LLMJob < ApplicationJob
     else
       "Fallback response for: #{prompt[0..50]}..."
     end
+  end
+
+  # Execute request with routing policy
+  def execute_with_routing_policy(policy, prompt, format, input_tokens, max_output_tokens)
+    routing_decision = {
+      policy_used: true,
+      policy_name: policy.name,
+      primary_model: policy.primary_model,
+      total_attempts: 0,
+      attempts: [],
+      final_model: nil,
+      cost_checks: []
+    }
+
+    cost_warning_triggered = false
+    last_error = nil
+    
+    # Try each model in the routing policy
+    policy.ordered_models.each_with_index do |model, index|
+      attempt_number = index + 1
+      routing_decision[:total_attempts] = attempt_number
+
+      begin
+        # Estimate cost for this model
+        estimated_cost = policy.estimate_cost(input_tokens, max_output_tokens, model)
+        cost_check = policy.cost_check(estimated_cost)
+        
+        routing_decision[:cost_checks] << {
+          model: model,
+          estimated_cost: estimated_cost,
+          check_result: cost_check
+        }
+
+        Rails.logger.info "LLM routing attempt", {
+          attempt: attempt_number,
+          model: model,
+          estimated_cost: estimated_cost,
+          cost_check: cost_check[:action]
+        }
+
+        # Check workspace spending limits if applicable
+        if policy.workspace.workspace_spending_limit&.enabled?
+          spending_limit = policy.workspace.workspace_spending_limit
+          if spending_limit.would_exceed?(estimated_cost)
+            if spending_limit.block_when_exceeded?
+              raise StandardError.new("Workspace spending limit would be exceeded")
+            else
+              cost_warning_triggered = true
+              Rails.logger.warn "Workspace spending limit warning", {
+                workspace_id: policy.workspace.id,
+                estimated_cost: estimated_cost,
+                remaining_budget: spending_limit.remaining_budget
+              }
+            end
+          end
+        end
+
+        # Handle cost-based decisions
+        case cost_check[:action]
+        when :block
+          raise StandardError.new("Cost threshold exceeded: #{cost_check[:reason]}")
+        when :warn
+          cost_warning_triggered = true
+          Rails.logger.warn "Cost warning triggered", {
+            model: model,
+            reason: cost_check[:reason]
+          }
+        end
+
+        # Make the API call
+        response = call_llm_api(model, prompt, format)
+        
+        # Success - record attempt and return
+        routing_decision[:attempts] << {
+          model: model,
+          success: true,
+          estimated_cost: estimated_cost,
+          response_length: response[:raw]&.length || 0
+        }
+        routing_decision[:final_model] = model
+        
+        return [
+          response.merge(
+            estimated_cost: estimated_cost,
+            cost_warning_triggered: cost_warning_triggered
+          ),
+          routing_decision
+        ]
+
+      rescue => error
+        last_error = error
+        
+        routing_decision[:attempts] << {
+          model: model,
+          success: false,
+          error: error.class.name,
+          error_message: error.message,
+          estimated_cost: estimated_cost
+        }
+
+        Rails.logger.warn "LLM routing attempt failed", {
+          attempt: attempt_number,
+          model: model,
+          error: error.class.name,
+          message: error.message
+        }
+
+        # Check if we should retry with next model
+        unless policy.should_retry?(error, attempt_number)
+          Rails.logger.error "LLM routing stopping retries", {
+            attempt: attempt_number,
+            error: error.class.name,
+            message: error.message
+          }
+          break
+        end
+
+        # Add delay before retry if configured
+        sleep(policy.effective_routing_rules['retry_delay']) if policy.effective_routing_rules['retry_delay'] > 0
+      end
+    end
+
+    # All attempts failed - return fallback response
+    Rails.logger.error "All LLM routing attempts failed", {
+      total_attempts: routing_decision[:total_attempts],
+      last_error: last_error&.message
+    }
+
+    fallback_response = generate_fallback_response(prompt, format)
+    response = {
+      raw: fallback_response,
+      parsed: fallback_response,
+      error: last_error&.message || "All models failed",
+      estimated_cost: 0.0,
+      cost_warning_triggered: cost_warning_triggered
+    }
+
+    routing_decision[:final_model] = 'fallback'
+    
+    [response, routing_decision]
+  end
+
+  # Estimate token count for input text
+  def estimate_tokens(text)
+    # Simple estimation: ~4 characters per token for English text
+    (text&.length || 0) / 4
   end
 end

@@ -1,0 +1,136 @@
+<% content_for :title, "New AI Routing Policy" %>
+
+<div class="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+  <div class="px-4 py-6 sm:px-0">
+    <%= link_to "← Back to Policies", workspace_ai_routing_policies_path(@workspace), 
+                class: "text-blue-600 hover:text-blue-900 mb-6 inline-block" %>
+    
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">New AI Routing Policy</h1>
+
+    <%= form_with model: [@workspace, @ai_routing_policy], local: true, class: "space-y-6" do |form| %>
+      <% if @ai_routing_policy.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+          <div class="flex">
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">
+                <%= pluralize(@ai_routing_policy.errors.count, "error") %> prohibited this policy from being saved:
+              </h3>
+              <div class="mt-2 text-sm text-red-700">
+                <ul class="list-disc pl-5 space-y-1">
+                  <% @ai_routing_policy.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <div class="grid grid-cols-1 gap-6">
+            <!-- Basic Information -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <%= form.label :name, class: "block text-sm font-medium text-gray-700" %>
+                <%= form.text_field :name, 
+                    class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500",
+                    placeholder: "e.g., Production Policy" %>
+              </div>
+
+              <div>
+                <%= form.label :enabled, class: "block text-sm font-medium text-gray-700" %>
+                <div class="mt-1">
+                  <%= form.check_box :enabled, class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
+                  <span class="ml-2 text-sm text-gray-600">Enable this policy</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Model Configuration -->
+            <div>
+              <%= form.label :primary_model, "Primary Model", class: "block text-sm font-medium text-gray-700" %>
+              <%= form.select :primary_model, 
+                  options_for_select(@available_models.map { |m| [m, m] }, @ai_routing_policy.primary_model),
+                  { prompt: "Select primary model" },
+                  { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" } %>
+              <p class="mt-1 text-sm text-gray-500">The primary model to use for AI requests</p>
+            </div>
+
+            <div>
+              <%= form.label :fallback_models, "Fallback Models", class: "block text-sm font-medium text-gray-700" %>
+              <div class="mt-1 space-y-2">
+                <% @available_models.each do |model| %>
+                  <div class="flex items-center">
+                    <%= check_box_tag "ai_routing_policy[fallback_models][]", model, 
+                        @ai_routing_policy.fallback_models.include?(model),
+                        id: "fallback_#{model}",
+                        class: "focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded" %>
+                    <%= label_tag "fallback_#{model}", model, class: "ml-2 text-sm text-gray-700" %>
+                  </div>
+                <% end %>
+              </div>
+              <p class="mt-1 text-sm text-gray-500">Models to try if the primary model fails (in order)</p>
+            </div>
+
+            <!-- Cost Thresholds -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <%= form.label :cost_threshold_warning, "Cost Warning Threshold ($)", class: "block text-sm font-medium text-gray-700" %>
+                <%= form.number_field :cost_threshold_warning, 
+                    step: 0.001, 
+                    min: 0,
+                    class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500",
+                    placeholder: "0.01" %>
+                <p class="mt-1 text-sm text-gray-500">Trigger warning when cost exceeds this amount</p>
+              </div>
+
+              <div>
+                <%= form.label :cost_threshold_block, "Cost Block Threshold ($)", class: "block text-sm font-medium text-gray-700" %>
+                <%= form.number_field :cost_threshold_block, 
+                    step: 0.001, 
+                    min: 0,
+                    class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500",
+                    placeholder: "0.10" %>
+                <p class="mt-1 text-sm text-gray-500">Block requests when cost exceeds this amount</p>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <%= form.label :description, class: "block text-sm font-medium text-gray-700" %>
+              <%= form.text_area :description, 
+                  rows: 3,
+                  class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500",
+                  placeholder: "Optional description of this policy's purpose..." %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost Preview -->
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-blue-800 mb-2">Cost Estimates (per 1K tokens)</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <% AiRoutingPolicy::MODEL_COSTS.each do |model, costs| %>
+            <div class="text-center">
+              <div class="font-medium"><%= model %></div>
+              <div class="text-gray-600">
+                In: $<%= costs[:input] %><br>
+                Out: $<%= costs[:output] %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-3">
+        <%= link_to "Cancel", workspace_ai_routing_policies_path(@workspace), 
+                    class: "bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+        <%= form.submit "Create Policy", 
+                        class: "bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700" %>
+      </div>
+    <% end %>
+  </div>
+</div>
