@@ -41,8 +41,9 @@ module Synth
         begin
           ENV['RAILS_ENV'] ||= 'development'
           require './config/environment'
-        rescue LoadError, StandardError
-          # Rails environment not available or failed to load, continue without it
+        rescue LoadError, StandardError => e
+          warn "⚠️  Failed to load Rails environment: #{e.message}"
+          warn e.backtrace.join("\n") if e.backtrace
         end
       end
     end
