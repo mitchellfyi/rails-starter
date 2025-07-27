@@ -571,6 +571,14 @@ class SynthCLI
       cli.upgrade(module_name)
     when 'manifest'
       cli.manifest
+    when 'plan'
+      module_name = args[1]
+      operation = args[2] || 'install'
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth plan MODULE_NAME [install|upgrade]"
+        exit 1
+      end
+      cli.plan(module_name, operation)
     when 'help', '--help', '-h', nil
       cli.show_help
     else
@@ -724,6 +732,33 @@ class SynthCLI
       puts "The synth.json manifest tracks module configurations, hooks, and metadata"
       puts "for clean installs, upgrades, and future UI-based module toggling."
     end
+  end
+
+  def plan(module_name, operation = 'install')
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found in templates"
+      show_available_modules
+      exit 1
+    end
+
+    puts "📋 Planning #{operation} operation for '#{module_name}' module..."
+    puts "=" * 60
+    
+    case operation.downcase
+    when 'install'
+      plan_module_install(module_name, module_template_path)
+    when 'upgrade'
+      plan_module_upgrade(module_name, module_template_path)
+    else
+      puts "❌ Unknown operation: #{operation}. Use 'install' or 'upgrade'"
+      exit 1
+    end
+    
+    puts "=" * 60
+    puts "💡 This is a preview only. No changes have been made."
+    puts "💡 To proceed with the operation, run: bin/synth #{operation} #{module_name}"
   end
 
   def docs
@@ -888,6 +923,7 @@ class SynthCLI
         info MODULE           Show detailed information about a module
         test [MODULE]         Run tests for a module or all modules
         docs                  Generate documentation from installed modules and OpenAPI schema
+        plan MODULE [OP]      Preview changes for install/upgrade operation (OP: install|upgrade)
         upgrade [MODULE]      Upgrade one or all installed modules to latest versions
         manifest              Manage the synth.json manifest file
         doctor                Validate setup and configuration
@@ -911,6 +947,11 @@ class SynthCLI
         upgrade --yes         Upgrade without prompting for conflicts
         upgrade --no-backup   Upgrade without creating backups
       
+      PLAN OPTIONS:
+        plan MODULE           Preview installation changes for MODULE
+        plan MODULE install   Preview installation changes for MODULE
+        plan MODULE upgrade   Preview upgrade changes for MODULE
+      
       EXAMPLES:
         bin/synth list
         bin/synth add billing
@@ -921,6 +962,8 @@ class SynthCLI
         bin/synth docs
         bin/synth manifest generate
         bin/synth manifest validate
+        bin/synth plan billing            # Preview billing module installation
+        bin/synth plan ai upgrade         # Preview AI module upgrade
         bin/synth upgrade
         bin/synth upgrade ai --verbose
         bin/synth upgrade --yes --no-backup
@@ -929,6 +972,364 @@ class SynthCLI
   end
 
   private
+
+  def plan_module_install(module_name, module_template_path)
+    puts "🔍 Operation: Install"
+    puts "📦 Module: #{module_name}"
+    
+    # Check version info
+    version_path = File.join(module_template_path, 'VERSION')
+    version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+    puts "🏷️  Version: #{version}"
+    
+    # Check if already installed
+    if module_installed?(module_name)
+      registry = load_registry
+      current_version = registry.dig('installed', module_name, 'version') || 'unknown'
+      puts "⚠️  Module is already installed (v#{current_version})"
+      puts "   Use 'plan #{module_name} upgrade' to preview upgrade changes"
+      return
+    end
+    
+    puts "\n📁 Files that would be created/copied:"
+    plan_file_operations(module_name, module_template_path, :install)
+    
+    puts "\n🗄️  Database changes:"
+    plan_migration_changes(module_name, module_template_path, :install)
+    
+    puts "\n⚙️  Configuration changes:"
+    plan_configuration_changes(module_name, module_template_path, :install)
+    
+    puts "\n🛣️  Route changes:"
+    plan_route_changes(module_name, module_template_path, :install)
+    
+    puts "\n📦 Dependencies:"
+    plan_dependency_changes(module_name, module_template_path, :install)
+  end
+
+  def plan_module_upgrade(module_name, module_template_path)
+    puts "🔍 Operation: Upgrade"
+    puts "📦 Module: #{module_name}"
+    
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      puts "   Use 'plan #{module_name} install' to preview installation"
+      return
+    end
+    
+    registry = load_registry
+    current_version = registry.dig('installed', module_name, 'version') || '0.0.0'
+    
+    version_path = File.join(module_template_path, 'VERSION')
+    available_version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+    
+    puts "📈 Current version: #{current_version}"
+    puts "📈 Available version: #{available_version}"
+    
+    if version_compare(available_version, current_version) <= 0
+      puts "✅ Module is already up to date"
+      return
+    end
+    
+    puts "\n📁 Files that would be updated:"
+    plan_file_operations(module_name, module_template_path, :upgrade)
+    
+    puts "\n🗄️  Database changes:"
+    plan_migration_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n⚙️  Configuration changes:"
+    plan_configuration_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n🛣️  Route changes:"
+    plan_route_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n📦 Dependencies:"
+    plan_dependency_changes(module_name, module_template_path, :upgrade)
+  end
+
+  def plan_file_operations(module_name, module_template_path, operation)
+    target_dir = File.join('app', 'domains', module_name)
+    files_to_process = []
+    
+    # Collect all files that would be copied
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      next if File.basename(file) == 'install.rb'
+      next if File.basename(file) == 'VERSION'
+      next if File.basename(file) == 'remove.rb'
+      
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      target_file = File.join(target_dir, relative_path)
+      
+      files_to_process << {
+        source: file,
+        target: target_file,
+        relative_path: relative_path.to_s,
+        exists: File.exist?(target_file)
+      }
+    end
+    
+    if files_to_process.empty?
+      puts "   No files to copy"
+      return
+    end
+    
+    # Group by operation type
+    new_files = files_to_process.select { |f| !f[:exists] }
+    existing_files = files_to_process.select { |f| f[:exists] }
+    
+    unless new_files.empty?
+      puts "   📄 New files to create (#{new_files.length}):"
+      new_files.each do |file|
+        file_size = File.size(file[:source])
+        puts "     + #{file[:relative_path]} (#{file_size} bytes)"
+      end
+    end
+    
+    unless existing_files.empty?
+      puts "   📝 Existing files to update (#{existing_files.length}):"
+      existing_files.each do |file|
+        if operation == :upgrade
+          show_file_diff_summary(file[:target], file[:source], file[:relative_path])
+        else
+          puts "     ~ #{file[:relative_path]} (would be overwritten)"
+        end
+      end
+    end
+  end
+
+  def show_file_diff_summary(current_file, new_file, relative_path)
+    current_content = File.read(current_file)
+    new_content = File.read(new_file)
+    
+    if current_content == new_content
+      puts "     = #{relative_path} (no changes)"
+    else
+      current_lines = current_content.lines.length
+      new_lines = new_content.lines.length
+      
+      # Simple line-by-line diff analysis
+      lines_changed = 0
+      lines_added = 0
+      lines_removed = 0
+      
+      if new_lines > current_lines
+        lines_added = new_lines - current_lines
+      elsif current_lines > new_lines
+        lines_removed = current_lines - new_lines
+      else
+        lines_changed = 1 # Assume at least one line changed if file size is different
+      end
+      
+      diff_summary = []
+      diff_summary << "+#{lines_added}" if lines_added > 0
+      diff_summary << "-#{lines_removed}" if lines_removed > 0
+      diff_summary << "~#{lines_changed}" if lines_changed > 0 && lines_added == 0 && lines_removed == 0
+      
+      puts "     ~ #{relative_path} (#{diff_summary.join(', ')} lines)"
+    end
+  end
+
+  def plan_migration_changes(module_name, module_template_path, operation)
+    migration_path = File.join(module_template_path, 'db', 'migrate')
+    
+    unless Dir.exist?(migration_path)
+      puts "   No migrations"
+      return
+    end
+    
+    migration_files = Dir.glob(File.join(migration_path, "*.rb"))
+    
+    if migration_files.empty?
+      puts "   No migrations"
+      return
+    end
+    
+    puts "   📊 Migrations to apply (#{migration_files.length}):"
+    migration_files.each do |migration_file|
+      migration_name = File.basename(migration_file, '.rb')
+      
+      # Try to extract the migration class name and analyze what it does
+      migration_content = File.read(migration_file)
+      
+      # Look for create_table, add_column, etc.
+      operations = []
+      operations << "create tables" if migration_content.include?('create_table')
+      operations << "add columns" if migration_content.include?('add_column')
+      operations << "add indexes" if migration_content.include?('add_index')
+      operations << "add foreign keys" if migration_content.include?('add_foreign_key')
+      operations << "modify schema" if operations.empty? && migration_content.include?('def change')
+      
+      operation_summary = operations.any? ? " (#{operations.join(', ')})" : ""
+      puts "     + #{migration_name}#{operation_summary}"
+    end
+    
+    puts "   💡 Run 'rails db:migrate' after installation to apply migrations"
+  end
+
+  def plan_configuration_changes(module_name, module_template_path, operation)
+    config_path = File.join(module_template_path, 'config')
+    changes_found = false
+    
+    # Check for initializer files
+    initializers_path = File.join(config_path, 'initializers')
+    if Dir.exist?(initializers_path)
+      initializer_files = Dir.glob(File.join(initializers_path, "*.rb"))
+      unless initializer_files.empty?
+        changes_found = true
+        puts "   ⚙️  Initializers to add/update:"
+        initializer_files.each do |file|
+          file_name = File.basename(file)
+          target_path = File.join('config', 'initializers', file_name)
+          status = File.exist?(target_path) ? "update" : "create"
+          puts "     #{status == 'create' ? '+' : '~'} config/initializers/#{file_name}"
+        end
+      end
+    end
+    
+    # Check for routes
+    routes_file = File.join(config_path, 'routes.rb')
+    if File.exist?(routes_file)
+      changes_found = true
+      puts "   🛣️  Routes to integrate:"
+      
+      routes_content = File.read(routes_file)
+      # Extract route definitions
+      route_lines = routes_content.lines.select { |line| 
+        line.strip.match?(/^(get|post|put|patch|delete|resources|namespace|scope)\s/) 
+      }
+      
+      if route_lines.any?
+        route_lines.first(5).each do |line|
+          puts "     + #{line.strip}"
+        end
+        puts "     ... (#{route_lines.length - 5} more)" if route_lines.length > 5
+      else
+        puts "     + Custom route configuration"
+      end
+      puts "   💡 Routes need to be manually integrated into config/routes.rb"
+    end
+    
+    # Check install.rb for other configuration changes
+    install_file = File.join(module_template_path, 'install.rb')
+    if File.exist?(install_file)
+      install_content = File.read(install_file)
+      
+      # Look for gem additions
+      if install_content.include?('gem ')
+        changes_found = true
+        puts "   💎 Gems that may be added:"
+        gem_lines = install_content.lines.select { |line| line.include?("gem ") }
+        gem_lines.each do |line|
+          gem_match = line.match(/gem\s+['"]([^'"]+)['"]/)
+          if gem_match
+            puts "     + #{gem_match[1]}"
+          end
+        end
+        puts "   💡 Run 'bundle install' after installation"
+      end
+      
+      # Look for generator calls
+      if install_content.include?('generate ')
+        changes_found = true
+        puts "   🏗️  Generators to run:"
+        generator_lines = install_content.lines.select { |line| line.include?("generate ") }
+        generator_lines.first(3).each do |line|
+          generator_match = line.match(/generate\s+:?(\w+)/)
+          if generator_match
+            puts "     + rails generate #{generator_match[1]}"
+          end
+        end
+        puts "     ... (see install.rb for full details)" if generator_lines.length > 3
+      end
+    end
+    
+    unless changes_found
+      puts "   No configuration changes"
+    end
+  end
+
+  def plan_route_changes(module_name, module_template_path, operation)
+    routes_file = File.join(module_template_path, 'config', 'routes.rb')
+    
+    unless File.exist?(routes_file)
+      puts "   No route changes"
+      return
+    end
+    
+    routes_content = File.read(routes_file)
+    
+    # Extract meaningful route lines
+    route_lines = routes_content.lines
+      .map(&:strip)
+      .reject { |line| line.empty? || line.start_with?('#') }
+      .select { |line| line.match?(/^(get|post|put|patch|delete|resources|namespace|scope|root)/) }
+    
+    if route_lines.any?
+      puts "   🛣️  Routes to be added to config/routes.rb:"
+      route_lines.each do |line|
+        puts "     + #{line}"
+      end
+      puts "   💡 These routes will need manual integration"
+    else
+      puts "   📋 Custom route configuration detected"
+      puts "   💡 Review #{module_name}/config/routes.rb for route requirements"
+    end
+  end
+
+  def plan_dependency_changes(module_name, module_template_path, operation)
+    install_file = File.join(module_template_path, 'install.rb')
+    
+    unless File.exist?(install_file)
+      puts "   No dependencies analyzed"
+      return
+    end
+    
+    install_content = File.read(install_file)
+    dependencies_found = false
+    
+    # Check for gem dependencies
+    gem_lines = install_content.lines.select { |line| line.include?("gem ") && !line.strip.start_with?('#') }
+    if gem_lines.any?
+      dependencies_found = true
+      puts "   💎 Ruby gems:"
+      gem_lines.each do |line|
+        gem_match = line.match(/gem\s+['"]([^'"]+)['"](?:,\s*['"]([^'"]+)['"])?/)
+        if gem_match
+          gem_name = gem_match[1]
+          gem_version = gem_match[2] ? " (#{gem_match[2]})" : ""
+          puts "     + #{gem_name}#{gem_version}"
+        end
+      end
+    end
+    
+    # Check for yarn/npm dependencies
+    yarn_lines = install_content.lines.select { |line| line.include?("yarn add") || line.include?("npm install") }
+    if yarn_lines.any?
+      dependencies_found = true
+      puts "   📦 JavaScript packages:"
+      yarn_lines.each do |line|
+        if line.include?("yarn add")
+          packages = line.match(/yarn add\s+(.+)/)
+          puts "     + #{packages[1].strip}" if packages
+        elsif line.include?("npm install")
+          packages = line.match(/npm install\s+(.+)/)
+          puts "     + #{packages[1].strip}" if packages
+        end
+      end
+    end
+    
+    # Check for system dependencies or other requirements
+    if install_content.include?('apt-get') || install_content.include?('brew install')
+      dependencies_found = true
+      puts "   🖥️  System dependencies detected"
+      puts "     💡 Review install.rb for system-level requirements"
+    end
+    
+    unless dependencies_found
+      puts "   No additional dependencies"
+    end
+  end
 
   def show_available_modules
     puts '📦 Available modules:'

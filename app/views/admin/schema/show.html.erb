@@ -1,0 +1,457 @@
+<% content_for :page_title, "#{@model_name} Model" %>
+
+<div class="admin-content">
+  <div class="content-header">
+    <div class="header-with-nav">
+      <%= link_to admin_schema_index_path, class: "back-link" do %>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        Back to Schema
+      <% end %>
+      <h1><%= @model_name %> Model</h1>
+    </div>
+    <p class="content-description">
+      Detailed view of the <%= @model_name %> model, its attributes, relationships, and validations.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <!-- Model Info -->
+    <div class="xl:col-span-2">
+      <!-- Attributes -->
+      <div class="card mb-6">
+        <div class="card-header">
+          <h2 class="card-title">Attributes</h2>
+          <p class="card-description">Database columns and their types</p>
+        </div>
+        <div class="card-content">
+          <div class="table-container">
+            <table class="attributes-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Null</th>
+                  <th>Default</th>
+                  <th>Comment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @columns.each do |column| %>
+                  <tr>
+                    <td class="column-name">
+                      <code><%= column.name %></code>
+                      <% if column.name == @model.primary_key %>
+                        <span class="primary-key-badge">PK</span>
+                      <% end %>
+                    </td>
+                    <td class="column-type">
+                      <span class="type-badge type-<%= column.type %>">
+                        <%= column.type %>
+                        <% if column.limit %>(<%= column.limit %>)<% end %>
+                      </span>
+                    </td>
+                    <td class="column-null">
+                      <span class="<%= column.null ? 'null-yes' : 'null-no' %>">
+                        <%= column.null ? '✓' : '✗' %>
+                      </span>
+                    </td>
+                    <td class="column-default">
+                      <% if column.default %>
+                        <code><%= column.default %></code>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td class="column-comment">
+                      <% if column.comment.present? %>
+                        <%= column.comment %>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Indexes -->
+      <% if @indexes.any? %>
+        <div class="card mb-6">
+          <div class="card-header">
+            <h2 class="card-title">Indexes</h2>
+            <p class="card-description">Database indexes for performance optimization</p>
+          </div>
+          <div class="card-content">
+            <div class="table-container">
+              <table class="indexes-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Columns</th>
+                    <th>Unique</th>
+                    <th>Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @indexes.each do |index| %>
+                    <tr>
+                      <td><code><%= index.name %></code></td>
+                      <td>
+                        <% index.columns.each_with_index do |column, i| %>
+                          <code><%= column %></code><%= ', ' unless i == index.columns.length - 1 %>
+                        <% end %>
+                      </td>
+                      <td>
+                        <span class="<%= index.unique? ? 'unique-yes' : 'unique-no' %>">
+                          <%= index.unique? ? '✓' : '✗' %>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="index-type">
+                          <%= index.type || 'btree' %>
+                        </span>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Sample Data -->
+      <% if @sample_records && @sample_records.any? %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Sample Data</h2>
+            <p class="card-description">First 5 records from this table</p>
+          </div>
+          <div class="card-content">
+            <div class="table-container">
+              <table class="sample-data-table">
+                <thead>
+                  <tr>
+                    <% @columns.first(6).each do |column| %>
+                      <th><%= column.name %></th>
+                    <% end %>
+                    <% if @columns.length > 6 %>
+                      <th class="text-muted">...</th>
+                    <% end %>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @sample_records.each do |record| %>
+                    <tr>
+                      <% @columns.first(6).each do |column| %>
+                        <td>
+                          <% value = record.send(column.name) %>
+                          <% if value.nil? %>
+                            <span class="text-muted">NULL</span>
+                          <% elsif value.is_a?(String) && value.length > 50 %>
+                            <span title="<%= value %>"><%= truncate(value, length: 50) %></span>
+                          <% else %>
+                            <%= value %>
+                          <% end %>
+                        </td>
+                      <% end %>
+                      <% if @columns.length > 6 %>
+                        <td class="text-muted">...</td>
+                      <% end %>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-content">
+      <!-- Associations -->
+      <% if @associations.any? %>
+        <div class="card mb-6">
+          <div class="card-header">
+            <h2 class="card-title">Associations</h2>
+            <p class="card-description">Model relationships</p>
+          </div>
+          <div class="card-content">
+            <% @associations.each do |type, assocs| %>
+              <div class="association-group">
+                <h4 class="association-type"><%= type.to_s.humanize %></h4>
+                <ul class="association-list">
+                  <% assocs.each do |assoc| %>
+                    <li class="association-item">
+                      <div class="association-name"><%= assoc[:name] %></div>
+                      <div class="association-details">
+                        <% if assoc[:class_name] %>
+                          → <code><%= assoc[:class_name] %></code>
+                        <% end %>
+                        <% if assoc[:foreign_key] %>
+                          <br><small>FK: <%= assoc[:foreign_key] %></small>
+                        <% end %>
+                        <% if assoc[:through] %>
+                          <br><small>through: <%= assoc[:through] %></small>
+                        <% end %>
+                      </div>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Validations -->
+      <% if @validations.any? %>
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Validations</h2>
+            <p class="card-description">Model validation rules</p>
+          </div>
+          <div class="card-content">
+            <ul class="validation-list">
+              <% @validations.each do |validation| %>
+                <li class="validation-item">
+                  <div class="validation-attribute"><%= validation[:attribute] %></div>
+                  <div class="validation-type"><%= validation[:type] %></div>
+                  <% if validation[:options].any? %>
+                    <div class="validation-options">
+                      <% validation[:options].each do |key, value| %>
+                        <span class="validation-option">
+                          <%= key %>: <%= value.inspect %>
+                        </span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+.header-with-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  color: #374151;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
+}
+
+.back-link:hover {
+  background: #e5e7eb;
+}
+
+.back-link svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.attributes-table,
+.indexes-table,
+.sample-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.attributes-table th,
+.attributes-table td,
+.indexes-table th,
+.indexes-table td,
+.sample-data-table th,
+.sample-data-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.attributes-table th,
+.indexes-table th,
+.sample-data-table th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+}
+
+.column-name {
+  font-weight: 500;
+}
+
+.column-name code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+}
+
+.primary-key-badge {
+  display: inline-block;
+  background: #3b82f6;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  margin-left: 0.5rem;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.type-string { background: #dbeafe; color: #1e40af; }
+.type-integer { background: #dcfce7; color: #166534; }
+.type-datetime { background: #fef3c7; color: #92400e; }
+.type-boolean { background: #ede9fe; color: #5b21b6; }
+.type-text { background: #f0f9ff; color: #0369a1; }
+.type-decimal { background: #ecfdf5; color: #047857; }
+
+.null-yes { color: #059669; }
+.null-no { color: #dc2626; }
+
+.unique-yes { color: #059669; }
+.unique-no { color: #6b7280; }
+
+.index-type {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.text-muted {
+  color: #9ca3af;
+}
+
+.sidebar-content {
+  space-y: 1.5rem;
+}
+
+.association-group {
+  margin-bottom: 1rem;
+}
+
+.association-type {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+}
+
+.association-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.association-item {
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.association-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.association-details {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.association-details code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+}
+
+.validation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.validation-item {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.validation-attribute {
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.validation-type {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.validation-options {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.validation-option {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  margin-right: 0.25rem;
+  font-family: ui-monospace, monospace;
+}
+
+.xl\\:col-span-2 {
+  grid-column: span 2;
+}
+
+@media (min-width: 1280px) {
+  .xl\\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+</style>
