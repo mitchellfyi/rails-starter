@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # This Dockerfile is designed for production use
-ARG RUBY_VERSION=3.2.0
+ARG RUBY_VERSION=3.3.0
 FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim as base
 
 # Rails app lives here
@@ -21,8 +21,8 @@ RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential curl git libpq-dev libvips node-gyp pkg-config python-is-python3
 
 # Install Node.js
-ARG NODE_VERSION=18.17.0
-ARG YARN_VERSION=1.22.19
+ARG NODE_VERSION=20.15.1
+ARG YARN_VERSION=1.22.22
 ENV PATH=/usr/local/node/bin:$PATH
 RUN curl -sL https://github.com/nodenv/node-build/archive/master.tar.gz | tar xz -C /tmp/ && \
     /tmp/node-build-master/bin/node-build "${NODE_VERSION}" /usr/local/node && \
@@ -63,8 +63,12 @@ COPY --from=build /rails /rails
 
 # Run and own only the runtime files as a non-root user for security
 RUN useradd rails --create-home --shell /bin/bash && \
-    chown -R rails:rails db log storage tmp
+    chown -R rails:rails db log storage tmp public
 USER rails:rails
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
 
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]

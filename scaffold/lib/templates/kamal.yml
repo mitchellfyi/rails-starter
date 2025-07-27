@@ -1,5 +1,6 @@
 # kamal.yml - Kamal deployment configuration for Rails SaaS Starter Template
 # Documentation: https://kamal-deploy.org/docs/configuration
+# For more complex setups, see: https://kamal-deploy.org/docs/examples
 
 service: rails-saas-starter
 image: your-registry/rails-saas-starter
@@ -29,7 +30,8 @@ registry:
 builder:
   multiarch: false
   args:
-    RUBY_VERSION: 3.2.0
+    RUBY_VERSION: 3.3.0
+    NODE_VERSION: 20.15.1
   secrets:
     - RAILS_MASTER_KEY
 
@@ -39,6 +41,10 @@ env:
     RAILS_ENV: production
     RAILS_LOG_TO_STDOUT: true
     RAILS_SERVE_STATIC_FILES: true
+    FORCE_SSL: true
+    RAILS_MAX_THREADS: "5"
+    WEB_CONCURRENCY: "2"
+    RACK_ATTACK_ENABLED: true
     APP_HOST: your-domain.com
     APP_NAME: Rails SaaS Starter
     FEATURE_AI_ENABLED: true
@@ -49,21 +55,28 @@ env:
     - RAILS_MASTER_KEY
     - DATABASE_URL
     - REDIS_URL
+    # AI/LLM Provider Keys (if using AI module)
     - OPENAI_API_KEY
     - ANTHROPIC_API_KEY
+    # Payment Processing (if using billing module)
     - STRIPE_PUBLISHABLE_KEY
     - STRIPE_SECRET_KEY
     - STRIPE_WEBHOOK_SECRET
+    # OAuth Providers (optional)
     - GOOGLE_CLIENT_ID
     - GOOGLE_CLIENT_SECRET
     - GITHUB_CLIENT_ID
     - GITHUB_CLIENT_SECRET
     - SLACK_CLIENT_ID
     - SLACK_CLIENT_SECRET
+    # Email Configuration
     - SMTP_HOST
     - SMTP_USERNAME
     - SMTP_PASSWORD
     - FROM_EMAIL
+    # Monitoring (optional)
+    # - SENTRY_DSN
+    # - NEW_RELIC_LICENSE_KEY
 
 # Health check configuration
 healthcheck:
@@ -97,18 +110,20 @@ volumes:
 # Database and Redis (as accessories)
 accessories:
   postgres:
-    image: postgres:15
+    image: postgres:16
     host: 192.168.1.1  # Replace with your database server IP
     port: 5432
     env:
       clear:
         POSTGRES_USER: rails_saas
         POSTGRES_DB: rails_saas_production
+        # Enable pgvector extension for AI features
+        POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
       secret:
         - POSTGRES_PASSWORD
     directories:
       - data:/var/lib/postgresql/data
-    cmd: postgres -c shared_preload_libraries=vector
+    cmd: postgres -c shared_preload_libraries=vector -c max_connections=100
     
   redis:
     image: redis:7

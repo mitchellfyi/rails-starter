@@ -19,6 +19,12 @@ services:
         value: "true"
       - key: RAILS_SERVE_STATIC_FILES
         value: "true"
+      - key: RAILS_MAX_THREADS
+        value: "5"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: RACK_ATTACK_ENABLED
+        value: "true"
       - key: RAILS_MASTER_KEY
         sync: false  # Set this in Render dashboard
       - key: SECRET_KEY_BASE
@@ -57,6 +63,13 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      # Performance and Security Configuration
+      - key: RAILS_MAX_THREADS
+        value: "5"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: RACK_ATTACK_ENABLED
+        value: "true"
       # Email Configuration (set in Render dashboard)
       - key: SMTP_HOST
         sync: false
@@ -120,7 +133,7 @@ databases:
     user: myapp
     region: oregon  # Same region as services
     plan: starter   # Change to standard/pro for production
-    postgresMajorVersion: 15
+    postgresMajorVersion: 16
     # Note: You may need to manually enable pgvector extension after creation
     # Connect to your database and run: CREATE EXTENSION IF NOT EXISTS vector;
 

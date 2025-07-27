@@ -2,24 +2,38 @@
 # Build script for Render deployment
 # This script is referenced in render.yaml
 
-set -o errexit
+set -o errexit  # Exit on any error
+set -o nounset  # Exit on undefined variables
+set -o pipefail # Exit on pipe failures
 
-echo "Installing dependencies..."
-bundle install
+echo "🚀 Starting Render build process..."
 
-echo "Installing Node.js dependencies..."
-npm install
+echo "📦 Installing Ruby dependencies..."
+bundle config --global frozen 1
+bundle install --jobs=4 --retry=3
 
-echo "Precompiling assets..."
+echo "📦 Installing Node.js dependencies..."
+if [ -f "package.json" ]; then
+  npm ci --production=false
+else
+  echo "⚠️  No package.json found, skipping Node.js dependencies"
+fi
+
+echo "🎨 Precompiling assets..."
 bundle exec rails assets:precompile
 
-echo "Creating database if it doesn't exist..."
+echo "🗄️  Preparing database..."
+# Create database if it doesn't exist (safe for existing databases)
 bundle exec rails db:create DISABLE_DATABASE_ENVIRONMENT_CHECK=1 || true
 
-echo "Running database migrations..."
+echo "🔄 Running database migrations..."
 bundle exec rails db:migrate
 
-echo "Loading seed data..."
+echo "🌱 Loading seed data..."
 bundle exec rails db:seed
 
-echo "Build completed successfully!"
+echo "🧹 Cleaning up build artifacts..."
+rm -rf node_modules/.cache
+rm -rf tmp/cache
+
+echo "✅ Build completed successfully!"
