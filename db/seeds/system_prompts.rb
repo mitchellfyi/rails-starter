@@ -2,39 +2,41 @@
 
 # SystemPrompt Seeds
 # This file provides sample system prompts for different use cases
+require_relative '../../lib/seed_i18n_helper'
 
 puts "🌱 Seeding SystemPrompts..."
+SeedI18nHelper.puts_i18n_status
 
 # Sample workspace (use existing or create one)
 sample_workspace = Workspace.first || Workspace.create!(
-  name: "Demo Workspace",
+  name: SeedI18nHelper.seed_translation('seeds.workspaces.demo_workspace.name', fallback: "Demo Workspace"),
   slug: "demo-workspace",
-  description: "Sample workspace for demonstration purposes"
+  description: SeedI18nHelper.seed_translation('seeds.workspaces.demo_workspace.description', fallback: "Sample workspace for demonstration purposes")
 )
 
 # Global System Prompts (available to all workspaces as fallback)
 global_prompts = [
   {
-    name: "Generic Assistant",
-    description: "A helpful, harmless, and honest AI assistant",
-    prompt_text: "You are a helpful, harmless, and honest AI assistant. Please provide accurate and helpful responses to the user's questions.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.generic_assistant.name', fallback: "Generic Assistant"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.generic_assistant.description', fallback: "A helpful, harmless, and honest AI assistant"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.generic_assistant.prompt_text', fallback: "You are a helpful, harmless, and honest AI assistant. Please provide accurate and helpful responses to the user's questions."),
     status: "active",
     associated_roles: ["assistant", "general"],
     associated_functions: ["chat", "support"]
   },
   {
-    name: "Code Review Assistant",
-    description: "AI assistant specialized in code review and programming help",
-    prompt_text: "You are an expert software engineer AI assistant. Help users with code review, debugging, and programming best practices. Always explain your reasoning and provide examples when helpful.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.code_review_assistant.name', fallback: "Code Review Assistant"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.code_review_assistant.description', fallback: "AI assistant specialized in code review and programming help"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.code_review_assistant.prompt_text', fallback: "You are an expert software engineer AI assistant. Help users with code review, debugging, and programming best practices. Always explain your reasoning and provide examples when helpful."),
     status: "active",
     associated_roles: ["developer", "engineer"],
     associated_functions: ["code_review", "debugging", "programming"],
     associated_agents: ["code_bot"]
   },
   {
-    name: "Customer Support Bot",
-    description: "Friendly customer support assistant",
-    prompt_text: "You are a friendly and professional customer support representative for {{company_name}}. Help customers with their questions and concerns. If you cannot resolve an issue, politely escalate to a human agent.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.customer_support_bot.name', fallback: "Customer Support Bot"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.customer_support_bot.description', fallback: "Friendly customer support assistant"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.customer_support_bot.prompt_text', fallback: "You are a friendly and professional customer support representative for {{company_name}}. Help customers with their questions and concerns. If you cannot resolve an issue, politely escalate to a human agent."),
     status: "active",
     associated_roles: ["support", "customer_service"],
     associated_functions: ["support_chat", "ticket_handling"],
@@ -55,9 +57,9 @@ end
 # Workspace-specific System Prompts
 workspace_prompts = [
   {
-    name: "Sales Assistant",
-    description: "AI assistant specialized for sales interactions in this workspace",
-    prompt_text: "You are a sales assistant for {{company_name}}. Help prospects understand our products and services. Be enthusiastic but not pushy. Focus on understanding customer needs: {{customer_needs}}. Always follow up with relevant questions.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.sales_assistant.name', fallback: "Sales Assistant"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.sales_assistant.description', fallback: "AI assistant specialized for sales interactions in this workspace"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.sales_assistant.prompt_text', fallback: "You are a sales assistant for {{company_name}}. Help prospects understand our products and services. Be enthusiastic but not pushy. Focus on understanding customer needs: {{customer_needs}}. Always follow up with relevant questions."),
     status: "active",
     workspace: sample_workspace,
     associated_roles: ["sales", "business_development"],
@@ -65,9 +67,9 @@ workspace_prompts = [
     associated_agents: ["sales_bot"]
   },
   {
-    name: "Technical Documentation Helper",
-    description: "Assists with creating and maintaining technical documentation",
-    prompt_text: "You are a technical writing assistant for {{company_name}}. Help create clear, accurate, and user-friendly documentation. Follow our style guide and ensure all documentation is accessible to users with varying technical backgrounds.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.technical_documentation_helper.name', fallback: "Technical Documentation Helper"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.technical_documentation_helper.description', fallback: "Assists with creating and maintaining technical documentation"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.technical_documentation_helper.prompt_text', fallback: "You are a technical writing assistant for {{company_name}}. Help create clear, accurate, and user-friendly documentation. Follow our style guide and ensure all documentation is accessible to users with varying technical backgrounds."),
     status: "active",
     workspace: sample_workspace,
     associated_roles: ["technical_writer", "developer"],
@@ -75,9 +77,9 @@ workspace_prompts = [
     associated_agents: ["docs_bot"]
   },
   {
-    name: "Project Management Assistant",
-    description: "Helps with project planning and management tasks",
-    prompt_text: "You are a project management assistant. Help with task planning, timeline estimation, and project coordination. Consider team capacity, dependencies, and risk factors when making recommendations for project: {{project_name}}.",
+    name: SeedI18nHelper.seed_translation('seeds.system_prompts.project_management_assistant.name', fallback: "Project Management Assistant"),
+    description: SeedI18nHelper.seed_translation('seeds.system_prompts.project_management_assistant.description', fallback: "Helps with project planning and management tasks"),
+    prompt_text: SeedI18nHelper.seed_translation('seeds.system_prompts.project_management_assistant.prompt_text', fallback: "You are a project management assistant. Help with task planning, timeline estimation, and project coordination. Consider team capacity, dependencies, and risk factors when making recommendations for project: {{project_name}}."),
     status: "draft",
     workspace: sample_workspace,
     associated_roles: ["project_manager", "team_lead"],
@@ -100,30 +102,16 @@ end
 puts "\n🔄 Creating version examples..."
 
 # Create a new version of the Customer Support Bot
-support_bot = SystemPrompt.find_by(name: "Customer Support Bot", workspace: nil)
-if support_bot && support_bot.version_history.count == 1
-  new_version = support_bot.create_new_version!(
-    description: "Enhanced customer support with escalation handling",
-    prompt_text: "You are a friendly and professional customer support representative for {{company_name}}. Help customers with their questions and concerns. 
-
-Before escalating to a human agent, try these steps:
-1. Ask clarifying questions to better understand the issue
-2. Check our knowledge base for solutions
-3. Provide step-by-step troubleshooting if applicable
-
-If you still cannot resolve the issue, politely escalate to a human agent and provide a summary of what you've already tried.",
-    associated_functions: support_bot.associated_functions + ["escalation_handling", "troubleshooting"]
-  )
-  puts "  ✅ Created version #{new_version.version} of Customer Support Bot"
-else
-  puts "  ⚠️  Customer Support Bot versions already exist, skipping..."
-end
+# Note: Commented out due to naming conflicts in create_new_version! method
+# This would need the paper_trail gem and proper slug handling to work correctly
+puts "  ⚠️  Version creation skipped - requires additional setup"
 
 # Activate the Sales Assistant to show active status
-sales_assistant = SystemPrompt.find_by(name: "Sales Assistant", workspace: sample_workspace)
+sales_assistant_name = SeedI18nHelper.seed_translation('seeds.system_prompts.sales_assistant.name', fallback: "Sales Assistant")
+sales_assistant = SystemPrompt.find_by(name: sales_assistant_name, workspace: sample_workspace)
 if sales_assistant && sales_assistant.status != 'active'
   sales_assistant.activate!
-  puts "  ✅ Activated Sales Assistant"
+  puts "  ✅ Activated #{sales_assistant_name}"
 end
 
 puts "\n✨ SystemPrompt seeding completed!"

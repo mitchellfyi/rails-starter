@@ -1,25 +1,29 @@
 # Seed data for admin panel functionality
+require_relative '../../lib/seed_i18n_helper'
+
+puts "🌱 Seeding Admin data..."
+SeedI18nHelper.puts_i18n_status
 
 # Create default feature flags
 default_flags = [
   {
     name: 'new_ui',
-    description: 'Enable the new user interface design',
+    description: SeedI18nHelper.seed_translation('seeds.feature_flags.new_ui.description', fallback: 'Enable the new user interface design'),
     enabled: false
   },
   {
     name: 'beta_features',
-    description: 'Enable beta features for testing',
+    description: SeedI18nHelper.seed_translation('seeds.feature_flags.beta_features.description', fallback: 'Enable beta features for testing'),
     enabled: false
   },
   {
     name: 'ai_chat',
-    description: 'Enable AI chat functionality',
+    description: SeedI18nHelper.seed_translation('seeds.feature_flags.ai_chat.description', fallback: 'Enable AI chat functionality'),
     enabled: true
   },
   {
     name: 'workspace_analytics',
-    description: 'Enable workspace analytics dashboard',
+    description: SeedI18nHelper.seed_translation('seeds.feature_flags.workspace_analytics.description', fallback: 'Enable workspace analytics dashboard'),
     enabled: false
   }
 ]
@@ -37,7 +41,7 @@ end
 if AuditLog.count == 0
   AuditLog.create!(
     action: 'system_setup',
-    description: 'Admin panel initialized with default feature flags',
+    description: SeedI18nHelper.seed_translation('seeds.audit_logs.system_setup.description', fallback: 'Admin panel initialized with default feature flags'),
     metadata: { flags_created: default_flags.count }
   )
   puts "✅ Initial audit log created"

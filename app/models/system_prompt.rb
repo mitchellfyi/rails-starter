@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class SystemPrompt < ApplicationRecord
-  has_paper_trail
+  # has_paper_trail # Commented out - requires paper_trail gem
 
   validates :name, presence: true, uniqueness: { scope: :workspace_id }
   validates :slug, presence: true, uniqueness: { scope: :workspace_id }, format: { with: /\A[a-z0-9_-]+\z/ }
@@ -13,9 +13,9 @@ class SystemPrompt < ApplicationRecord
   belongs_to :created_by, class_name: 'User', optional: true
   
   # For associating with roles, templates, or agents
-  serialize :associated_roles, Array
-  serialize :associated_functions, Array
-  serialize :associated_agents, Array
+  serialize :associated_roles, type: Array, coder: JSON
+  serialize :associated_functions, type: Array, coder: JSON
+  serialize :associated_agents, type: Array, coder: JSON
 
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
   before_validation :set_initial_version, if: -> { version.blank? }
