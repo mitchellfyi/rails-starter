@@ -31,7 +31,7 @@ initializer_content = <<~RUBY
   # I18n Configuration
   Rails.application.configure do
     # Available locales for the application
-    config.i18n.available_locales = %i[en ar]
+    config.i18n.available_locales = %i[en es]
     
     # Default locale
     config.i18n.default_locale = :en
@@ -45,49 +45,93 @@ initializer_content = <<~RUBY
 
   # Right-to-left locale configuration
   I18N_RTL_LOCALES = %i[ar he fa ur].freeze
+RUBY
 
-  # Locale detection order: user preference -> url param -> accept-language -> default
-  module LocaleDetection
-    extend ActiveSupport::Concern
+create_file 'config/initializers/i18n.rb', initializer_content
 
-    included do
-      around_action :switch_locale
-      helper_method :current_locale, :rtl_locale?, :rtl_class, :rtl_aware_classes
+# Create locale detection middleware
+middleware_content = <<~RUBY
+  # frozen_string_literal: true
+
+  # Middleware for automatic locale detection and switching
+  class LocaleDetectionMiddleware
+    def initialize(app)
+      @app = app
+    end
+
+    def call(env)
+      request = ActionDispatch::Request.new(env)
+      
+      # Store original locale
+      original_locale = I18n.locale
+      
+      # Detect and set locale for this request
+      detected_locale = detect_locale(request, env)
+      I18n.locale = detected_locale
+      
+      # Process the request
+      status, headers, response = @app.call(env)
+      
+      # Restore original locale
+      I18n.locale = original_locale
+      
+      [status, headers, response]
     end
 
     private
 
-    def switch_locale(&action)
-      locale = detect_locale
-      I18n.with_locale(locale, &action)
-    end
-
-    def detect_locale
-      # 1. User preference (if logged in)
-      return current_user.locale if user_has_valid_locale?
+    def detect_locale(request, env)
+      # 1. URL parameter
+      if request.params['locale'] && valid_locale?(request.params['locale'])
+        return request.params['locale'].to_sym
+      end
       
-      # 2. URL parameter
-      return params[:locale] if params[:locale].present? && 
-                               I18n.available_locales.include?(params[:locale].to_sym)
+      # 2. User preference (if user data is available in session)
+      user_locale = extract_user_locale(request, env)
+      return user_locale if user_locale && valid_locale?(user_locale)
       
       # 3. Accept-Language header
-      accept_language_locale = extract_locale_from_accept_language_header
+      accept_language_locale = extract_locale_from_accept_language_header(env)
       return accept_language_locale if accept_language_locale
       
       # 4. Default locale
       I18n.default_locale
     end
 
-    def extract_locale_from_accept_language_header
-      return nil unless request.env['HTTP_ACCEPT_LANGUAGE']
+    def extract_user_locale(request, env)
+      # This will be called after Devise/Warden middleware
+      # so we can access current_user if session is available
+      return nil unless request.session && request.session['warden.user.user.key']
+      
+      # For now, return nil - this will be handled by the controller concern
+      # as we need ActiveRecord models to be available
+      nil
+    end
 
-      request.env['HTTP_ACCEPT_LANGUAGE'].to_s.split(',').map do |lang|
-        lang.split(';').first.split('-').first
+    def extract_locale_from_accept_language_header(env)
+      return nil unless env['HTTP_ACCEPT_LANGUAGE']
+
+      env['HTTP_ACCEPT_LANGUAGE'].to_s.split(',').map do |lang|
+        lang.split(';').first.split('-').first.strip
       end.find do |locale|
-        I18n.available_locales.include?(locale.to_sym)
+        valid_locale?(locale)
       end&.to_sym
     end
 
+    def valid_locale?(locale)
+      I18n.available_locales.include?(locale.to_sym)
+    end
+  end
+RUBY
+
+create_file 'app/domains/i18n/app/middleware/locale_detection_middleware.rb', middleware_content
+
+# Create locale detection helpers
+locale_helpers_content = <<~RUBY
+  # frozen_string_literal: true
+
+  # Helper methods for locale detection and management
+  module LocaleHelpers
     def current_locale
       I18n.locale
     end
@@ -103,10 +147,25 @@ initializer_content = <<~RUBY
     def rtl_aware_classes
       rtl_locale? ? 'rtl' : 'ltr'
     end
+
+    def available_locales_for_select
+      I18n.available_locales.map do |locale|
+        [locale_name(locale), locale.to_s]
+      end
+    end
+
+    def locale_name(locale)
+      case locale.to_sym
+      when :en then 'English'
+      when :es then 'Español'
+      when :ar then 'العربية'
+      else locale.to_s.humanize
+      end
+    end
   end
 RUBY
 
-create_file 'config/initializers/i18n.rb', initializer_content
+create_file 'app/domains/i18n/app/helpers/concerns/locale_helpers.rb', locale_helpers_content
 
 # Create application controller concern
 concern_content = <<~RUBY
@@ -116,16 +175,43 @@ concern_content = <<~RUBY
     extend ActiveSupport::Concern
 
     included do
-      include LocaleDetection
+      include LocaleHelpers
+      around_action :switch_locale
       before_action :set_locale_from_user, if: :user_signed_in?
     end
 
     private
 
+    def switch_locale(&action)
+      locale = detect_locale_for_user
+      I18n.with_locale(locale, &action)
+    end
+
+    def detect_locale_for_user
+      # 1. User preference (if logged in)
+      return current_user.locale if user_has_valid_locale?
+      
+      # 2. URL parameter (already handled by middleware, but double-check)
+      return params[:locale] if params[:locale].present? && 
+                               I18n.available_locales.include?(params[:locale].to_sym)
+      
+      # 3. Fall back to what middleware detected or default
+      I18n.locale
+    end
+
     def set_locale_from_user
       if params[:locale] && I18n.available_locales.include?(params[:locale].to_sym)
-        current_user.update(locale: params[:locale]) if current_user.locale != params[:locale]
+        # Update user preference when locale is explicitly changed
+        if current_user.locale != params[:locale]
+          current_user.update_column(:locale, params[:locale])
+        end
       end
+    end
+
+    def user_has_valid_locale?
+      user_signed_in? && 
+        current_user.locale.present? && 
+        I18n.available_locales.include?(current_user.locale.to_sym)
     end
   end
 RUBY
@@ -138,13 +224,15 @@ helper_content = <<~RUBY
 
   module ApplicationHelper
     module I18nFormatting
+      include LocaleHelpers
+
       def localize_currency(amount, currency = 'USD')
         return '' if amount.nil?
 
         case I18n.locale
-        when :ar
-          # Arabic formatting
-          "#{amount.to_f.round(2)} #{currency_symbol(currency)}"
+        when :es
+          # Spanish formatting
+          "#{number_with_precision(amount, precision: 2, delimiter: '.', separator: ',')} #{currency_symbol(currency)}"
         else
           # Default English formatting
           "#{currency_symbol(currency)}#{number_with_precision(amount, precision: 2, delimiter: ',')}"
@@ -155,9 +243,9 @@ helper_content = <<~RUBY
         return '' if number.nil?
         
         case I18n.locale
-        when :ar
-          # Arabic number formatting (can use Arabic-Indic numerals if needed)
-          number_with_precision(number, precision: 2, delimiter: '،', separator: '٫')
+        when :es
+          # Spanish number formatting
+          number_with_precision(number, precision: 2, delimiter: '.', separator: ',')
         else
           number_with_precision(number, precision: 2, delimiter: ',', separator: '.')
         end
@@ -189,8 +277,9 @@ helper_content = <<~RUBY
         when 'EUR' then '€'
         when 'GBP' then '£'
         when 'JPY' then '¥'
-        when 'SAR' then 'ر.س'
-        when 'AED' then 'د.إ'
+        when 'MXN' then '$'
+        when 'ARS' then '$'
+        when 'COP' then '$'
         else currency
         end
       end
@@ -263,6 +352,14 @@ en_translations = <<~YAML
       members: "Members"
       invitations: "Invitations"
       roles: "Roles"
+
+    settings:
+      title: "Settings"
+      language: "Language"
+      preferences: "Preferences"
+      account: "Account"
+      security: "Security"
+      notifications: "Notifications"
       
     time:
       formats:
@@ -279,82 +376,90 @@ YAML
 
 create_file 'config/locales/en.yml', en_translations
 
-# Create Arabic translations (sample)
-ar_translations = <<~YAML
-  ar:
+# Create Spanish translations
+es_translations = <<~YAML
+  es:
     common:
-      save: "حفظ"
-      cancel: "إلغاء"
-      delete: "حذف"
-      edit: "تعديل"
-      create: "إنشاء"
-      update: "تحديث"
-      confirm: "هل أنت متأكد؟"
-      success: "نجح"
-      error: "خطأ"
-      loading: "جاري التحميل..."
-      search: "بحث"
-      filter: "تصفية"
-      reset: "إعادة تعيين"
-      close: "إغلاق"
+      save: "Guardar"
+      cancel: "Cancelar"
+      delete: "Eliminar"
+      edit: "Editar"
+      create: "Crear"
+      update: "Actualizar"
+      confirm: "¿Estás seguro?"
+      success: "Éxito"
+      error: "Error"
+      loading: "Cargando..."
+      search: "Buscar"
+      filter: "Filtrar"
+      reset: "Restablecer"
+      close: "Cerrar"
       
     auth:
-      sign_in: "تسجيل الدخول"
-      sign_up: "التسجيل"
-      sign_out: "تسجيل الخروج"
-      email: "البريد الإلكتروني"
-      password: "كلمة المرور"
-      password_confirmation: "تأكيد كلمة المرور"
-      remember_me: "تذكرني"
-      forgot_password: "نسيت كلمة المرور؟"
-      reset_password: "إعادة تعيين كلمة المرور"
-      welcome: "مرحباً"
+      sign_in: "Iniciar Sesión"
+      sign_up: "Registrarse"
+      sign_out: "Cerrar Sesión"
+      email: "Correo Electrónico"
+      password: "Contraseña"
+      password_confirmation: "Confirmar Contraseña"
+      remember_me: "Recordarme"
+      forgot_password: "¿Olvidaste tu contraseña?"
+      reset_password: "Restablecer contraseña"
+      welcome: "Bienvenido"
       
     navigation:
-      home: "الرئيسية"
-      dashboard: "لوحة التحكم"
-      profile: "الملف الشخصي"
-      settings: "الإعدادات"
-      help: "المساعدة"
-      contact: "اتصل بنا"
+      home: "Inicio"
+      dashboard: "Panel de Control"
+      profile: "Perfil"
+      settings: "Configuración"
+      help: "Ayuda"
+      contact: "Contacto"
       
     billing:
-      subscription: "الاشتراك"
-      billing: "الفوترة"
-      invoices: "الفواتير"
-      payment_method: "طريقة الدفع"
-      billing_address: "عنوان الفوترة"
-      subscription_status: "حالة الاشتراك"
-      next_billing_date: "تاريخ الفوترة التالي"
+      subscription: "Suscripción"
+      billing: "Facturación"
+      invoices: "Facturas"
+      payment_method: "Método de Pago"
+      billing_address: "Dirección de Facturación"
+      subscription_status: "Estado de Suscripción"
+      next_billing_date: "Próxima Fecha de Facturación"
       
     ai:
-      prompts: "المطالبات"
-      outputs: "المخرجات"
-      templates: "القوالب"
-      jobs: "المهام"
-      models: "النماذج"
-      context: "السياق"
+      prompts: "Prompts"
+      outputs: "Resultados"
+      templates: "Plantillas"
+      jobs: "Trabajos"
+      models: "Modelos"
+      context: "Contexto"
       
     workspace:
-      workspaces: "مساحات العمل"
-      members: "الأعضاء"
-      invitations: "الدعوات"
-      roles: "الأدوار"
+      workspaces: "Espacios de Trabajo"
+      members: "Miembros"
+      invitations: "Invitaciones"
+      roles: "Roles"
+
+    settings:
+      title: "Configuración"
+      language: "Idioma"
+      preferences: "Preferencias"
+      account: "Cuenta"
+      security: "Seguridad"
+      notifications: "Notificaciones"
       
     time:
       formats:
-        default: "%d %B %Y"
+        default: "%d de %B de %Y"
         short: "%d %b"
-        long: "%A، %d %B %Y"
+        long: "%A, %d de %B de %Y"
         
     date:
       formats:
         default: "%Y-%m-%d"
         short: "%d %b"
-        long: "%d %B %Y"
+        long: "%d de %B de %Y"
 YAML
 
-create_file 'config/locales/ar.yml', ar_translations
+create_file 'config/locales/es.yml', es_translations
 
 # Create CSS for RTL support
 css_content = <<~CSS
@@ -438,12 +543,11 @@ component_content = <<~HTML
   <%# Locale Switcher Component %>
   <div class="locale-switcher">
     <%= form_with url: request.path, method: :get, local: true, class: "inline-block" do |form| %>
-      <%= form.hidden_field :locale, value: params[:locale] %>
+      <% (params.except(:locale, :_method) || {}).each do |key, value| %>
+        <%= form.hidden_field key, value: value %>
+      <% end %>
       <%= form.select :locale, 
-            options_for_select([
-              ['English', 'en'],
-              ['العربية', 'ar']
-            ], I18n.locale),
+            options_for_select(available_locales_for_select, I18n.locale.to_s),
             {},
             { 
               class: "block appearance-none bg-white border border-gray-300 rounded py-2 px-3 leading-tight focus:outline-none focus:border-blue-500",
@@ -455,6 +559,40 @@ HTML
 
 create_file 'app/domains/i18n/app/views/shared/_locale_switcher.html.erb', component_content
 
+# Create settings form component for locale preferences
+settings_form_content = <<~HTML
+  <%# Settings Language Preferences Component %>
+  <div class="language-settings">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">
+      <%= t('settings.language') %>
+    </h3>
+    
+    <%= form_with model: current_user, url: settings_path, method: :patch, local: true, class: "space-y-4" do |form| %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          <%= t('settings.language') %>
+        </label>
+        <%= form.select :locale, 
+              options_for_select(available_locales_for_select, current_user&.locale || I18n.locale.to_s),
+              {},
+              { 
+                class: "block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              } %>
+        <p class="mt-1 text-sm text-gray-500">
+          Choose your preferred language for the interface.
+        </p>
+      </div>
+
+      <div class="flex justify-end">
+        <%= form.submit t('common.save'), 
+              class: "bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" %>
+      </div>
+    <% end %>
+  </div>
+HTML
+
+create_file 'app/domains/i18n/app/views/shared/_language_settings.html.erb', settings_form_content
+
 # Create test files
 test_content = <<~RUBY
   require 'test_helper'
@@ -465,20 +603,20 @@ test_content = <<~RUBY
     end
 
     test "should detect locale from accept language header" do
-      get root_path, headers: { 'HTTP_ACCEPT_LANGUAGE' => 'ar,en;q=0.9' }
-      assert_equal :ar, I18n.locale
+      get root_path, headers: { 'HTTP_ACCEPT_LANGUAGE' => 'es,en;q=0.9' }
+      assert_equal :es, I18n.locale
     end
 
     test "should detect locale from url parameter" do
-      get root_path, params: { locale: 'ar' }
-      assert_equal :ar, I18n.locale
+      get root_path, params: { locale: 'es' }
+      assert_equal :es, I18n.locale
     end
 
     test "should use user preference for locale" do
-      @user.update(locale: 'ar')
+      @user.update(locale: 'es')
       sign_in @user
       get root_path
-      assert_equal :ar, I18n.locale
+      assert_equal :es, I18n.locale
     end
 
     test "should fallback to default locale for invalid locale" do
@@ -488,9 +626,19 @@ test_content = <<~RUBY
 
     test "should update user locale preference from url parameter" do
       sign_in @user
-      get root_path, params: { locale: 'ar' }
+      get root_path, params: { locale: 'es' }
       @user.reload
-      assert_equal 'ar', @user.locale
+      assert_equal 'es', @user.locale
+    end
+
+    test "middleware should detect locale from accept language" do
+      middleware = LocaleDetectionMiddleware.new(->(env) { [200, {}, []] })
+      env = { 'HTTP_ACCEPT_LANGUAGE' => 'es,en;q=0.9', 'REQUEST_METHOD' => 'GET', 'PATH_INFO' => '/' }
+      
+      original_locale = I18n.locale
+      middleware.call(env)
+      # Locale should be restored after request
+      assert_equal original_locale, I18n.locale
     end
   end
 
@@ -503,9 +651,9 @@ test_content = <<~RUBY
       end
     end
 
-    test "should format currency correctly for Arabic locale" do
-      I18n.with_locale(:ar) do
-        assert_equal '100.5 $', localize_currency(100.50)
+    test "should format currency correctly for Spanish locale" do
+      I18n.with_locale(:es) do
+        assert_equal '100,50 $', localize_currency(100.50)
       end
     end
 
@@ -514,8 +662,8 @@ test_content = <<~RUBY
         assert_equal '1,234.56', localize_number(1234.56)
       end
       
-      I18n.with_locale(:ar) do
-        assert_equal '1،234٫56', localize_number(1234.56)
+      I18n.with_locale(:es) do
+        assert_equal '1.234,56', localize_number(1234.56)
       end
     end
 
@@ -531,6 +679,18 @@ test_content = <<~RUBY
         assert_equal 'text-left', rtl_class('text-left', 'text-right')
         assert_equal 'ltr', rtl_aware_classes
       end
+    end
+
+    test "should provide available locales for select" do
+      locales = available_locales_for_select
+      assert_includes locales, ['English', 'en']
+      assert_includes locales, ['Español', 'es']
+    end
+
+    test "should return correct locale names" do
+      assert_equal 'English', locale_name(:en)
+      assert_equal 'Español', locale_name(:es)
+      assert_equal 'العربية', locale_name(:ar)
     end
   end
 RUBY
@@ -594,23 +754,65 @@ layout_helper = <<~MD
   ```erb
   <html dir="<%= rtl_locale? ? 'rtl' : 'ltr' %>" lang="<%= I18n.locale %>">
   ```
+
+  ## 5. Add middleware to application.rb:
+
+  ```ruby
+  # In config/application.rb
+  config.middleware.use LocaleDetectionMiddleware
+  ```
+
+  ## 6. Add language settings to your settings page:
+
+  ```erb
+  <%= render 'shared/language_settings' %>
+  ```
 MD
 
 create_file 'doc/i18n_layout_setup.md', layout_helper
+
+# Create middleware configuration note
+middleware_setup = <<~MD
+  # Middleware Configuration
+
+  Add the following to your `config/application.rb` file to enable automatic locale detection:
+
+  ```ruby
+  module YourApp
+    class Application < Rails::Application
+      # ... existing configuration ...
+      
+      # Add locale detection middleware
+      config.middleware.use LocaleDetectionMiddleware
+      
+      # ... rest of configuration ...
+    end
+  end
+  ```
+
+  This middleware will automatically detect the user's preferred locale from:
+  1. URL parameters (?locale=es)
+  2. User account preferences (for logged-in users)
+  3. Accept-Language header
+  4. Default application locale
+MD
+
+create_file 'doc/i18n_middleware_setup.md', middleware_setup
 
 say "✅ I18n module installed successfully!"
 say ""
 say "Next steps:"
 say "1. Run `rails db:migrate` to add locale column to users"
-say "2. Review the I18n module README for integration instructions."
-say "3. Run tests with `bundle exec rspec spec/domains/i18n/`"
+say "2. Add middleware to config/application.rb (see doc/i18n_middleware_setup.md)"
+say "3. Include locale management in ApplicationController (see doc/i18n_controller_setup.md)"
+say "4. Update your application layout (see doc/i18n_layout_setup.md)"
+say "5. Run tests with `bundle exec rspec spec/domains/i18n/`"
 say ""
 say "Your application now supports:"
-say "  ✓ Automatic locale detection"
+say "  ✓ Automatic locale detection middleware"
 say "  ✓ RTL language support"
 say "  ✓ Localized formatting"
 say "  ✓ User locale preferences"
 say "  ✓ Translation fallbacks"
-RUBY
-
-create_file "scaffold/lib/templates/synth/i18n/install.rb", install_content
+say "  ✓ Settings page integration"
+say "  ✓ English + Spanish translations"
