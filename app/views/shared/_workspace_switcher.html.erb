@@ -1,0 +1,181 @@
+<div class="workspace-switcher" data-controller="workspace-switcher" role="combobox" aria-expanded="false" aria-haspopup="listbox">
+  <button data-action="click->workspace-switcher#toggle" 
+          data-workspace-switcher-target="trigger"
+          class="workspace-switcher-trigger"
+          aria-label="Switch workspace"
+          aria-describedby="workspace-switcher-help">
+    <div class="workspace-switcher-content">
+      <div class="workspace-avatar">
+        <span class="workspace-avatar-text">
+          <%= current_workspace&.name&.first&.upcase || 'W' %>
+        </span>
+      </div>
+      <div class="workspace-info">
+        <p class="workspace-name">
+          <%= current_workspace&.name || 'Select Workspace' %>
+        </p>
+        <% if current_workspace && respond_to?(:current_user) && current_user&.respond_to?(:workspace_role) %>
+          <p class="workspace-role">
+            <%= current_user.workspace_role(current_workspace)&.humanize %>
+          </p>
+        <% end %>
+      </div>
+    </div>
+    <svg class="workspace-switcher-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+    </svg>
+  </button>
+
+  <div data-workspace-switcher-target="menu" 
+       class="workspace-switcher-menu hidden"
+       role="listbox"
+       aria-label="Available workspaces">
+    
+    <!-- Search Input -->
+    <div class="workspace-search">
+      <div class="workspace-search-wrapper">
+        <svg class="workspace-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" 
+               data-workspace-switcher-target="searchInput"
+               data-action="input->workspace-switcher#search keydown->workspace-switcher#handleKeydown"
+               class="workspace-search-input"
+               placeholder="Search workspaces..."
+               role="searchbox"
+               aria-autocomplete="list"
+               aria-controls="workspace-list">
+      </div>
+    </div>
+
+    <div id="workspace-list" class="workspace-list" data-workspace-switcher-target="list">
+      <!-- Current User's Workspaces -->
+      <% if respond_to?(:current_user) && current_user&.respond_to?(:workspaces) %>
+        <div class="workspace-section">
+          <div class="workspace-section-header">
+            My Workspaces
+          </div>
+          
+          <% current_user.workspaces.includes(:memberships).each_with_index do |workspace, index| %>
+            <% is_current = defined?(current_workspace) && current_workspace == workspace %>
+            <%= link_to workspace_path(workspace), 
+                  class: "workspace-item #{is_current ? 'workspace-item-current' : ''}", 
+                  role: "option",
+                  data: { 
+                    workspace_switcher_target: "item",
+                    workspace_name: workspace.name.downcase,
+                    workspace_id: workspace.id 
+                  },
+                  aria_selected: is_current do %>
+              <div class="workspace-item-content">
+                <div class="workspace-item-avatar">
+                  <span class="workspace-item-avatar-text">
+                    <%= workspace.name.first.upcase %>
+                  </span>
+                </div>
+                <div class="workspace-item-info">
+                  <p class="workspace-item-name"><%= workspace.name %></p>
+                  <% if current_user&.respond_to?(:workspace_role) %>
+                    <p class="workspace-item-role">
+                      <%= current_user.workspace_role(workspace)&.humanize %>
+                    </p>
+                  <% end %>
+                </div>
+              </div>
+              <% if is_current %>
+                <svg class="workspace-item-check" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                </svg>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <!-- Fallback for when workspace functionality isn't available -->
+        <div class="workspace-section">
+          <div class="workspace-section-header">
+            Demo Workspaces
+          </div>
+          
+          <div class="workspace-item" 
+               role="option"
+               data-workspace-switcher-target="item"
+               data-workspace-name="default workspace">
+            <div class="workspace-item-content">
+              <div class="workspace-item-avatar">
+                <span class="workspace-item-avatar-text">D</span>
+              </div>
+              <div class="workspace-item-info">
+                <p class="workspace-item-name">Default Workspace</p>
+                <p class="workspace-item-role">Owner</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="workspace-item" 
+               role="option"
+               data-workspace-switcher-target="item"
+               data-workspace-name="development team">
+            <div class="workspace-item-content">
+              <div class="workspace-item-avatar">
+                <span class="workspace-item-avatar-text">D</span>
+              </div>
+              <div class="workspace-item-info">
+                <p class="workspace-item-name">Development Team</p>
+                <p class="workspace-item-role">Member</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+      
+      <!-- Quick Actions -->
+      <div class="workspace-section workspace-actions">
+        <div class="workspace-section-header">
+          Actions
+        </div>
+        
+        <% if respond_to?(:new_workspace_path) %>
+          <%= link_to new_workspace_path, 
+                class: "workspace-action",
+                role: "option",
+                data: { workspace_switcher_target: "item", workspace_name: "create new workspace" } do %>
+            <svg class="workspace-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Create New Workspace
+          <% end %>
+        <% end %>
+        
+        <% if respond_to?(:workspaces_path) %>
+          <%= link_to workspaces_path, 
+                class: "workspace-action",
+                role: "option",
+                data: { workspace_switcher_target: "item", workspace_name: "view all workspaces" } do %>
+            <svg class="workspace-action-icon" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z"></path>
+              <path fill-rule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            View All Workspaces
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- No results message -->
+    <div data-workspace-switcher-target="noResults" class="workspace-no-results hidden">
+      <div class="workspace-no-results-content">
+        <svg class="workspace-no-results-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <p class="workspace-no-results-text">No workspaces found</p>
+        <p class="workspace-no-results-hint">Try adjusting your search</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen reader help text -->
+  <div id="workspace-switcher-help" class="sr-only">
+    Use arrow keys to navigate options. Press Enter to select.
+  </div>
+</div>

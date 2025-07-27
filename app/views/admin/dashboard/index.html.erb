@@ -1,78 +1,171 @@
-<div class="card">
-  <h1 style="margin-bottom: 1rem; color: #1f2937;">Admin Dashboard</h1>
-  <p style="color: #6b7280;">Manage feature flags and monitor system activity.</p>
+<% content_for(:page_title, "Dashboard") %>
+
+<!-- Page Header -->
+<div class="card-header">
+  <h1 class="card-title">Admin Dashboard</h1>
+  <p class="card-description">Monitor system activity and manage your application.</p>
 </div>
 
-<!-- Stats Cards -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-  <div class="card">
-    <h3 style="margin: 0 0 0.5rem 0; color: #3b82f6;">Total Users</h3>
-    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @user_count || 0 %></p>
+<!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">
+      <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+      </svg>
+      Total Users
+    </div>
+    <p class="stat-value"><%= @user_count || 0 %></p>
+    <div class="stat-change positive">
+      <% if @user_count && @user_count > 0 %>
+        Active users in system
+      <% else %>
+        No users yet
+      <% end %>
+    </div>
   </div>
   
-  <div class="card">
-    <h3 style="margin: 0 0 0.5rem 0; color: #10b981;">Active Flags</h3>
-    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @active_feature_flags || 0 %></p>
+  <div class="stat-card">
+    <div class="stat-label">
+      <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H21l-3 6 3 6h-8.5l-1-2H5a2 2 0 00-2 2zm9-13.5V9"></path>
+      </svg>
+      Feature Flags
+    </div>
+    <p class="stat-value"><%= @active_feature_flags || 0 %></p>
+    <div class="stat-change <%= @active_feature_flags && @active_feature_flags > 0 ? 'positive' : '' %>">
+      <% if @active_feature_flags && @active_feature_flags > 0 %>
+        <%= @active_feature_flags %> active flags
+      <% else %>
+        No active flags
+      <% end %>
+    </div>
   </div>
   
-  <div class="card">
-    <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">MCP Fetchers</h3>
-    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @active_mcp_fetchers || 0 %></p>
+  <div class="stat-card">
+    <div class="stat-label">
+      <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+      </svg>
+      MCP Fetchers
+    </div>
+    <p class="stat-value"><%= @active_mcp_fetchers || 0 %></p>
+    <div class="stat-change <%= @active_mcp_fetchers && @active_mcp_fetchers > 0 ? 'positive' : '' %>">
+      <% if @active_mcp_fetchers && @active_mcp_fetchers > 0 %>
+        <%= @active_mcp_fetchers %> enabled
+      <% else %>
+        None configured
+      <% end %>
+    </div>
   </div>
   
-  <div class="card">
-    <h3 style="margin: 0 0 0.5rem 0; color: #8b5cf6;">Recent Events</h3>
-    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @recent_audit_logs&.count || 0 %></p>
+  <div class="stat-card">
+    <div class="stat-label">
+      <svg class="stat-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+      </svg>
+      Recent Activity
+    </div>
+    <p class="stat-value"><%= @recent_audit_logs&.count || 0 %></p>
+    <div class="stat-change">
+      <% if @recent_audit_logs&.any? %>
+        Last 10 events
+      <% else %>
+        No recent activity
+      <% end %>
+    </div>
   </div>
 </div>
 
-<!-- Quick Actions -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+<!-- Content Grid -->
+<div class="content-grid">
   <!-- Recent Activity -->
   <div class="card">
-    <h3 style="margin-bottom: 1rem; color: #1f2937;">Recent Activity</h3>
+    <div class="card-header">
+      <h3 class="card-title">Recent Activity</h3>
+      <p class="card-description">Latest system events and user actions</p>
+    </div>
+    
     <% if @recent_audit_logs&.any? %>
-      <% @recent_audit_logs.each do |log| %>
-        <div style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
-          <p style="margin: 0; font-weight: 500;"><%= log.description %></p>
-          <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">
-            <%= log.time_ago %> ago
-            <% if log.user %>
-              by <%= log.user.email %>
-            <% end %>
-          </p>
-        </div>
-      <% end %>
-      <div style="margin-top: 1rem;">
-        <%= link_to "View All Logs →", admin_audit_path, class: "btn btn-primary" %>
+      <ul class="activity-list">
+        <% @recent_audit_logs.each do |log| %>
+          <li class="activity-item">
+            <div class="activity-content">
+              <div>
+                <p class="activity-description"><%= log.description %></p>
+                <p class="activity-meta">
+                  <%= log.time_ago %> ago
+                  <% if log.user %>
+                    by <%= log.user.email %>
+                  <% end %>
+                </p>
+              </div>
+              <div class="activity-time">
+                <%= log.created_at.strftime("%H:%M") if log.respond_to?(:created_at) %>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+      <div class="mt-4">
+        <%= link_to admin_audit_path, class: "btn btn-ghost" do %>
+          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+          View All Logs
+        <% end %>
       </div>
     <% else %>
-      <p style="color: #6b7280;">No recent activity</p>
+      <div class="text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 3rem; height: 3rem; margin: 0 auto 1rem; color: #9ca3af;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p style="color: #6b7280; margin: 0;">No recent activity to display</p>
+      </div>
     <% end %>
   </div>
 
-  <!-- Quick Links -->
+  <!-- Quick Actions -->
   <div class="card">
-    <h3 style="margin-bottom: 1rem; color: #1f2937;">Quick Actions</h3>
-    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+    <div class="card-header">
+      <h3 class="card-title">Quick Actions</h3>
+      <p class="card-description">Common administrative tasks</p>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
       <%= link_to admin_usage_path, class: "btn btn-primary" do %>
-        📊 Usage Analytics
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        Usage Analytics
       <% end %>
       
       <%= link_to admin_feature_flags_path, class: "btn btn-primary" do %>
-        🚩 Manage Feature Flags
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H21l-3 6 3 6h-8.5l-1-2H5a2 2 0 00-2 2zm9-13.5V9"></path>
+        </svg>
+        Manage Feature Flags
       <% end %>
       
       <%= link_to admin_mcp_fetchers_path, class: "btn btn-primary" do %>
-        🔗 Manage MCP Fetchers
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+        </svg>
+        Manage MCP Fetchers
       <% end %>
       
       <%= link_to admin_audit_path, class: "btn btn-secondary" do %>
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
         View Audit Logs
       <% end %>
       
       <% if defined?(User) %>
         <%= link_to admin_audit_path(resource_type: 'User'), class: "btn btn-secondary" do %>
+          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+          </svg>
           User Activity
         <% end %>
       <% end %>

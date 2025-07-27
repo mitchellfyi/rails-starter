@@ -87,5 +87,3 @@ bin/synth docs
 ```
 
 ---
-
-*Documentation generated on 2025-07-27 11:14:11 by `bin/synth docs`*
