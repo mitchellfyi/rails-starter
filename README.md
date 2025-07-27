@@ -1,110 +1,151 @@
-# Rails SaaS Starter Template
+# Rails SaaS Starter Template
 
-This project is a fully‑featured template for building AI‑native SaaS applications on top of **Rails Edge**.  It combines a production‑ready base stack with modular features, long‑term maintainability, and first‑class support for large language models (LLMs).  You can bootstrap a new application with a single command and extend it via a clean CLI.
+A production-ready Rails template for building AI-native SaaS applications. Get up and running with a single command, then extend with modular features via an intuitive CLI.
 
-## Why another template?
+## ⚡ Quick Start
 
-Most Rails templates are either toy examples or opinionated stacks that become brittle over time.  This template is designed for serious engineers who need:
+### Option 1: Interactive Setup (Recommended)
+```bash
+bin/synth bootstrap
+```
+Choose from:
+- 🎯 **Demo Setup** - Get running fast with sample data
+- 🏗️ **New Application** - Full guided production setup  
+- 🔧 **Custom Modules** - Pick specific features
 
-* **Production‑grade defaults** (PostgreSQL, pgvector, Sidekiq, Redis, Devise, OmniAuth, JSON:API, OpenAPI, CI/CD, deploy configs);
-* **AI‑native support** with prompt templates, an asynchronous LLM job system, and a multi‑context provider (MCP) for enriching prompts;
-* **Modular architecture** that allows you to add or remove features cleanly via a command‑line tool (`bin/synth`);
-* **Comprehensive tests** that ensure the generated app boots and passes its suite out of the box;
-* **Extensibility** to suit real‑world product requirements without rewriting the core.
+### Option 2: Manual Setup
+```bash
+# 1. Install prerequisites
+# Ruby 3.2+, Node.js 18+, PostgreSQL 14+, Redis 6+
 
-## Getting started
+# 2. Clone and setup
+git clone <repository-url>
+cd <app-name>
+bundle install
 
-1. **Install prerequisites.**  You’ll need a recent Ruby (matching Rails Edge), Node.js/Yarn, PostgreSQL (with the `pgvector` extension), Redis, and Fly.io or Render CLI if you plan to deploy.
-2. **Create your app.**  Run:
+# 3. Quick demo setup
+bin/synth bootstrap
 
-   cd myapp
-   
-   # Boot the application
-   bin/setup
-   bin/dev
-   ```
+# 4. Start your application
+rails db:create db:migrate db:seed
+rails server
+```
 
-   The `--dev` flag uses Rails Edge.  The template script will install TailwindCSS, set up the database, integrate Sidekiq, configure Devise/OmniAuth, and scaffold a default workspace/team model.
+Visit `http://localhost:3000` and login with demo credentials.
 
-3. **Explore `bin/synth`.**  The CLI tool allows you to manage feature modules:
+## 🎯 What You Get
 
-   ```sh
-   bin/synth list            # Show installed modules
-   bin/synth add ai          # Add AI/LLM support
-   bin/synth add billing     # Add Stripe billing
-   bin/synth remove cms      # Remove the CMS/blog engine
-   bin/synth upgrade         # Upgrade all modules to latest versions
-   bin/synth upgrade ai      # Upgrade specific module with conflict resolution
-   bin/synth upgrade --yes   # Non-interactive upgrade for CI/CD
-   bin/synth test ai         # Run AI tests
-   bin/synth doctor          # Validate your setup (environment, database, Redis, keys)
-   bin/synth scaffold agent chatbot_support
-   ```
+### Production-Ready Stack
+- **Rails 7** with Hotwire (Turbo & Stimulus) and TailwindCSS
+- **PostgreSQL** with pgvector extension for AI embeddings
+- **Redis & Sidekiq** for background job processing
+- **Authentication** via Devise with OAuth support
+- **Multi-tenancy** with workspaces, teams, and role management
 
-4. **Configure your environment.**  Copy `.env.example` to `.env` and fill in secrets for Devise, OmniAuth providers, Stripe API keys, and LLM providers.  Configure your database (`config/database.yml`) and set up Redis.
+### AI-Native Features
+- **Smart Prompt System** with versioning and variable interpolation
+- **Async LLM Jobs** with Sidekiq integration and retry logic
+- **Multi-Context Provider (MCP)** for dynamic prompt enrichment
+- **Multiple AI Providers** (OpenAI, Anthropic, Cohere, Hugging Face)
 
-5. **Validate deployment setup.**  Run `rails deploy:validate_env` to check your configuration, then use `rails deploy:bootstrap` to set up a new environment.
+### SaaS Essentials
+- **Stripe Billing** with subscriptions, metered usage, and invoicing
+- **Admin Panel** with impersonation, audit logs, and feature flags
+- **JSON:API** with auto-generated OpenAPI documentation
+- **Deployment** configs for Fly.io, Render, and Kamal
+- **Comprehensive Testing** with mocks for external services
 
-6. **Run the test suite.**  Execute `bin/rails test` (Minitest) or `bundle exec rspec` if you installed RSpec.  The template ships with mocks for external services and ensures that the default install passes all tests.
+## 🔧 CLI Commands
 
-7. **Deploy to production.**  Choose from Fly.io, Render, or Kamal deployment platforms. See `DEPLOYMENT.md` for complete deployment guides and platform-specific instructions.
+The `bin/synth` CLI makes managing your application simple and consistent:
 
-## Features
+```bash
+# Get started
+bin/synth bootstrap              # Interactive setup wizard
+bin/synth doctor                 # Check system health
 
-### Base stack
+# Manage modules  
+bin/synth list                   # Show available modules
+bin/synth add billing            # Install Stripe billing
+bin/synth remove cms             # Remove blog engine
+bin/synth info ai                # Show module details
 
-* **Rails Edge** (`--dev`) with Hotwire (Turbo & Stimulus) and TailwindCSS.
-* **PostgreSQL** with `pgvector` extension for semantic embeddings.
-* **Redis & Sidekiq** for background job processing.
-* **Devise** for email/password authentication with confirmation, lockout, two‑factor support.
-* **OmniAuth** for OAuth logins (Google, GitHub, Slack).
-* **Workspaces/teams** with slug routing, invitation system, and role/permission management.
-* **JSON:API‑compliant APIs** with automatically generated **OpenAPI** schema.
-* **Stripe billing** with free trials, subscriptions, metered billing, coupons, one‑off charges, and PDF invoices.
-* **CMS/blog engine** powered by ActionText with WYSIWYG editor, SEO metadata, and sitemap generation.
-* **Admin panel** with impersonation, audit logs, Sidekiq UI, and feature flag toggles.
-* **Internationalisation** (i18n) with locale detection, right‑to‑left support, and currency/date formatting.
-* **Deployment readiness** with configurations for Fly.io, Render, and Kamal, comprehensive environment management, health checks, and CI/CD workflows.
-* **CI/CD** templates for GitHub Actions, plus deployment configs for Fly.io, Render, and Kamal.
+# Development
+bin/synth test billing           # Run module tests
+```
 
-### AI system
+## 📦 Available Modules
 
-* **Prompt templates** with versioning, variable interpolation, tags, output types (JSON, Markdown, HTML partial), previews, and diffs.
-* **Asynchronous LLM jobs** with Sidekiq: `LLMJob.perform_later(template:, model:, context:, format:)` executes prompts, logs inputs/outputs, handles retries with exponential backoff, and stores results in `LLMOutput`.  Users can give feedback (thumbs up/down), re‑run, or regenerate jobs.
-* **Multi‑Context Provider (MCP)** for dynamic prompt context.  Fetch data from database queries, HTTP APIs (GitHub, Slack), file/document parsing, semantic memory via embeddings, and code introspection.  Compose fetchers via `context.fetch(:key, params)` to produce a hash for prompt templates.  Developers can register custom fetchers.
+| Module | Description | Status |
+|--------|-------------|--------|
+| `auth` | User authentication with Devise & OAuth | Core |
+| `billing` | Stripe subscriptions and metered billing | Optional |
+| `ai` | LLM integration with multiple providers | Optional |
+| `admin` | Admin panel with impersonation & audit logs | Optional |
+| `api` | JSON:API with auto-generated OpenAPI docs | Optional |
+| `cms` | Blog engine with SEO and sitemap | Optional |
+| `deploy` | Deployment configs for major platforms | Optional |
 
-### CLI (`bin/synth`)
+## 📚 Documentation
 
-The `bin/synth` tool is a Thor‑based CLI that manages modules in the `lib/templates/synth/` directory.  Modules encapsulate features like `auth`, `billing`, `ai`, `mcp`, `cms`, `admin`, `deploy`, `testing`, `api`, and `docs`.  Each module includes installation scripts, migrations, seeds, and a README.  The CLI logs its actions to `log/synth.log` and provides commands to scaffold new agents for AI features.
+### Quick Links
+- [Module Documentation](docs/modules/) - Detailed guides for each module
+- [Implementation Guides](docs/implementation/) - Technical implementation details
+- [Admin Features](docs/admin/) - Admin panel and management features
 
-### Testing
+### Module-Specific Docs
+- [AI & LLM Integration](docs/modules/ai.md)
+- [Billing & Stripe Setup](docs/modules/billing.md)
+- [Authentication System](docs/modules/auth.md)
+- [Admin Panel Features](docs/admin/admin-panel.md)
 
-The template encourages full test coverage.  Every module ships with unit, integration, and system tests.  External services (OpenAI, Claude, Stripe, GitHub) are stubbed to ensure deterministic runs.  The GitHub Actions workflow (`.github/workflows/test.yml`) installs the template into a fresh app and runs the full suite across a matrix of Ruby and PostgreSQL versions.
+## 🚀 Deployment
 
-For detailed information about the test matrix and CI/CD setup, see [GitHub Actions Test Matrix Documentation](docs/github-actions-test-matrix.md).
+Deploy to your preferred platform:
 
-### Seeding
+```bash
+# Fly.io (recommended)
+bin/synth add deploy
+fly deploy
 
-Seed data sets up a demo organisation with a user, example prompt templates, example LLM jobs and outputs, dummy Stripe plans, and a sample blog post.  Seeds are idempotent, meaning you can run them multiple times without duplicating data.
+# Render
+render deploy
 
-**I18n/Locale-Driven Seeds**: The template includes comprehensive internationalization support for seed content. When multiple locales are configured, seeds automatically create localized content for feature flags, system prompts, workspace names, and other user-visible text. Falls back gracefully to English when only a single locale is available. See `I18N_SEEDS.md` for details.
+# Kamal (self-hosted)
+kamal deploy
+```
 
-## Documentation
+See [deployment documentation](docs/modules/deploy.md) for platform-specific setup.
 
-For detailed guides on specific features:
+## 🧪 Testing
 
-- **[Module Upgrade Guide](docs/MODULE_UPGRADE_GUIDE.md)** - Comprehensive guide to upgrading template modules with conflict resolution, backup management, and CI/CD integration
+Run the comprehensive test suite:
 
-## Contributing
+```bash
+# All tests
+bin/synth test
 
-Contributions are welcome!  Please read **AGENTS.md** for detailed instructions on picking tasks, planning, implementing, testing, and verifying work.  In short:
+# Specific module
+bin/synth test billing
 
-1. Pick an open issue from the project board.
-2. Create a branch and implement the feature with tests.
-3. Keep commits small and focused; follow established patterns.
-4. Update documentation where needed.
-5. Open a PR, link it to the issue, and request review.
+# Check system health
+bin/synth doctor
+```
 
-## License
+## 🤝 Contributing
 
-This project is provided under the [MIT License](LICENSE).  See `LICENSE` for details.
+This project follows the guidelines in [AGENTS.md](docs/guides/AGENTS.md):
+
+1. **Pick a task** from the project board
+2. **Plan your work** by breaking it into small steps
+3. **Implement iteratively** with frequent commits
+4. **Write tests** and ensure they pass
+5. **Update documentation** as needed
+
+## 📄 License
+
+This project is available under the [MIT License](LICENSE).
+
+---
+
+**Ready to build your SaaS?** Run `bin/synth bootstrap` to get started! 🚀

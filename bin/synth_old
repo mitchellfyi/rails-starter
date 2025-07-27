@@ -1,0 +1,3832 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Simple CLI implementation without external dependencies for the starter template
+require 'fileutils'
+require 'json'
+require 'pathname'
+
+# Load the manifest manager
+lib_path = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
+require 'synth_manifest'
+
+# Documentation generator for Synth modules
+class DocumentationGenerator
+  DOMAINS_PATH = File.expand_path('../app/domains', __dir__)
+  DOCS_PATH = File.expand_path('../docs', __dir__)
+  SWAGGER_PATH = File.expand_path('../swagger', __dir__)
+  
+  def initialize
+    @verbose = false
+  end
+  
+  def generate_all
+    ensure_docs_directory
+    
+    puts "📚 Generating documentation from installed modules..."
+    
+    # Generate main README with all installed modules
+    generate_main_readme
+    
+    # Generate individual module docs
+    generate_module_docs
+    
+    # Generate OpenAPI documentation if API module is installed
+    generate_api_docs if api_module_installed?
+    
+    # Generate agents documentation if AI module is installed
+    generate_agents_docs if ai_module_installed?
+    
+    puts "✅ Documentation generation complete!"
+    puts "📖 Main documentation: docs/README.md"
+    puts "🗂️  Module documentation: docs/modules/"
+    puts "🔗 API documentation: docs/api.json" if api_module_installed?
+  end
+  
+  private
+  
+  def ensure_docs_directory
+    FileUtils.mkdir_p(DOCS_PATH)
+    FileUtils.mkdir_p(File.join(DOCS_PATH, 'modules'))
+  end
+  
+  def generate_main_readme
+    installed_modules = get_installed_modules
+    
+    main_readme = <<~MARKDOWN
+      # #{app_name} Documentation
+
+      This documentation is auto-generated from installed Synth modules and OpenAPI specifications.
+
+      ## Overview
+
+      This Rails SaaS application is built using the Rails SaaS Starter Template with the following installed modules:
+
+      #{generate_modules_overview(installed_modules)}
+
+      ## Quick Start
+
+      ### Prerequisites
+
+      - Ruby 3.3.0 or later
+      - Node.js 18 or later
+      - PostgreSQL 14+ with pgvector extension
+      - Redis 6 or later
+
+      ### Installation
+
+      ```bash
+      # Clone and setup
+      git clone <repository-url>
+      cd <app-name>
+      bundle install
+      yarn install
+
+      # Database setup
+      rails db:create
+      rails db:migrate
+      rails db:seed
+
+      # Start development server
+      bin/dev
+      ```
+
+      ## Module Documentation
+
+      #{generate_modules_list(installed_modules)}
+
+      #{generate_api_section if api_module_installed?}
+
+      ## Synth CLI
+
+      Use the Synth CLI to manage modules:
+
+      ```bash
+      # List available modules
+      bin/synth list
+
+      # Add new modules
+      bin/synth add [module_name]
+
+      # Remove modules
+      bin/synth remove [module_name]
+
+      # Generate documentation
+      bin/synth docs
+      ```
+
+      ---
+
+      *Documentation generated on #{Time.now.strftime('%Y-%m-%d %H:%M:%S')} by `bin/synth docs`*
+    MARKDOWN
+    
+    File.write(File.join(DOCS_PATH, 'README.md'), main_readme)
+    puts "✅ Generated main README.md"
+  end
+  
+  def generate_module_docs
+    get_installed_modules.each do |module_name|
+      module_readme_path = File.join(DOMAINS_PATH, module_name, 'README.md')
+      next unless File.exist?(module_readme_path)
+      
+      # Copy module README to docs/modules/
+      module_content = File.read(module_readme_path)
+      output_path = File.join(DOCS_PATH, 'modules', "#{module_name}.md")
+      File.write(output_path, module_content)
+      
+      puts "✅ Generated docs/modules/#{module_name}.md"
+    end
+  end
+  
+  def generate_api_docs
+    swagger_files = Dir.glob(File.join(SWAGGER_PATH, '**/*.{json,yaml,yml}'))
+    return if swagger_files.empty?
+    
+    # Copy the main swagger file to docs/
+    main_swagger = swagger_files.find { |f| f.include?('swagger') } || swagger_files.first
+    if main_swagger && File.exist?(main_swagger)
+      target_path = File.join(DOCS_PATH, 'api.json')
+      
+      if main_swagger.end_with?('.json')
+        FileUtils.cp(main_swagger, target_path)
+      else
+        # Convert YAML to JSON if needed
+        require 'yaml'
+        yaml_content = YAML.load_file(main_swagger)
+        File.write(target_path, JSON.pretty_generate(yaml_content))
+      end
+      
+      puts "✅ Generated API documentation from OpenAPI schema"
+    end
+  rescue => e
+    puts "⚠️  Warning: Could not generate API docs: #{e.message}"
+  end
+  
+  def generate_agents_docs
+    return unless ai_module_installed?
+    
+    begin
+      agents_doc = generate_agents_documentation
+      agents_path = File.join(DOCS_PATH, 'agents.md')
+      File.write(agents_path, agents_doc)
+      
+      puts "✅ Generated agents documentation at docs/agents.md"
+    rescue => e
+      puts "⚠️  Warning: Could not generate agents docs: #{e.message}"
+    end
+  end
+  
+  def get_installed_modules
+    return [] unless Dir.exist?(DOMAINS_PATH)
+    
+    Dir.children(DOMAINS_PATH).select do |dir|
+      File.directory?(File.join(DOMAINS_PATH, dir))
+    end.sort
+  end
+  
+  def generate_modules_overview(modules)
+    return "No modules installed." if modules.empty?
+    
+    overview = modules.map do |module_name|
+      readme_path = File.join(DOMAINS_PATH, module_name, 'README.md')
+      description = if File.exist?(readme_path)
+        extract_description_from_readme(File.read(readme_path))
+      else
+        "No description available"
+      end
+      
+      "- **#{module_name.capitalize}**: #{description}"
+    end
+    
+    overview.join("\n")
+  end
+  
+  def generate_modules_list(modules)
+    return "No modules installed." if modules.empty?
+    
+    list = modules.map do |module_name|
+      "- [#{module_name.capitalize}](modules/#{module_name}.md)"
+    end
+    
+    list.join("\n")
+  end
+  
+  def generate_api_section
+    return "" unless api_module_installed?
+    
+    <<~MARKDOWN
+      ## API Documentation
+
+      This application provides a JSON:API compliant REST API. 
+
+      - **OpenAPI Specification**: [api.json](api.json)
+      - **API Module Documentation**: [modules/api.md](modules/api.md)
+
+      ### Authentication
+
+      Most API endpoints require authentication using Bearer tokens.
+
+      ### Base URL
+
+      - Development: `http://localhost:3000/api`
+      - Production: `https://your-domain.com/api`
+    MARKDOWN
+  end
+  
+  def api_module_installed?
+    Dir.exist?(File.join(DOMAINS_PATH, 'api'))
+  end
+  
+  def ai_module_installed?
+    Dir.exist?(File.join(DOMAINS_PATH, 'ai'))
+  end
+  
+  def generate_agents_documentation
+    <<~MARKDOWN
+      # AI Agents Documentation
+
+      This document provides comprehensive information about AI agents available in this application.
+
+      ## Overview
+
+      AI agents are automated assistants that can be deployed per workspace and bound to webhooks, buttons, or UI components. Each agent has its own configuration, system prompt, and capabilities.
+
+      ## AgentRunner API
+
+      The main entry point for interacting with AI agents is the `AgentRunner` service.
+
+      ### Basic Usage
+
+      ```ruby
+      # Simple execution
+      response = AgentRunner.run(agent_id, user_input)
+
+      # With context
+      response = AgentRunner.run(agent_id, user_input, context: { user_name: "John" })
+
+      # With streaming
+      AgentRunner.run(agent_id, user_input, streaming: true) do |content, type|
+        case type
+        when :chunk
+          puts "Chunk: \#{content}"
+        when :complete
+          puts "Final: \#{content}"
+        end
+      end
+      ```
+
+      ### HTTP API Endpoints
+
+      #### Execute Agent (Synchronous)
+      ```
+      POST /api/v1/agents/:agent_id/run
+      Content-Type: application/json
+      X-Webhook-Token: your-webhook-token
+
+      {
+        "user_input": "Hello, how can you help me?",
+        "context": {
+          "user_name": "John",
+          "workspace": "acme-corp"
+        }
+      }
+      ```
+
+      #### Execute Agent (Streaming)
+      ```
+      POST /api/v1/agents/:agent_id/webhook?streaming=true
+      Content-Type: application/json
+      X-Webhook-Token: your-webhook-token
+
+      {
+        "user_input": "Tell me a story",
+        "context": {}
+      }
+      ```
+
+      #### Execute Agent (Asynchronous)
+      ```
+      POST /api/v1/agents/:agent_id/async
+      Content-Type: application/json
+
+      {
+        "user_input": "Process this large document",
+        "context": {}
+      }
+      ```
+
+      #### Get Agent Configuration
+      ```
+      GET /api/v1/agents/:agent_id/config
+      ```
+
+      ### Agent Configuration
+
+      Each agent has the following configuration options:
+
+      - **model_name**: The AI model to use (gpt-4, claude-3-sonnet, etc.)
+      - **temperature**: Controls randomness (0.0 to 2.0)
+      - **max_tokens**: Maximum response length
+      - **system_prompt**: The agent's instructions and personality
+      - **streaming_enabled**: Whether to support streaming responses
+      - **webhook_enabled**: Whether to send responses to configured webhooks
+
+      ### Integration Examples
+
+      #### Chat UI Integration
+      ```javascript
+      // Frontend streaming integration
+      const response = await fetch('/api/v1/agents/customer-support/webhook?streaming=true', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Webhook-Token': 'your-token'
+        },
+        body: JSON.stringify({
+          user_input: message,
+          context: { user_id: currentUser.id }
+        })
+      });
+
+      const reader = response.body.getReader();
+      let result = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'chunk') {
+              result += data.content;
+              updateChatUI(result);
+            }
+          }
+        }
+      }
+      ```
+
+      #### Dashboard Integration
+      ```ruby
+      # In your dashboard controller
+      class DashboardController < ApplicationController
+        def ai_assistant
+          user_query = params[:query]
+          context = {
+            user_id: current_user.id,
+            workspace: current_workspace.name,
+            user_role: current_user.role
+          }
+          
+          @response = AgentRunner.run('dashboard-assistant', user_query, 
+            user: current_user, 
+            context: context
+          )
+        end
+      end
+      ```
+
+      #### Webhook Integration
+      ```ruby
+      # Example webhook handler for external systems
+      class ExternalWebhookController < ApplicationController
+        def handle_slack_command
+          agent_response = AgentRunner.run('slack-bot', params[:text], 
+            context: { 
+              slack_user: params[:user_name],
+              channel: params[:channel_name]
+            }
+          )
+          
+          render json: {
+            text: agent_response,
+            response_type: 'in_channel'
+          }
+        end
+      end
+      ```
+
+      ### Error Handling
+
+      The AgentRunner handles various error conditions:
+
+      - **Agent not found**: Returns `ArgumentError` with descriptive message
+      - **Agent not ready**: Returns `ArgumentError` if agent is inactive or misconfigured
+      - **API failures**: Logs errors and raises with context
+      - **Invalid context**: Validates required variables for prompts
+
+      ### Security Considerations
+
+      - All webhook endpoints require authentication via `X-Webhook-Token` header
+      - Agents inherit workspace-level AI configuration and permissions
+      - User context is automatically included for authenticated requests
+      - Rate limiting should be configured at the application level
+
+      ### Monitoring and Logging
+
+      All agent executions are logged with:
+      - Agent ID and name
+      - User ID (if authenticated)
+      - Context keys (not values for privacy)
+      - Execution time and status
+      - Error details if applicable
+
+      Execution records are stored in:
+      - `PromptExecution` model for audit trail
+      - `LLMOutput` model for response storage
+
+      ## Available Agent Models
+
+      #{generate_supported_models_list}
+
+      ## Best Practices
+
+      1. **System Prompts**: Write clear, specific instructions for your agents
+      2. **Context**: Provide relevant context but avoid sensitive information
+      3. **Error Handling**: Always handle potential failures gracefully
+      4. **Streaming**: Use streaming for long responses to improve UX
+      5. **Webhooks**: Use async execution for time-consuming tasks
+      6. **Testing**: Test agents thoroughly with various inputs
+      7. **Monitoring**: Monitor token usage and response times
+
+      ## Support
+
+      For questions about AI agents, please refer to:
+      - [AI Module Documentation](modules/ai.md)
+      - [API Documentation](api.json)
+      - [Rails SaaS Starter Template Documentation](README.md)
+    MARKDOWN
+  end
+  
+  def generate_supported_models_list
+    models = [
+      "- **gpt-3.5-turbo**: Fast and cost-effective for most tasks",
+      "- **gpt-4**: High-quality responses with advanced reasoning",
+      "- **gpt-4-turbo**: Latest GPT-4 with improved speed and context",
+      "- **gpt-4o**: Optimized GPT-4 for better performance",
+      "- **claude-3-haiku**: Fast Anthropic model for simple tasks",
+      "- **claude-3-sonnet**: Balanced Anthropic model for most use cases",
+      "- **claude-3-opus**: Anthropic's most capable model for complex tasks"
+    ]
+    
+    models.join("\n")
+  end
+  
+  def app_name
+    # Try to extract app name from various sources
+    if File.exist?('config/application.rb')
+      content = File.read('config/application.rb')
+      match = content.match(/module\s+(\w+)/)
+      return match[1] if match
+    end
+    
+    File.basename(Dir.pwd).split(/[-_]/).map(&:capitalize).join(' ')
+  end
+  
+  def extract_description_from_readme(content)
+    lines = content.split("\n")
+    
+    # Find first non-header line that has content
+    description_line = lines.find do |line|
+      line.strip.length > 0 && 
+      !line.start_with?('#') && 
+      !line.strip.match?(/^[\*\-\+]\s/) # Skip list items
+    end
+    
+    return "No description available." unless description_line
+    
+    # Clean up the description
+    description_line.strip.gsub(/\*\*(.*?)\*\*/, '\1').truncate(120)
+  end
+end
+
+# String truncate helper
+class String
+  def truncate(length, omission = '...')
+    if self.length > length
+      self[0, length - omission.length] + omission
+    else
+      self
+    end
+  end
+end
+
+# Load the Synth CLI
+require_relative '../lib/synth/cli'
+
+# Simple CLI dispatcher that delegates to the modular CLI
+class SynthCLI
+  def self.start(args)
+    Synth::CLI.start(args)
+  rescue => e
+    puts "❌ Error: #{e.message}"
+    puts e.backtrace.first(3).join("\n") if args.include?('--verbose')
+    exit 1
+  end
+end
+
+# For backward compatibility with the old bin/synth structure
+class LegacySynthCLI
+  TEMPLATE_PATH = File.expand_path('../scaffold/lib/templates/synth', __dir__)
+  REGISTRY_PATH = File.expand_path('../scaffold/config/synth_modules.json', __dir__)
+  
+  def initialize
+    @verbose = ARGV.include?('--verbose') || ARGV.include?('-v')
+  end
+
+  def self.start(args)
+    cli = new
+    command = args.first
+    
+    case command
+    when 'list'
+      cli.list
+    when 'add'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth add MODULE_NAME"
+        exit 1
+      end
+      cli.add(module_name)
+    when 'remove'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth remove MODULE_NAME"
+        exit 1
+      end
+      cli.remove(module_name)
+    when 'init-module'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth init-module MODULE_NAME"
+        exit 1
+      end
+      cli.init_module(module_name)
+    when 'info'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth info MODULE_NAME"
+        exit 1
+      end
+      cli.info(module_name)
+    when 'test'
+      module_name = args[1]
+      cli.test(module_name)
+    when 'doctor'
+      cli.doctor
+    when 'docs'
+      cli.docs
+    when 'upgrade'
+      module_name = args[1..-1].find { |arg| !arg.start_with?('--') && !arg.start_with?('-') }
+      cli.upgrade(module_name)
+    when 'manifest'
+      cli.manifest
+    when 'plan'
+      module_name = args[1]
+      operation = args[2] || 'install'
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth plan MODULE_NAME [install|upgrade]"
+        exit 1
+      end
+      cli.plan(module_name, operation)
+    when 'help', '--help', '-h', nil
+      cli.show_help
+    else
+      puts "❌ Unknown command: #{command}"
+      cli.show_help
+      exit 1
+    end
+  end
+
+  def list
+    show_available_modules
+    puts ""
+    show_installed_modules
+  end
+
+  def add(module_name)
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found in templates"
+      show_available_modules
+      exit 1
+    end
+
+    if module_installed?(module_name) && !force_mode?
+      puts "⚠️  Module '#{module_name}' is already installed. Use --force to reinstall."
+      exit 1
+    end
+
+    install_module(module_name, module_template_path)
+  end
+
+  def remove(module_name)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      show_installed_modules
+      exit 1
+    end
+
+    unless force_mode?
+      print "Are you sure you want to remove '#{module_name}'? This will delete files and may cause data loss. [y/N]: "
+      confirmation = STDIN.gets.chomp.downcase
+      unless confirmation == 'y' || confirmation == 'yes'
+        puts "❌ Module removal cancelled"
+        exit 1
+      end
+    end
+
+    remove_module(module_name)
+  end
+
+  def init_module(module_name)
+    # Validate module name
+    unless valid_module_name?(module_name)
+      puts "❌ Invalid module name '#{module_name}'"
+      puts "   Module names must be lowercase, alphanumeric, and may contain underscores or hyphens"
+      exit 1
+    end
+
+    module_path = File.join(TEMPLATE_PATH, module_name)
+    
+    if Dir.exist?(module_path) && !force_mode?
+      puts "❌ Module '#{module_name}' already exists at #{module_path}"
+      puts "   Use --force to overwrite existing module"
+      exit 1
+    end
+
+    puts "🚀 Generating new module: #{module_name}"
+    generate_module_template(module_name, module_path)
+    puts "✅ Successfully generated module template at #{module_path}"
+    puts ""
+    puts "📋 Next steps:"
+    puts "   1. Edit the generated files to implement your module"
+    puts "   2. Update install.rb with your module-specific installation logic"
+    puts "   3. Test your module with: bin/synth add #{module_name}"
+    puts "   4. Document your module in the README.md"
+  end
+
+  def info(module_name)
+    show_module_info(module_name)
+  end
+
+  def test(module_name = nil)
+    if module_name
+      test_single_module(module_name)
+    else
+      test_all_modules
+    end
+  end
+
+  def doctor
+    puts '🏥 Running system diagnostics...'
+    
+    results = []
+    results << check_ruby_version
+    results << check_template_structure
+    results << check_registry_integrity
+    results << check_manifest_status
+    results << check_environment_variables
+    results << check_api_keys
+    results << check_pending_migrations
+    results << check_module_integrity
+    
+    puts "\n🏥 Diagnostics complete"
+    
+    failed_checks = results.count(false)
+    if failed_checks > 0
+      puts "❌ #{failed_checks} check(s) failed"
+      puts "\n💡 Run with suggestions above to fix issues"
+      exit 1
+    else
+      puts "✅ All checks passed"
+    end
+  end
+
+  def upgrade(module_name = nil)
+    backup_enabled = !ARGV.include?('--no-backup')
+    non_interactive = ARGV.include?('--yes') || ARGV.include?('-y')
+    
+    if module_name
+      upgrade_single_module(module_name, backup_enabled, non_interactive)
+    else
+      upgrade_all_modules(backup_enabled, non_interactive)
+    end
+    
+    # Regenerate documentation after upgrade
+    puts "📚 Regenerating documentation after upgrade..."
+    docs
+  end
+
+  def manifest
+    subcommand = ARGV[1]
+    
+    case subcommand
+    when 'generate', 'gen'
+      generate_manifest
+    when 'validate', 'check'
+      validate_manifest
+    when 'info'
+      show_manifest_info
+    when 'ui-data'
+      show_ui_data
+    else
+      puts "📋 Synth Manifest Commands:"
+      puts ""
+      puts "  bin/synth manifest generate    Generate synth.json from current system state"
+      puts "  bin/synth manifest validate    Validate synth.json against current system"
+      puts "  bin/synth manifest info        Show manifest summary information"
+      puts "  bin/synth manifest ui-data     Show UI metadata for module management interface"
+      puts ""
+      puts "The synth.json manifest tracks module configurations, hooks, and metadata"
+      puts "for clean installs, upgrades, and future UI-based module toggling."
+    end
+  end
+
+  def plan(module_name, operation = 'install')
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found in templates"
+      show_available_modules
+      exit 1
+    end
+
+    puts "📋 Planning #{operation} operation for '#{module_name}' module..."
+    puts "=" * 60
+    
+    case operation.downcase
+    when 'install'
+      plan_module_install(module_name, module_template_path)
+    when 'upgrade'
+      plan_module_upgrade(module_name, module_template_path)
+    else
+      puts "❌ Unknown operation: #{operation}. Use 'install' or 'upgrade'"
+      exit 1
+    end
+    
+    puts "=" * 60
+    puts "💡 This is a preview only. No changes have been made."
+    puts "💡 To proceed with the operation, run: bin/synth #{operation} #{module_name}"
+  end
+
+  def docs
+    puts "📚 Generating documentation from installed modules..."
+    
+    begin
+      generator = DocumentationGenerator.new
+      generator.generate_all
+      puts "✅ Documentation generated successfully!"
+      puts "📖 Main documentation available at: docs/README.md"
+      puts "🗂️  Module documentation available at: docs/modules/"
+    rescue => e
+      puts "❌ Error generating documentation: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def generate_manifest
+    puts "📋 Generating synth.json manifest..."
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest = manifest_manager.generate!
+      
+      puts "✅ Generated synth.json manifest with #{manifest[:modules].size} modules"
+      puts "📄 Manifest location: synth.json"
+      puts ""
+      puts "Next steps:"
+      puts "  • Run 'bin/synth manifest validate' to verify the manifest"
+      puts "  • Run 'bin/synth doctor' for enhanced system validation"
+      puts "  • Commit synth.json to track your module configuration"
+    rescue => e
+      puts "❌ Error generating manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def validate_manifest
+    puts "🔍 Validating synth.json manifest..."
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      result = manifest_manager.validate!
+      
+      if result[:valid]
+        puts "✅ Manifest validation passed"
+        if result[:warnings].any?
+          puts "⚠️  Warnings:"
+          result[:warnings].each { |warning| puts "    #{warning}" }
+        end
+      else
+        puts "❌ Manifest validation failed"
+        result[:errors].each { |error| puts "    Error: #{error}" }
+        result[:warnings].each { |warning| puts "    Warning: #{warning}" }
+        exit 1
+      end
+    rescue => e
+      puts "❌ Error validating manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def show_manifest_info
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest = manifest_manager.load
+      
+      if manifest.empty?
+        puts "📋 No synth.json manifest found"
+        puts "   Run 'bin/synth manifest generate' to create one"
+        return
+      end
+      
+      puts "📋 Synth Manifest Summary"
+      puts "=" * 50
+      puts "Manifest Version: #{manifest[:manifest_version]}"
+      puts "Generated: #{manifest[:generated_at]}"
+      puts "Application: #{manifest.dig(:application, :name)}"
+      puts "Ruby: #{manifest.dig(:application, :ruby_version)}"
+      puts "Rails: #{manifest.dig(:application, :rails_version)}"
+      puts ""
+      
+      metadata = manifest[:registry_metadata]
+      if metadata
+        puts "Registry Statistics:"
+        puts "  Total Modules: #{metadata[:total_modules]}"
+        puts "  Core Modules: #{metadata[:core_modules]}"
+        puts "  Feature Modules: #{metadata[:feature_modules]}"
+        puts "  UI Modules: #{metadata[:ui_modules]}"
+        puts "  Tooling Modules: #{metadata[:tooling_modules]}"
+        puts "  Last Validated: #{metadata[:last_validated]}"
+        puts "  Status: #{metadata[:validation_status]}"
+      end
+      
+    rescue => e
+      puts "❌ Error reading manifest: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def show_ui_data
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      ui_data = manifest_manager.ui_modules_data
+      
+      if ui_data.empty?
+        puts "📋 No modules found in manifest"
+        puts "   Run 'bin/synth manifest generate' to create manifest"
+        return
+      end
+      
+      puts "🖥️  UI Module Data (for future module management interface)"
+      puts "=" * 70
+      
+      # Group by category
+      categories = ui_data.group_by { |mod| mod[:category] }
+      
+      categories.each do |category, modules|
+        puts "\n#{category.upcase} MODULES:"
+        modules.each do |mod|
+          status_icon = mod[:health_status] == 'healthy' ? '✅' : '❌'
+          toggle_icon = mod[:toggleable] ? '🔄' : '🔒'
+          admin_icon = mod[:admin_only] ? '👑' : '👤'
+          
+          puts "  #{status_icon} #{toggle_icon} #{admin_icon} #{mod[:display_name]}"
+          puts "      Name: #{mod[:name]}"
+          puts "      Description: #{mod[:description]}"
+          puts "      Version: #{mod[:version]}"
+          puts "      Icon: #{mod[:icon]} (#{mod[:color]})"
+          puts "      Status: #{mod[:status]} (#{mod[:health_status]})"
+          puts "      Required: #{mod[:required]}"
+          puts "      Installed: #{mod[:installed_at]}" if mod[:installed_at]
+          puts ""
+        end
+      end
+      
+      puts "Legend: ✅ Healthy ❌ Unhealthy 🔄 Toggleable 🔒 Fixed 👑 Admin 👤 User"
+      
+    rescue => e
+      puts "❌ Error generating UI data: #{e.message}"
+      puts e.backtrace.first(3).join("\n") if @verbose
+      exit 1
+    end
+  end
+
+  def show_help
+    puts <<~HELP
+      bin/synth - Rails SaaS Starter Template Module Manager
+      
+      USAGE:
+        bin/synth COMMAND [OPTIONS]
+      
+      COMMANDS:
+        list                  List available and installed modules
+        add MODULE            Install a feature module
+        remove MODULE         Uninstall a feature module  
+        init-module MODULE    Generate a new module template
+        info MODULE           Show detailed information about a module
+        test [MODULE]         Run tests for a module or all modules
+        docs                  Generate documentation from installed modules and OpenAPI schema
+        plan MODULE [OP]      Preview changes for install/upgrade operation (OP: install|upgrade)
+        upgrade [MODULE]      Upgrade one or all installed modules to latest versions
+        manifest              Manage the synth.json manifest file
+        doctor                Validate setup and configuration
+        help                  Show this help message
+      
+      MANIFEST COMMANDS:
+        manifest generate     Generate synth.json from current system state
+        manifest validate     Validate synth.json against current system
+        manifest info         Show manifest summary information
+        manifest ui-data      Show UI metadata for module management interface
+      
+      OPTIONS:
+        --verbose, -v         Enable verbose output
+        --force, -f           Force operation without confirmation
+        --yes, -y             Auto-confirm prompts (non-interactive mode)
+        --no-backup           Skip creating backups during upgrades
+      
+      UPGRADE OPTIONS:
+        upgrade               Upgrade all installed modules
+        upgrade MODULE        Upgrade specific module only
+        upgrade --yes         Upgrade without prompting for conflicts
+        upgrade --no-backup   Upgrade without creating backups
+      
+      PLAN OPTIONS:
+        plan MODULE           Preview installation changes for MODULE
+        plan MODULE install   Preview installation changes for MODULE
+        plan MODULE upgrade   Preview upgrade changes for MODULE
+      
+      EXAMPLES:
+        bin/synth list
+        bin/synth add billing
+        bin/synth remove cms --force
+        bin/synth init-module my_feature
+        bin/synth info ai
+        bin/synth test billing
+        bin/synth docs
+        bin/synth manifest generate
+        bin/synth manifest validate
+        bin/synth plan billing            # Preview billing module installation
+        bin/synth plan ai upgrade         # Preview AI module upgrade
+        bin/synth upgrade
+        bin/synth upgrade ai --verbose
+        bin/synth upgrade --yes --no-backup
+        bin/synth doctor
+    HELP
+  end
+
+  private
+
+  def plan_module_install(module_name, module_template_path)
+    puts "🔍 Operation: Install"
+    puts "📦 Module: #{module_name}"
+    
+    # Check version info
+    version_path = File.join(module_template_path, 'VERSION')
+    version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+    puts "🏷️  Version: #{version}"
+    
+    # Check if already installed
+    if module_installed?(module_name)
+      registry = load_registry
+      current_version = registry.dig('installed', module_name, 'version') || 'unknown'
+      puts "⚠️  Module is already installed (v#{current_version})"
+      puts "   Use 'plan #{module_name} upgrade' to preview upgrade changes"
+      return
+    end
+    
+    puts "\n📁 Files that would be created/copied:"
+    plan_file_operations(module_name, module_template_path, :install)
+    
+    puts "\n🗄️  Database changes:"
+    plan_migration_changes(module_name, module_template_path, :install)
+    
+    puts "\n⚙️  Configuration changes:"
+    plan_configuration_changes(module_name, module_template_path, :install)
+    
+    puts "\n🛣️  Route changes:"
+    plan_route_changes(module_name, module_template_path, :install)
+    
+    puts "\n📦 Dependencies:"
+    plan_dependency_changes(module_name, module_template_path, :install)
+  end
+
+  def plan_module_upgrade(module_name, module_template_path)
+    puts "🔍 Operation: Upgrade"
+    puts "📦 Module: #{module_name}"
+    
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      puts "   Use 'plan #{module_name} install' to preview installation"
+      return
+    end
+    
+    registry = load_registry
+    current_version = registry.dig('installed', module_name, 'version') || '0.0.0'
+    
+    version_path = File.join(module_template_path, 'VERSION')
+    available_version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+    
+    puts "📈 Current version: #{current_version}"
+    puts "📈 Available version: #{available_version}"
+    
+    if version_compare(available_version, current_version) <= 0
+      puts "✅ Module is already up to date"
+      return
+    end
+    
+    puts "\n📁 Files that would be updated:"
+    plan_file_operations(module_name, module_template_path, :upgrade)
+    
+    puts "\n🗄️  Database changes:"
+    plan_migration_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n⚙️  Configuration changes:"
+    plan_configuration_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n🛣️  Route changes:"
+    plan_route_changes(module_name, module_template_path, :upgrade)
+    
+    puts "\n📦 Dependencies:"
+    plan_dependency_changes(module_name, module_template_path, :upgrade)
+  end
+
+  def plan_file_operations(module_name, module_template_path, operation)
+    target_dir = File.join('app', 'domains', module_name)
+    files_to_process = []
+    
+    # Collect all files that would be copied
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      next if File.basename(file) == 'install.rb'
+      next if File.basename(file) == 'VERSION'
+      next if File.basename(file) == 'remove.rb'
+      
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      target_file = File.join(target_dir, relative_path)
+      
+      files_to_process << {
+        source: file,
+        target: target_file,
+        relative_path: relative_path.to_s,
+        exists: File.exist?(target_file)
+      }
+    end
+    
+    if files_to_process.empty?
+      puts "   No files to copy"
+      return
+    end
+    
+    # Group by operation type
+    new_files = files_to_process.select { |f| !f[:exists] }
+    existing_files = files_to_process.select { |f| f[:exists] }
+    
+    unless new_files.empty?
+      puts "   📄 New files to create (#{new_files.length}):"
+      new_files.each do |file|
+        file_size = File.size(file[:source])
+        puts "     + #{file[:relative_path]} (#{file_size} bytes)"
+      end
+    end
+    
+    unless existing_files.empty?
+      puts "   📝 Existing files to update (#{existing_files.length}):"
+      existing_files.each do |file|
+        if operation == :upgrade
+          show_file_diff_summary(file[:target], file[:source], file[:relative_path])
+        else
+          puts "     ~ #{file[:relative_path]} (would be overwritten)"
+        end
+      end
+    end
+  end
+
+  def show_file_diff_summary(current_file, new_file, relative_path)
+    current_content = File.read(current_file)
+    new_content = File.read(new_file)
+    
+    if current_content == new_content
+      puts "     = #{relative_path} (no changes)"
+    else
+      current_lines = current_content.lines.length
+      new_lines = new_content.lines.length
+      
+      # Simple line-by-line diff analysis
+      lines_changed = 0
+      lines_added = 0
+      lines_removed = 0
+      
+      if new_lines > current_lines
+        lines_added = new_lines - current_lines
+      elsif current_lines > new_lines
+        lines_removed = current_lines - new_lines
+      else
+        lines_changed = 1 # Assume at least one line changed if file size is different
+      end
+      
+      diff_summary = []
+      diff_summary << "+#{lines_added}" if lines_added > 0
+      diff_summary << "-#{lines_removed}" if lines_removed > 0
+      diff_summary << "~#{lines_changed}" if lines_changed > 0 && lines_added == 0 && lines_removed == 0
+      
+      puts "     ~ #{relative_path} (#{diff_summary.join(', ')} lines)"
+    end
+  end
+
+  def plan_migration_changes(module_name, module_template_path, operation)
+    migration_path = File.join(module_template_path, 'db', 'migrate')
+    
+    unless Dir.exist?(migration_path)
+      puts "   No migrations"
+      return
+    end
+    
+    migration_files = Dir.glob(File.join(migration_path, "*.rb"))
+    
+    if migration_files.empty?
+      puts "   No migrations"
+      return
+    end
+    
+    puts "   📊 Migrations to apply (#{migration_files.length}):"
+    migration_files.each do |migration_file|
+      migration_name = File.basename(migration_file, '.rb')
+      
+      # Try to extract the migration class name and analyze what it does
+      migration_content = File.read(migration_file)
+      
+      # Look for create_table, add_column, etc.
+      operations = []
+      operations << "create tables" if migration_content.include?('create_table')
+      operations << "add columns" if migration_content.include?('add_column')
+      operations << "add indexes" if migration_content.include?('add_index')
+      operations << "add foreign keys" if migration_content.include?('add_foreign_key')
+      operations << "modify schema" if operations.empty? && migration_content.include?('def change')
+      
+      operation_summary = operations.any? ? " (#{operations.join(', ')})" : ""
+      puts "     + #{migration_name}#{operation_summary}"
+    end
+    
+    puts "   💡 Run 'rails db:migrate' after installation to apply migrations"
+  end
+
+  def plan_configuration_changes(module_name, module_template_path, operation)
+    config_path = File.join(module_template_path, 'config')
+    changes_found = false
+    
+    # Check for initializer files
+    initializers_path = File.join(config_path, 'initializers')
+    if Dir.exist?(initializers_path)
+      initializer_files = Dir.glob(File.join(initializers_path, "*.rb"))
+      unless initializer_files.empty?
+        changes_found = true
+        puts "   ⚙️  Initializers to add/update:"
+        initializer_files.each do |file|
+          file_name = File.basename(file)
+          target_path = File.join('config', 'initializers', file_name)
+          status = File.exist?(target_path) ? "update" : "create"
+          puts "     #{status == 'create' ? '+' : '~'} config/initializers/#{file_name}"
+        end
+      end
+    end
+    
+    # Check for routes
+    routes_file = File.join(config_path, 'routes.rb')
+    if File.exist?(routes_file)
+      changes_found = true
+      puts "   🛣️  Routes to integrate:"
+      
+      routes_content = File.read(routes_file)
+      # Extract route definitions
+      route_lines = routes_content.lines.select { |line| 
+        line.strip.match?(/^(get|post|put|patch|delete|resources|namespace|scope)\s/) 
+      }
+      
+      if route_lines.any?
+        route_lines.first(5).each do |line|
+          puts "     + #{line.strip}"
+        end
+        puts "     ... (#{route_lines.length - 5} more)" if route_lines.length > 5
+      else
+        puts "     + Custom route configuration"
+      end
+      puts "   💡 Routes need to be manually integrated into config/routes.rb"
+    end
+    
+    # Check install.rb for other configuration changes
+    install_file = File.join(module_template_path, 'install.rb')
+    if File.exist?(install_file)
+      install_content = File.read(install_file)
+      
+      # Look for gem additions
+      if install_content.include?('gem ')
+        changes_found = true
+        puts "   💎 Gems that may be added:"
+        gem_lines = install_content.lines.select { |line| line.include?("gem ") }
+        gem_lines.each do |line|
+          gem_match = line.match(/gem\s+['"]([^'"]+)['"]/)
+          if gem_match
+            puts "     + #{gem_match[1]}"
+          end
+        end
+        puts "   💡 Run 'bundle install' after installation"
+      end
+      
+      # Look for generator calls
+      if install_content.include?('generate ')
+        changes_found = true
+        puts "   🏗️  Generators to run:"
+        generator_lines = install_content.lines.select { |line| line.include?("generate ") }
+        generator_lines.first(3).each do |line|
+          generator_match = line.match(/generate\s+:?(\w+)/)
+          if generator_match
+            puts "     + rails generate #{generator_match[1]}"
+          end
+        end
+        puts "     ... (see install.rb for full details)" if generator_lines.length > 3
+      end
+    end
+    
+    unless changes_found
+      puts "   No configuration changes"
+    end
+  end
+
+  def plan_route_changes(module_name, module_template_path, operation)
+    routes_file = File.join(module_template_path, 'config', 'routes.rb')
+    
+    unless File.exist?(routes_file)
+      puts "   No route changes"
+      return
+    end
+    
+    routes_content = File.read(routes_file)
+    
+    # Extract meaningful route lines
+    route_lines = routes_content.lines
+      .map(&:strip)
+      .reject { |line| line.empty? || line.start_with?('#') }
+      .select { |line| line.match?(/^(get|post|put|patch|delete|resources|namespace|scope|root)/) }
+    
+    if route_lines.any?
+      puts "   🛣️  Routes to be added to config/routes.rb:"
+      route_lines.each do |line|
+        puts "     + #{line}"
+      end
+      puts "   💡 These routes will need manual integration"
+    else
+      puts "   📋 Custom route configuration detected"
+      puts "   💡 Review #{module_name}/config/routes.rb for route requirements"
+    end
+  end
+
+  def plan_dependency_changes(module_name, module_template_path, operation)
+    install_file = File.join(module_template_path, 'install.rb')
+    
+    unless File.exist?(install_file)
+      puts "   No dependencies analyzed"
+      return
+    end
+    
+    install_content = File.read(install_file)
+    dependencies_found = false
+    
+    # Check for gem dependencies
+    gem_lines = install_content.lines.select { |line| line.include?("gem ") && !line.strip.start_with?('#') }
+    if gem_lines.any?
+      dependencies_found = true
+      puts "   💎 Ruby gems:"
+      gem_lines.each do |line|
+        gem_match = line.match(/gem\s+['"]([^'"]+)['"](?:,\s*['"]([^'"]+)['"])?/)
+        if gem_match
+          gem_name = gem_match[1]
+          gem_version = gem_match[2] ? " (#{gem_match[2]})" : ""
+          puts "     + #{gem_name}#{gem_version}"
+        end
+      end
+    end
+    
+    # Check for yarn/npm dependencies
+    yarn_lines = install_content.lines.select { |line| line.include?("yarn add") || line.include?("npm install") }
+    if yarn_lines.any?
+      dependencies_found = true
+      puts "   📦 JavaScript packages:"
+      yarn_lines.each do |line|
+        if line.include?("yarn add")
+          packages = line.match(/yarn add\s+(.+)/)
+          puts "     + #{packages[1].strip}" if packages
+        elsif line.include?("npm install")
+          packages = line.match(/npm install\s+(.+)/)
+          puts "     + #{packages[1].strip}" if packages
+        end
+      end
+    end
+    
+    # Check for system dependencies or other requirements
+    if install_content.include?('apt-get') || install_content.include?('brew install')
+      dependencies_found = true
+      puts "   🖥️  System dependencies detected"
+      puts "     💡 Review install.rb for system-level requirements"
+    end
+    
+    unless dependencies_found
+      puts "   No additional dependencies"
+    end
+  end
+
+  def show_available_modules
+    puts '📦 Available modules:'
+    
+    unless Dir.exist?(TEMPLATE_PATH)
+      puts '  (templates directory not found)'
+      return
+    end
+
+    modules = Dir.children(TEMPLATE_PATH).select { |d| File.directory?(File.join(TEMPLATE_PATH, d)) }
+    
+    if modules.empty?
+      puts '  (no modules found)'
+      return
+    end
+
+    modules.sort.each do |module_name|
+      module_path = File.join(TEMPLATE_PATH, module_name)
+      readme_path = File.join(module_path, 'README.md')
+      version_path = File.join(module_path, 'VERSION')
+      
+      description = if File.exist?(readme_path)
+        File.readlines(readme_path).first&.strip&.gsub(/^#\s*/, '') || 'No description'
+      else
+        'No description'
+      end
+      
+      version = if File.exist?(version_path)
+        File.read(version_path).strip
+      else
+        'unknown'
+      end
+      
+      installed = module_installed?(module_name)
+      status_icon = installed ? '✅' : '  '
+      
+      puts "  #{status_icon} #{module_name.ljust(15)} v#{version.ljust(8)} - #{description}"
+    end
+  end
+
+  def show_installed_modules
+    puts '🔧 Installed modules:'
+    
+    registry = load_registry
+    installed_modules = registry['installed'] || {}
+    
+    if installed_modules.empty?
+      puts '  (no modules installed)'
+      return
+    end
+
+    installed_modules.each do |module_name, info|
+      version = info['version'] || 'unknown'
+      installed_at = info['installed_at'] ? info['installed_at'][0..9] : 'unknown'
+      puts "  ✅ #{module_name.ljust(15)} v#{version.ljust(8)} (installed: #{installed_at})"
+    end
+  end
+
+  def install_module(module_name, module_template_path)
+    puts "📦 Installing #{module_name} module..."
+    
+    install_file = File.join(module_template_path, 'install.rb')
+    
+    unless File.exist?(install_file)
+      puts "❌ Module installer not found: #{install_file}"
+      exit 1
+    end
+
+    begin
+      # Load version info
+      version_path = File.join(module_template_path, 'VERSION')
+      version = File.exist?(version_path) ? File.read(version_path).strip : '1.0.0'
+      
+      # Create basic directories if they don't exist
+      create_basic_directories
+      
+      # Copy module files to app/domains
+      copy_module_files(module_name, module_template_path)
+      
+      # Update registry
+      update_registry(module_name, {
+        'version' => version,
+        'installed_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+        'template_path' => module_template_path
+      })
+      
+      puts "✅ Successfully installed #{module_name} module!"
+      log_module_action(:install, module_name, version)
+      
+      # Update manifest after successful installation
+      update_manifest_after_change('install', module_name)
+      
+    rescue StandardError => e
+      puts "❌ Error installing module: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if @verbose
+      log_module_action(:error, module_name, e.message)
+      exit 1
+    end
+  end
+
+  def remove_module(module_name)
+    puts "🗑️  Removing #{module_name} module..."
+    
+    registry = load_registry
+    module_info = registry.dig('installed', module_name)
+    
+    unless module_info
+      puts "❌ Module not found in registry"
+      exit 1
+    end
+
+    begin
+      # Default removal logic
+      default_module_removal(module_name)
+      
+      # Remove from registry
+      registry['installed'].delete(module_name)
+      save_registry(registry)
+      
+      puts "✅ Successfully removed #{module_name} module!"
+      log_module_action(:remove, module_name)
+      
+      # Update manifest after successful removal
+      update_manifest_after_change('remove', module_name)
+      
+    rescue StandardError => e
+      puts "❌ Error removing module: #{e.message}"
+      puts e.backtrace.first(5).join("\n") if @verbose
+      log_module_action(:error, module_name, e.message)
+      exit 1
+    end
+  end
+
+  def show_module_info(module_name)
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' not found"
+      exit 1
+    end
+
+    puts "📋 Module: #{module_name}"
+    puts "=" * 50
+    
+    # Basic info
+    readme_path = File.join(module_template_path, 'README.md')
+    if File.exist?(readme_path)
+      puts "\n📖 Description:"
+      puts File.read(readme_path).lines.first(5).join
+    end
+    
+    # Version
+    version_path = File.join(module_template_path, 'VERSION')
+    if File.exist?(version_path)
+      puts "\n🏷️  Version: #{File.read(version_path).strip}"
+    end
+    
+    # Installation status
+    if module_installed?(module_name)
+      registry = load_registry
+      info = registry.dig('installed', module_name)
+      puts "\n✅ Status: Installed"
+      puts "   Installed version: #{info['version']}" if info['version']
+      puts "   Installed at: #{info['installed_at']}" if info['installed_at']
+    else
+      puts "\n❌ Status: Not installed"
+    end
+    
+    # Files
+    puts "\n📁 Files:"
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      puts "   #{relative_path}"
+    end
+  end
+
+  def test_single_module(module_name)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      exit 1
+    end
+    
+    # Look for module-specific tests
+    test_paths = [
+      "spec/domains/#{module_name}",
+      "test/domains/#{module_name}",
+      "spec/#{module_name}",
+      "test/#{module_name}"
+    ]
+    
+    test_path = test_paths.find { |path| Dir.exist?(path) }
+    
+    if test_path
+      puts "🧪 Running tests for #{module_name} module..."
+      if test_path.start_with?('spec/')
+        system("bundle exec rspec #{test_path}")
+      else
+        system("bundle exec rails test #{test_path}")
+      end
+    else
+      puts "❌ No tests found for module: #{module_name}"
+      exit 1
+    end
+  end
+
+  def test_all_modules
+    puts '🧪 Running full test suite...'
+    
+    # Try RSpec first, then fall back to Minitest
+    if File.exist?('spec/rails_helper.rb')
+      system('bundle exec rspec')
+    elsif File.exist?('test/test_helper.rb')
+      system('bundle exec rails test')
+    else
+      puts "❌ No test framework detected"
+      exit 1
+    end
+  end
+
+  def upgrade_single_module(module_name, backup_enabled = true, non_interactive = false)
+    unless module_installed?(module_name)
+      puts "❌ Module '#{module_name}' is not installed"
+      exit 1
+    end
+    
+    registry = load_registry
+    installed_info = registry.dig('installed', module_name)
+    current_version = installed_info['version'] || '0.0.0'
+    
+    module_template_path = File.join(TEMPLATE_PATH, module_name)
+    unless Dir.exist?(module_template_path)
+      puts "❌ Module '#{module_name}' template not found"
+      exit 1
+    end
+    
+    available_version = get_module_version(module_template_path)
+    
+    if version_compare(available_version, current_version) <= 0
+      puts "✅ Module '#{module_name}' is already up to date (v#{current_version})"
+      return
+    end
+    
+    puts "🔄 Upgrading #{module_name} from v#{current_version} to v#{available_version}..."
+    
+    # Create backup if enabled
+    if backup_enabled
+      backup_path = create_module_backup(module_name, current_version)
+      puts "💾 Created backup at #{backup_path}" if @verbose
+    end
+    
+    # Check for conflicts and prompt user
+    conflicts = detect_conflicts(module_name, module_template_path)
+    if !conflicts.empty? && !non_interactive
+      handle_conflicts(conflicts, module_name)
+    end
+    
+    # Perform the upgrade
+    perform_module_upgrade(module_name, module_template_path, current_version, available_version)
+    
+    puts "✅ Successfully upgraded #{module_name} to v#{available_version}!"
+    log_module_action(:upgrade, module_name, "#{current_version} -> #{available_version}")
+  end
+
+  def upgrade_all_modules(backup_enabled = true, non_interactive = false)
+    registry = load_registry
+    installed_modules = registry['installed'] || {}
+    
+    if installed_modules.empty?
+      puts "📦 No modules installed to upgrade"
+      return
+    end
+    
+    upgradeable_modules = []
+    installed_modules.each do |module_name, info|
+      current_version = info['version'] || '0.0.0'
+      module_template_path = File.join(TEMPLATE_PATH, module_name)
+      
+      next unless Dir.exist?(module_template_path)
+      
+      available_version = get_module_version(module_template_path)
+      if version_compare(available_version, current_version) > 0
+        upgradeable_modules << [module_name, current_version, available_version]
+      end
+    end
+    
+    if upgradeable_modules.empty?
+      puts "✅ All installed modules are up to date"
+      return
+    end
+    
+    puts "🔄 Found #{upgradeable_modules.length} module(s) to upgrade:"
+    upgradeable_modules.each do |name, current, available|
+      puts "  📦 #{name}: v#{current} -> v#{available}"
+    end
+    
+    unless non_interactive
+      print "\nProceed with upgrades? [Y/n]: "
+      confirmation = STDIN.gets.chomp.downcase
+      if confirmation == 'n' || confirmation == 'no'
+        puts "❌ Upgrade cancelled"
+        return
+      end
+    end
+    
+    upgradeable_modules.each do |module_name, _, _|
+      upgrade_single_module(module_name, backup_enabled, true) # Force non-interactive for bulk upgrades
+    end
+  end
+
+  def module_installed?(module_name)
+    registry = load_registry
+    registry.dig('installed', module_name) != nil
+  end
+
+  def load_registry
+    return { 'installed' => {} } unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      JSON.parse(File.read(REGISTRY_PATH))
+    rescue JSON::ParserError
+      puts "⚠️  Registry file corrupted, resetting..." if @verbose
+      { 'installed' => {} }
+    end
+  end
+
+  def save_registry(registry)
+    FileUtils.mkdir_p(File.dirname(REGISTRY_PATH))
+    File.write(REGISTRY_PATH, JSON.pretty_generate(registry))
+  end
+
+  def update_registry(module_name, info)
+    registry = load_registry
+    registry['installed'] ||= {}
+    registry['installed'][module_name] = info
+    save_registry(registry)
+  end
+
+  def create_basic_directories
+    %w[app/domains spec/domains test/domains].each do |dir|
+      FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+    end
+  end
+
+  def copy_module_files(module_name, module_template_path)
+    target_dir = File.join('app', 'domains', module_name)
+    
+    # Remove existing if force mode
+    if Dir.exist?(target_dir) && force_mode?
+      FileUtils.rm_rf(target_dir)
+    end
+    
+    # Create target directory
+    FileUtils.mkdir_p(target_dir)
+    
+    # Copy README if it exists
+    readme_source = File.join(module_template_path, 'README.md')
+    if File.exist?(readme_source)
+      FileUtils.cp(readme_source, File.join(target_dir, 'README.md'))
+      puts "  ✅ Copied README.md" if @verbose
+    end
+    
+    # Copy other relevant files (excluding install.rb and VERSION)
+    Dir.glob(File.join(module_template_path, "**/*")).each do |file|
+      next if File.directory?(file)
+      next if File.basename(file) == 'install.rb'
+      next if File.basename(file) == 'VERSION'
+      next if File.basename(file) == 'remove.rb'
+      
+      relative_path = Pathname.new(file).relative_path_from(Pathname.new(module_template_path))
+      target_file = File.join(target_dir, relative_path)
+      
+      FileUtils.mkdir_p(File.dirname(target_file))
+      FileUtils.cp(file, target_file)
+      puts "  ✅ Copied #{relative_path}" if @verbose
+    end
+  end
+
+  def default_module_removal(module_name)
+    # Remove from app/domains if it exists
+    domains_path = File.join('app', 'domains', module_name)
+    if Dir.exist?(domains_path)
+      FileUtils.rm_rf(domains_path)
+      puts "    🗑️  Removed #{domains_path}" if @verbose
+    end
+    
+    # Remove from spec/domains if it exists
+    spec_path = File.join('spec', 'domains', module_name)
+    if Dir.exist?(spec_path)
+      FileUtils.rm_rf(spec_path)
+      puts "    🗑️  Removed #{spec_path}" if @verbose
+    end
+    
+    # Remove from test/domains if it exists
+    test_path = File.join('test', 'domains', module_name)
+    if Dir.exist?(test_path)
+      FileUtils.rm_rf(test_path)
+      puts "    🗑️  Removed #{test_path}" if @verbose
+    end
+  end
+
+  def check_ruby_version
+    puts "Ruby version: #{RUBY_VERSION}"
+    true # Ruby is running, so version is adequate
+  end
+
+  def check_template_structure
+    puts "\nChecking template structure:"
+    
+    if File.exist?(REGISTRY_PATH)
+      puts "✅ Module registry found"
+      registry_ok = true
+    else
+      puts "⚠️  Module registry not found at #{REGISTRY_PATH}"
+      registry_ok = false
+    end
+    
+    if Dir.exist?(TEMPLATE_PATH)
+      puts "✅ Module templates directory found"
+      templates_ok = true
+    else
+      puts "⚠️  Module templates directory not found at #{TEMPLATE_PATH}"
+      templates_ok = false
+    end
+    
+    registry_ok && templates_ok
+  end
+
+  def check_registry_integrity
+    return true unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      registry = JSON.parse(File.read(REGISTRY_PATH))
+      puts "✅ Module registry is valid JSON"
+      
+      installed_count = registry.dig('installed')&.keys&.count || 0
+      puts "📦 #{installed_count} module(s) registered as installed"
+      true
+    rescue JSON::ParserError
+      puts "❌ Module registry is corrupted (invalid JSON)"
+      false
+    end
+  end
+
+  def check_manifest_status
+    puts "\nChecking synth.json manifest:"
+    
+    manifest_path = File.expand_path('../synth.json', __dir__)
+    
+    unless File.exist?(manifest_path)
+      puts "⚠️  synth.json manifest not found"
+      puts "💡 Run 'bin/synth manifest generate' to create comprehensive module manifest"
+      return true # Not critical for basic operation
+    end
+    
+    begin
+      manifest_manager = SynthManifest.new(verbose: false)
+      result = manifest_manager.validate!
+      
+      if result[:valid]
+        puts "✅ synth.json manifest is valid"
+        if result[:warnings].any?
+          puts "⚠️  Manifest warnings:"
+          result[:warnings].each { |warning| puts "   #{warning}" }
+        end
+        return true
+      else
+        puts "❌ synth.json manifest validation failed:"
+        result[:errors].each { |error| puts "   #{error}" }
+        puts "💡 Run 'bin/synth manifest generate' to regenerate the manifest"
+        return false
+      end
+    rescue => e
+      puts "❌ Error validating manifest: #{e.message}"
+      puts "💡 Run 'bin/synth manifest generate' to regenerate the manifest"
+      return false
+    end
+  end
+
+  def check_environment_variables
+    puts "\nChecking environment variables:"
+    
+    env_example_path = File.join(TEMPLATE_PATH, '..', '..', 'templates', '.env.example')
+    unless File.exist?(env_example_path)
+      puts "⚠️  .env.example file not found at #{env_example_path}"
+      return true # Not critical, continue
+    end
+    
+    critical_vars = []
+    required_vars = %w[
+      SECRET_KEY_BASE
+      DATABASE_URL
+      REDIS_URL
+    ]
+    
+    missing_vars = []
+    required_vars.each do |var|
+      unless ENV[var] && !ENV[var].empty?
+        missing_vars << var
+      end
+    end
+    
+    if missing_vars.empty?
+      puts "✅ Critical environment variables are set"
+      return true
+    else
+      puts "❌ Missing critical environment variables: #{missing_vars.join(', ')}"
+      puts "💡 Create a .env file with these variables or set them in your environment"
+      puts "💡 See .env.example for reference values"
+      return false
+    end
+  end
+
+  def check_api_keys
+    puts "\nChecking API key configuration:"
+    
+    all_valid = true
+    
+    # Check OpenAI API key
+    if ENV['OPENAI_API_KEY'] && !ENV['OPENAI_API_KEY'].empty?
+      if ENV['OPENAI_API_KEY'].start_with?('sk-')
+        puts "✅ OpenAI API key format looks valid"
+      else
+        puts "⚠️  OpenAI API key format appears invalid (should start with 'sk-')"
+        all_valid = false
+      end
+    else
+      puts "⚠️  OpenAI API key not set (OPENAI_API_KEY)"
+      puts "💡 Set OPENAI_API_KEY if you plan to use AI features"
+    end
+    
+    # Check Stripe API key
+    if ENV['STRIPE_SECRET_KEY'] && !ENV['STRIPE_SECRET_KEY'].empty?
+      if ENV['STRIPE_SECRET_KEY'].start_with?('sk_')
+        puts "✅ Stripe secret key format looks valid"
+      else
+        puts "⚠️  Stripe secret key format appears invalid (should start with 'sk_')"
+        all_valid = false
+      end
+    else
+      puts "⚠️  Stripe secret key not set (STRIPE_SECRET_KEY)"
+      puts "💡 Set STRIPE_SECRET_KEY if you plan to use billing features"
+    end
+    
+    # Check GitHub token
+    if ENV['GITHUB_TOKEN'] && !ENV['GITHUB_TOKEN'].empty?
+      if ENV['GITHUB_TOKEN'].start_with?('ghp_') || ENV['GITHUB_TOKEN'].start_with?('github_pat_')
+        puts "✅ GitHub token format looks valid"
+      else
+        puts "⚠️  GitHub token format appears invalid"
+        all_valid = false
+      end
+    else
+      puts "⚠️  GitHub token not set (GITHUB_TOKEN)"
+      puts "💡 Set GITHUB_TOKEN if you plan to use GitHub integration features"
+    end
+    
+    if all_valid
+      puts "✅ API key formats appear valid"
+    else
+      puts "💡 Check API key formats and regenerate if necessary"
+    end
+    
+    return all_valid
+  end
+
+  def check_pending_migrations
+    puts "\nChecking database migrations:"
+    
+    migrations_dir = 'db/migrate'
+    unless Dir.exist?(migrations_dir)
+      puts "⚠️  No migrations directory found at #{migrations_dir}"
+      return true # Not in a Rails app context, skip
+    end
+    
+    migration_files = Dir.glob(File.join(migrations_dir, '*.rb')).sort
+    if migration_files.empty?
+      puts "✅ No migrations found"
+      return true
+    end
+    
+    puts "📊 Found #{migration_files.length} migration file(s)"
+    
+    # Check if Rails is available to check migration status
+    begin
+      # Try to detect if we're in a Rails app context
+      if File.exist?('config/application.rb') || File.exist?('Rakefile')
+        puts "💡 In Rails app context - run 'rails db:migrate:status' to check migration status"
+        puts "💡 Run 'rails db:migrate' if there are pending migrations"
+      else
+        puts "⚠️  Not in Rails app context - cannot check migration status"
+        puts "💡 Ensure migrations are run when deploying the generated application"
+      end
+    rescue => e
+      puts "⚠️  Could not check migration status: #{e.message}"
+    end
+    
+    return true # Don't fail on migration checks as this is informational
+  end
+
+  def check_module_integrity
+    puts "\nChecking installed module integrity:"
+    
+    return true unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      registry = JSON.parse(File.read(REGISTRY_PATH))
+      installed_modules = registry.dig('installed') || {}
+      
+      if installed_modules.empty?
+        puts "✅ No modules installed - registry is clean"
+        return true
+      end
+      
+      all_valid = true
+      installed_modules.each do |module_name, module_info|
+        domain_path = File.join('app', 'domains', module_name)
+        template_path = module_info['template_path']
+        
+        # Check if domain directory exists
+        unless Dir.exist?(domain_path)
+          puts "❌ Module '#{module_name}' missing domain directory at #{domain_path}"
+          puts "💡 Run 'bin/synth remove #{module_name}' and reinstall with 'bin/synth add #{module_name}'"
+          all_valid = false
+          next
+        end
+        
+        # Check if template path exists
+        unless Dir.exist?(template_path)
+          puts "❌ Module '#{module_name}' missing template at #{template_path}"
+          all_valid = false
+          next
+        end
+        
+        puts "✅ Module '#{module_name}' appears properly installed"
+      end
+      
+      if all_valid
+        puts "✅ All installed modules appear intact"
+      end
+      
+      return all_valid
+    rescue JSON::ParserError
+      puts "❌ Cannot check module integrity - registry is corrupted"
+      return false
+    rescue => e
+      puts "❌ Error checking module integrity: #{e.message}"
+      return false
+    end
+  end
+
+  def log_module_action(action, module_name, message = nil)
+    log_file = 'log/synth.log'
+    FileUtils.mkdir_p('log') unless Dir.exist?('log')
+    
+    File.open(log_file, 'a') do |f|
+      timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+      log_message = "[#{timestamp}] [#{action.to_s.upcase}] Module: #{module_name}"
+      log_message += " - #{message}" if message
+      f.puts log_message
+    end
+  end
+
+  def update_manifest_after_change(action, module_name)
+    begin
+      manifest_manager = SynthManifest.new(verbose: @verbose)
+      manifest_manager.generate!
+      puts "📋 Updated synth.json manifest" if @verbose
+    rescue => e
+      puts "⚠️  Warning: Could not update manifest: #{e.message}" if @verbose
+      # Don't fail the operation if manifest update fails
+    end
+  end
+
+  def force_mode?
+    ARGV.include?('--force') || ARGV.include?('-f')
+  end
+
+  def valid_module_name?(name)
+    # Module names should be lowercase, alphanumeric, underscores and hyphens allowed
+    name =~ /\A[a-z][a-z0-9_-]*\z/
+  end
+
+  def simple_singularize(word)
+    # Simple singularization - just remove 's' if it ends with 's'
+    # This is a basic implementation since we don't have ActiveSupport here
+    if word.end_with?('s') && word.length > 1
+      word[0...-1]
+    else
+      word
+    end
+  end
+
+  def generate_module_template(module_name, module_path)
+    puts "📁 Creating module directory structure..."
+    create_module_directories(module_name, module_path)
+    
+    puts "📄 Generating module files..."
+    create_module_files(module_name, module_path)
+    
+    puts "🧪 Creating test structure..."
+    create_module_tests(module_name, module_path)
+    
+    puts "⚙️  Setting up configuration files..."
+    create_module_config(module_name, module_path)
+  end
+
+  def create_module_directories(module_name, module_path)
+    directories = [
+      module_path,
+      File.join(module_path, 'app'),
+      File.join(module_path, 'app', 'controllers'),
+      File.join(module_path, 'app', 'controllers', 'concerns'),
+      File.join(module_path, 'app', 'models'),
+      File.join(module_path, 'app', 'models', 'concerns'),
+      File.join(module_path, 'app', 'views'),
+      File.join(module_path, 'app', 'services'),
+      File.join(module_path, 'app', 'jobs'),
+      File.join(module_path, 'app', 'mailers'),
+      File.join(module_path, 'app', 'policies'),
+      File.join(module_path, 'app', 'javascript'),
+      File.join(module_path, 'app', 'javascript', 'controllers'),
+      File.join(module_path, 'config'),
+      File.join(module_path, 'config', 'initializers'),
+      File.join(module_path, 'db'),
+      File.join(module_path, 'db', 'migrate'),
+      File.join(module_path, 'test'),
+      File.join(module_path, 'test', 'controllers'),
+      File.join(module_path, 'test', 'models'),
+      File.join(module_path, 'test', 'integration'),
+      File.join(module_path, 'test', 'services'),
+      File.join(module_path, 'test', 'fixtures'),
+      File.join(module_path, 'spec'),
+      File.join(module_path, 'spec', 'controllers'),
+      File.join(module_path, 'spec', 'models'),
+      File.join(module_path, 'spec', 'requests'),
+      File.join(module_path, 'spec', 'services'),
+      File.join(module_path, 'spec', 'factories')
+    ]
+
+    directories.each do |dir|
+      FileUtils.mkdir_p(dir)
+      puts "  ✅ Created #{Pathname.new(dir).relative_path_from(Pathname.new(TEMPLATE_PATH))}" if @verbose
+    end
+  end
+
+  def create_module_files(module_name, module_path)
+    # Create VERSION file
+    create_file(File.join(module_path, 'VERSION'), "1.0.0\n")
+
+    # Create README.md
+    create_module_readme(module_name, module_path)
+
+    # Create install.rb script
+    create_module_installer(module_name, module_path)
+
+    # Create remove.rb script  
+    create_module_remover(module_name, module_path)
+
+    # Create basic app files
+    create_module_app_files(module_name, module_path)
+
+    # Create migration template
+    create_module_migration(module_name, module_path)
+  end
+
+  def create_module_readme(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    readme_content = <<~MARKDOWN
+      # #{class_name} Module
+
+      Brief description of what this module provides for the Rails SaaS starter template.
+
+      ## Features
+
+      - Feature 1: Description
+      - Feature 2: Description  
+      - Feature 3: Description
+
+      ## Installation
+
+      ```bash
+      bin/synth add #{module_name}
+      ```
+
+      ## Usage
+
+      Describe how to use this module after installation.
+
+      ### Configuration
+
+      Configure the module in `config/initializers/#{module_name}.rb`:
+
+      ```ruby
+      Rails.application.configure do
+        config.#{module_name} = ActiveSupport::OrderedOptions.new
+        
+        # Add your configuration options here
+        config.#{module_name}.enabled = true
+      end
+      ```
+
+      ### Basic Usage
+
+      ```ruby
+      # Example usage code
+      ```
+
+      ## Components Added
+
+      - **Controllers**: `app/domains/#{module_name}/app/controllers/`
+      - **Models**: `app/domains/#{module_name}/app/models/`
+      - **Views**: `app/domains/#{module_name}/app/views/`
+      - **Services**: `app/domains/#{module_name}/app/services/`
+      - **Tests**: `spec/domains/#{module_name}/` or `test/domains/#{module_name}/`
+
+      ## Configuration
+
+      - **Initializer**: `config/initializers/#{module_name}.rb`
+      - **Routes**: Routes are added to `config/routes.rb`
+
+      ## Database Changes
+
+      This module includes the following database changes:
+
+      - Migration: `db/migrate/*_create_#{module_name}_tables.rb`
+
+      ## Dependencies
+
+      This module requires:
+
+      - Ruby 3.0+
+      - Rails 7.0+
+      - PostgreSQL with required extensions
+
+      ## Testing
+
+      Run tests for this module:
+
+      ```bash
+      bin/synth test #{module_name}
+      ```
+
+      ## Customization
+
+      Describe how users can customize this module for their needs.
+
+      ## API
+
+      If this module provides API endpoints, document them here.
+
+      ## Troubleshooting
+
+      Common issues and solutions:
+
+      ### Issue 1
+      Problem description and solution.
+
+      ### Issue 2
+      Problem description and solution.
+
+      ## Support
+
+      For issues related to this module, please check:
+
+      - [Rails SaaS Starter Template Documentation](../../../README.md)
+      - [Module test files](test/) for usage examples
+    MARKDOWN
+
+    create_file(File.join(module_path, 'README.md'), readme_content)
+  end
+
+  def create_module_installer(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    install_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module installer for the Rails SaaS starter template.
+      # This install script is executed by the bin/synth CLI when adding the #{module_name} module.
+
+      say_status :#{module_name}, "Installing #{class_name} module"
+
+      # Add any required gems to the application's Gemfile
+      # add_gem 'example_gem', '~> 1.0'
+
+      # Run after bundle install to set up the module
+      after_bundle do
+        # Create domain-specific directories
+        run 'mkdir -p app/controllers app/models app/views app/services'
+        run 'mkdir -p test/models test/controllers test/services'
+        run 'mkdir -p spec/models spec/controllers spec/requests spec/services'
+        
+        # Create initializer for module configuration
+        initializer '#{module_name}.rb', <<~'INIT_RUBY'
+          # #{class_name} module configuration
+          Rails.application.config.#{module_name} = ActiveSupport::OrderedOptions.new
+          
+          # Enable the module by default
+          Rails.application.config.#{module_name}.enabled = true
+          
+          # Add your configuration options here
+          # Rails.application.config.#{module_name}.option_name = 'default_value'
+        INIT_RUBY
+
+        # Copy module files to the application
+        #{module_name}_source = File.join(__dir__, 'app')
+        if Dir.exist?(#{module_name}_source)
+          # Copy controllers
+          Dir.glob(File.join(#{module_name}_source, 'controllers', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy models
+          Dir.glob(File.join(#{module_name}_source, 'models', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy views
+          Dir.glob(File.join(#{module_name}_source, 'views', '**', '*')).each do |file|
+            next if File.directory?(file)
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy services
+          Dir.glob(File.join(#{module_name}_source, 'services', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+        end
+
+        # Copy migrations
+        migration_source = File.join(__dir__, 'db', 'migrate')
+        if Dir.exist?(migration_source)
+          Dir.glob(File.join(migration_source, '*.rb')).each do |migration_file|
+            migration_name = File.basename(migration_file)
+            target_name = "\#{Time.now.strftime('%Y%m%d%H%M%S')}_\#{migration_name}"
+            copy_file migration_file, File.join('db', 'migrate', target_name)
+          end
+        end
+
+        # Add routes if routes file exists
+        routes_file = File.join(__dir__, 'config', 'routes.rb')
+        if File.exist?(routes_file)
+          route_content = File.read(routes_file)
+          # Add the routes to the main routes file
+          # You may need to customize this based on your routing needs
+          insert_into_file 'config/routes.rb', route_content, after: "Rails.application.routes.draw do\\n"
+        end
+
+        # Run any additional setup commands
+        # run 'rails db:migrate'
+        # run 'yarn add package-name'
+
+        say_status :#{module_name}, "✅ #{class_name} module installed successfully!"
+        say_status :#{module_name}, "📝 Configure the module in config/initializers/#{module_name}.rb"
+        say_status :#{module_name}, "🗄️  Run 'rails db:migrate' to apply database changes"
+        say_status :#{module_name}, "📖 See the module documentation in app/domains/#{module_name}/README.md"
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'install.rb'), install_content)
+  end
+
+  def create_module_remover(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    remove_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module removal script for the Rails SaaS starter template.
+      # This script is executed by the bin/synth CLI when removing the #{module_name} module.
+
+      say_status :#{module_name}, "Removing #{class_name} module"
+
+      # Remove initializer
+      initializer_file = 'config/initializers/#{module_name}.rb'
+      if File.exist?(initializer_file)
+        remove_file initializer_file
+        say_status :#{module_name}, "Removed initializer"
+      end
+
+      # Remove routes (you may need to customize this)
+      routes_file = 'config/routes.rb'
+      if File.exist?(routes_file)
+        # This is a basic example - you may need more sophisticated route removal
+        # depending on how your module adds routes
+        gsub_file routes_file, /\\s*# #{class_name} module routes.*?# End #{class_name} module routes\\s*/m, ''
+        say_status :#{module_name}, "Cleaned up routes"
+      end
+
+      # Note: Migrations are not automatically removed to prevent data loss
+      # Users should manually review and remove migrations if appropriate
+
+      say_status :#{module_name}, "✅ #{class_name} module removed successfully!"
+      say_status :#{module_name}, "⚠️  Database migrations were not removed automatically"
+      say_status :#{module_name}, "   Review db/migrate/ and remove #{module_name} migrations if appropriate"
+      say_status :#{module_name}, "   Run 'rails db:rollback' to undo recent migrations if needed"
+    RUBY
+
+    create_file(File.join(module_path, 'remove.rb'), remove_content)
+  end
+
+  def create_module_app_files(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    controller_class = "#{class_name}Controller"
+    model_class = "#{simple_singularize(class_name)}"
+    service_class = "#{class_name}Service"
+    
+    # Create a basic controller
+    controller_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{controller_class} handles #{module_name} related requests
+      class #{controller_class} < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_#{module_name}_item, only: [:show, :edit, :update, :destroy]
+
+        # GET /#{module_name}
+        def index
+          @#{module_name}_items = current_user.#{module_name}_items
+        end
+
+        # GET /#{module_name}/1
+        def show
+        end
+
+        # GET /#{module_name}/new
+        def new
+          @#{module_name}_item = current_user.#{module_name}_items.build
+        end
+
+        # GET /#{module_name}/1/edit
+        def edit
+        end
+
+        # POST /#{module_name}
+        def create
+          @#{module_name}_item = current_user.#{module_name}_items.build(#{module_name}_item_params)
+
+          if @#{module_name}_item.save
+            redirect_to @#{module_name}_item, notice: '#{class_name} item was successfully created.'
+          else
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        # PATCH/PUT /#{module_name}/1
+        def update
+          if @#{module_name}_item.update(#{module_name}_item_params)
+            redirect_to @#{module_name}_item, notice: '#{class_name} item was successfully updated.'
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        # DELETE /#{module_name}/1
+        def destroy
+          @#{module_name}_item.destroy
+          redirect_to #{module_name}_index_url, notice: '#{class_name} item was successfully deleted.'
+        end
+
+        private
+
+        def set_#{module_name}_item
+          @#{module_name}_item = current_user.#{module_name}_items.find(params[:id])
+        end
+
+        def #{module_name}_item_params
+          params.require(:#{module_name}_item).permit(:name, :description)
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'controllers', "#{module_name}_controller.rb"), controller_content)
+
+    # Create a basic model
+    model_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{model_class} represents a #{module_name} item in the system
+      class #{model_class}Item < ApplicationRecord
+        belongs_to :user
+
+        validates :name, presence: true, length: { minimum: 2, maximum: 100 }
+        validates :description, length: { maximum: 500 }
+
+        scope :active, -> { where(active: true) }
+        scope :recent, -> { order(created_at: :desc) }
+
+        # Add any custom methods here
+        def display_name
+          name.presence || "Untitled #{class_name}"
+        end
+
+        def to_s
+          display_name
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'models', "#{module_name}_item.rb"), model_content)
+
+    # Create a basic service
+    service_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{service_class} handles #{module_name} business logic
+      class #{service_class}
+        attr_reader :user, :errors
+
+        def initialize(user)
+          @user = user
+          @errors = []
+        end
+
+        # Create a new #{module_name} item
+        def create_item(attributes = {})
+          item = user.#{module_name}_items.build(attributes)
+          
+          if item.save
+            # Perform any additional setup or notifications
+            notify_item_created(item)
+            item
+          else
+            @errors = item.errors.full_messages
+            nil
+          end
+        end
+
+        # Update an existing #{module_name} item
+        def update_item(item, attributes = {})
+          if item.update(attributes)
+            # Perform any additional updates or notifications
+            notify_item_updated(item)
+            item
+          else
+            @errors = item.errors.full_messages
+            nil
+          end
+        end
+
+        # Delete a #{module_name} item
+        def delete_item(item)
+          if item.destroy
+            # Perform any cleanup or notifications
+            notify_item_deleted(item)
+            true
+          else
+            @errors = item.errors.full_messages
+            false
+          end
+        end
+
+        # Check if service has errors
+        def valid?
+          errors.empty?
+        end
+
+        private
+
+        def notify_item_created(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item created: \#{item.id}"
+        end
+
+        def notify_item_updated(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item updated: \#{item.id}"
+        end
+
+        def notify_item_deleted(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item deleted: \#{item.id}"
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'services', "#{module_name}_service.rb"), service_content)
+
+    # Create basic views
+    create_module_views(module_name, module_path)
+  end
+
+  def create_module_views(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    views_path = File.join(module_path, 'app', 'views', module_name)
+    FileUtils.mkdir_p(views_path)
+
+    # Index view
+    index_content = <<~ERB
+      <% content_for :title, "#{class_name}" %>
+
+      <div class="#{module_name}-index">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">#{class_name}</h1>
+          <p class="text-gray-600">Manage your #{module_name} items</p>
+        </div>
+
+        <div class="actions-section mt-4">
+          <%= link_to "New #{class_name} Item", new_#{module_name}_path, 
+              class: "btn btn-primary" %>
+        </div>
+
+        <div class="content-section mt-6">
+          <% if @#{module_name}_items.any? %>
+            <div class="grid gap-4">
+              <% @#{module_name}_items.each do |item| %>
+                <div class="card">
+                  <h3 class="font-semibold"><%= item.display_name %></h3>
+                  <p class="text-gray-600"><%= item.description %></p>
+                  
+                  <div class="actions mt-3">
+                    <%= link_to "View", item, class: "btn btn-sm btn-outline" %>
+                    <%= link_to "Edit", edit_#{module_name}_path(item), class: "btn btn-sm btn-outline" %>
+                    <%= link_to "Delete", item, method: :delete, 
+                        confirm: "Are you sure?", 
+                        class: "btn btn-sm btn-outline text-red-600" %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="empty-state">
+              <p class="text-gray-500 text-center py-8">
+                No #{module_name} items yet. 
+                <%= link_to "Create your first one", new_#{module_name}_path, 
+                    class: "text-blue-600 hover:underline" %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'index.html.erb'), index_content)
+
+    # Show view
+    show_content = <<~ERB
+      <% content_for :title, @#{module_name}_item.display_name %>
+
+      <div class="#{module_name}-show">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900"><%= @#{module_name}_item.display_name %></h1>
+          
+          <div class="actions mt-2">
+            <%= link_to "Edit", edit_#{module_name}_path(@#{module_name}_item), 
+                class: "btn btn-outline" %>
+            <%= link_to "Back to #{class_name}", #{module_name}_index_path, 
+                class: "btn btn-outline" %>
+          </div>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <div class="field">
+              <label class="label">Name</label>
+              <p><%= @#{module_name}_item.name %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Description</label>
+              <p><%= @#{module_name}_item.description.presence || "No description provided" %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Created</label>
+              <p><%= @#{module_name}_item.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Last Updated</label>
+              <p><%= @#{module_name}_item.updated_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'show.html.erb'), show_content)
+
+    # Form partial
+    form_content = <<~ERB
+      <%= form_with model: #{module_name}_item, local: true, class: "#{module_name}-form" do |form| %>
+        <% if #{module_name}_item.errors.any? %>
+          <div class="alert alert-error mb-4">
+            <h4><%= pluralize(#{module_name}_item.errors.count, "error") %> prohibited this item from being saved:</h4>
+            <ul class="mt-2">
+              <% #{module_name}_item.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="field">
+          <%= form.label :name, class: "label" %>
+          <%= form.text_field :name, class: "input-field" %>
+        </div>
+
+        <div class="field mt-4">
+          <%= form.label :description, class: "label" %>
+          <%= form.text_area :description, rows: 4, class: "input-field" %>
+        </div>
+
+        <div class="actions mt-6">
+          <%= form.submit class: "btn btn-primary" %>
+          <%= link_to "Cancel", #{module_name}_index_path, class: "btn btn-outline ml-2" %>
+        </div>
+      <% end %>
+    ERB
+
+    create_file(File.join(views_path, '_form.html.erb'), form_content)
+
+    # New view
+    new_content = <<~ERB
+      <% content_for :title, "New #{class_name} Item" %>
+
+      <div class="#{module_name}-new">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">New #{class_name} Item</h1>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <%= render 'form', #{module_name}_item: @#{module_name}_item %>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'new.html.erb'), new_content)
+
+    # Edit view
+    edit_content = <<~ERB
+      <% content_for :title, "Edit \#{@#{module_name}_item.display_name}" %>
+
+      <div class="#{module_name}-edit">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">Edit <%= @#{module_name}_item.display_name %></h1>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <%= render 'form', #{module_name}_item: @#{module_name}_item %>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'edit.html.erb'), edit_content)
+  end
+
+  def create_module_migration(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    migration_name = "create_#{module_name}_items"
+    
+    migration_content = <<~RUBY
+      # frozen_string_literal: true
+
+      class Create#{class_name}Items < ActiveRecord::Migration[7.0]
+        def change
+          create_table :#{module_name}_items do |t|
+            t.references :user, null: false, foreign_key: true
+            t.string :name, null: false
+            t.text :description
+            t.boolean :active, default: true, null: false
+            t.json :metadata, default: {}
+
+            t.timestamps
+          end
+
+          add_index :#{module_name}_items, [:user_id, :active]
+          add_index :#{module_name}_items, :name
+          add_index :#{module_name}_items, :created_at
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'db', 'migrate', "#{migration_name}.rb"), migration_content)
+  end
+
+  def create_module_tests(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    # Create Minitest files
+    create_minitest_files(module_name, module_path, class_name)
+    
+    # Create RSpec files
+    create_rspec_files(module_name, module_path, class_name)
+  end
+
+  def create_minitest_files(module_name, module_path, class_name)
+    # Controller test
+    controller_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ControllerTest < ActionDispatch::IntegrationTest
+        setup do
+          @user = users(:one)
+          @#{module_name}_item = #{module_name}_items(:one)
+          sign_in @user
+        end
+
+        test "should get index" do
+          get #{module_name}_index_url
+          assert_response :success
+        end
+
+        test "should get new" do
+          get new_#{module_name}_url
+          assert_response :success
+        end
+
+        test "should create #{module_name}_item" do
+          assert_difference('#{class_name}Item.count') do
+            post #{module_name}_index_url, params: { 
+              #{module_name}_item: { 
+                name: "Test Item", 
+                description: "Test Description" 
+              } 
+            }
+          end
+
+          assert_redirected_to #{module_name}_url(#{class_name}Item.last)
+        end
+
+        test "should show #{module_name}_item" do
+          get #{module_name}_url(@#{module_name}_item)
+          assert_response :success
+        end
+
+        test "should get edit" do
+          get edit_#{module_name}_url(@#{module_name}_item)
+          assert_response :success
+        end
+
+        test "should update #{module_name}_item" do
+          patch #{module_name}_url(@#{module_name}_item), params: { 
+            #{module_name}_item: { 
+              name: @#{module_name}_item.name, 
+              description: "Updated Description" 
+            } 
+          }
+          assert_redirected_to #{module_name}_url(@#{module_name}_item)
+        end
+
+        test "should destroy #{module_name}_item" do
+          assert_difference('#{class_name}Item.count', -1) do
+            delete #{module_name}_url(@#{module_name}_item)
+          end
+
+          assert_redirected_to #{module_name}_index_url
+        end
+
+        test "should not access other user's items" do
+          other_user = users(:two)
+          other_item = #{class_name}Item.create!(
+            user: other_user, 
+            name: "Other User Item"
+          )
+
+          assert_raises(ActiveRecord::RecordNotFound) do
+            get #{module_name}_url(other_item)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'controllers', "#{module_name}_controller_test.rb"), controller_test_content)
+
+    # Model test
+    model_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ItemTest < ActiveSupport::TestCase
+        def setup
+          @user = users(:one)
+          @#{module_name}_item = #{class_name}Item.new(
+            user: @user,
+            name: "Test Item",
+            description: "Test Description"
+          )
+        end
+
+        test "should be valid" do
+          assert @#{module_name}_item.valid?
+        end
+
+        test "should require name" do
+          @#{module_name}_item.name = nil
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "can't be blank"
+        end
+
+        test "should require user" do
+          @#{module_name}_item.user = nil
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:user], "must exist"
+        end
+
+        test "name should not be too short" do
+          @#{module_name}_item.name = "a"
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "is too short (minimum is 2 characters)"
+        end
+
+        test "name should not be too long" do
+          @#{module_name}_item.name = "a" * 101
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "is too long (maximum is 100 characters)"
+        end
+
+        test "description should not be too long" do
+          @#{module_name}_item.description = "a" * 501
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:description], "is too long (maximum is 500 characters)"
+        end
+
+        test "should have display_name method" do
+          assert_equal "Test Item", @#{module_name}_item.display_name
+        end
+
+        test "display_name should fallback when name is blank" do
+          @#{module_name}_item.name = ""
+          assert_equal "Untitled #{class_name}", @#{module_name}_item.display_name
+        end
+
+        test "should scope active items" do
+          active_item = #{class_name}Item.create!(user: @user, name: "Active", active: true)
+          inactive_item = #{class_name}Item.create!(user: @user, name: "Inactive", active: false)
+
+          assert_includes #{class_name}Item.active, active_item
+          assert_not_includes #{class_name}Item.active, inactive_item
+        end
+
+        test "should order recent items" do
+          old_item = #{class_name}Item.create!(user: @user, name: "Old", created_at: 2.days.ago)
+          new_item = #{class_name}Item.create!(user: @user, name: "New", created_at: 1.day.ago)
+
+          recent_items = #{class_name}Item.recent
+          assert_equal new_item, recent_items.first
+          assert_equal old_item, recent_items.second
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'models', "#{module_name}_item_test.rb"), model_test_content)
+
+    # Service test
+    service_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ServiceTest < ActiveSupport::TestCase
+        def setup
+          @user = users(:one)
+          @service = #{class_name}Service.new(@user)
+        end
+
+        test "should initialize with user" do
+          assert_equal @user, @service.user
+          assert_empty @service.errors
+        end
+
+        test "should create item successfully" do
+          attributes = { name: "Test Item", description: "Test Description" }
+          
+          assert_difference('#{class_name}Item.count') do
+            item = @service.create_item(attributes)
+            assert_not_nil item
+            assert_equal "Test Item", item.name
+            assert_equal "Test Description", item.description
+            assert_equal @user, item.user
+          end
+          
+          assert @service.valid?
+        end
+
+        test "should not create invalid item" do
+          attributes = { name: "" } # Invalid name
+          
+          assert_no_difference('#{class_name}Item.count') do
+            item = @service.create_item(attributes)
+            assert_nil item
+          end
+          
+          assert_not @service.valid?
+          assert_not_empty @service.errors
+        end
+
+        test "should update item successfully" do
+          item = #{class_name}Item.create!(user: @user, name: "Original Name")
+          
+          updated_item = @service.update_item(item, { name: "Updated Name" })
+          
+          assert_not_nil updated_item
+          assert_equal "Updated Name", updated_item.name
+          assert @service.valid?
+        end
+
+        test "should not update item with invalid data" do
+          item = #{class_name}Item.create!(user: @user, name: "Original Name")
+          
+          updated_item = @service.update_item(item, { name: "" })
+          
+          assert_nil updated_item
+          assert_not @service.valid?
+          assert_not_empty @service.errors
+        end
+
+        test "should delete item successfully" do
+          item = #{class_name}Item.create!(user: @user, name: "To Delete")
+          
+          assert_difference('#{class_name}Item.count', -1) do
+            result = @service.delete_item(item)
+            assert result
+          end
+          
+          assert @service.valid?
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'services', "#{module_name}_service_test.rb"), service_test_content)
+
+    # Integration test
+    integration_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}IntegrationTest < ActionDispatch::IntegrationTest
+        def setup
+          @user = users(:one)
+          sign_in @user
+        end
+
+        test "complete #{module_name} workflow" do
+          # Visit index page
+          get #{module_name}_index_path
+          assert_response :success
+          assert_select 'h1', '#{class_name}'
+
+          # Create new item
+          get new_#{module_name}_path
+          assert_response :success
+
+          post #{module_name}_index_path, params: {
+            #{module_name}_item: {
+              name: "Integration Test Item",
+              description: "Created during integration test"
+            }
+          }
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+          assert_select 'h1', 'Integration Test Item'
+
+          # Edit the item
+          item = #{class_name}Item.last
+          get edit_#{module_name}_path(item)
+          assert_response :success
+
+          patch #{module_name}_path(item), params: {
+            #{module_name}_item: {
+              name: "Updated Integration Test Item",
+              description: "Updated during integration test"
+            }
+          }
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+          assert_select 'h1', 'Updated Integration Test Item'
+
+          # Delete the item
+          assert_difference('#{class_name}Item.count', -1) do
+            delete #{module_name}_path(item)
+          end
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+        end
+
+        test "should handle validation errors gracefully" do
+          post #{module_name}_index_path, params: {
+            #{module_name}_item: {
+              name: "", # Invalid
+              description: "Should not be created"
+            }
+          }
+          
+          assert_response :unprocessable_entity
+          assert_select '.alert-error'
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'integration', "#{module_name}_integration_test.rb"), integration_test_content)
+
+    # Fixtures
+    fixtures_content = <<~YAML
+      # Test fixtures for #{class_name}Item
+      
+      one:
+        user: one
+        name: "First #{class_name} Item"
+        description: "This is the first test #{module_name} item"
+        active: true
+        metadata: {}
+
+      two:
+        user: two
+        name: "Second #{class_name} Item"
+        description: "This is the second test #{module_name} item"
+        active: true
+        metadata: {}
+
+      inactive:
+        user: one
+        name: "Inactive #{class_name} Item"
+        description: "This is an inactive test #{module_name} item"
+        active: false
+        metadata: {}
+    YAML
+
+    create_file(File.join(module_path, 'test', 'fixtures', "#{module_name}_items.yml"), fixtures_content)
+  end
+
+  def create_rspec_files(module_name, module_path, class_name)
+    # Controller spec
+    controller_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Controller, type: :controller do
+        let(:user) { create(:user) }
+        let(:#{module_name}_item) { create(:#{module_name}_item, user: user) }
+
+        before do
+          sign_in user
+        end
+
+        describe 'GET #index' do
+          it 'returns a success response' do
+            get :index
+            expect(response).to be_successful
+          end
+
+          it 'assigns @#{module_name}_items' do
+            #{module_name}_item # Create the item
+            get :index
+            expect(assigns(:#{module_name}_items)).to include(#{module_name}_item)
+          end
+        end
+
+        describe 'GET #show' do
+          it 'returns a success response' do
+            get :show, params: { id: #{module_name}_item.to_param }
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'GET #new' do
+          it 'returns a success response' do
+            get :new
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'GET #edit' do
+          it 'returns a success response' do
+            get :edit, params: { id: #{module_name}_item.to_param }
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'POST #create' do
+          context 'with valid parameters' do
+            let(:valid_attributes) do
+              { name: 'Test Item', description: 'Test Description' }
+            end
+
+            it 'creates a new #{class_name}Item' do
+              expect {
+                post :create, params: { #{module_name}_item: valid_attributes }
+              }.to change(#{class_name}Item, :count).by(1)
+            end
+
+            it 'redirects to the created #{module_name}_item' do
+              post :create, params: { #{module_name}_item: valid_attributes }
+              expect(response).to redirect_to(#{class_name}Item.last)
+            end
+          end
+
+          context 'with invalid parameters' do
+            let(:invalid_attributes) do
+              { name: '', description: 'Test Description' }
+            end
+
+            it 'does not create a new #{class_name}Item' do
+              expect {
+                post :create, params: { #{module_name}_item: invalid_attributes }
+              }.to change(#{class_name}Item, :count).by(0)
+            end
+
+            it "returns a success response (i.e. to display the 'new' template)" do
+              post :create, params: { #{module_name}_item: invalid_attributes }
+              expect(response).to have_http_status(:unprocessable_entity)
+            end
+          end
+        end
+
+        describe 'PUT #update' do
+          context 'with valid parameters' do
+            let(:new_attributes) do
+              { name: 'Updated Item', description: 'Updated Description' }
+            end
+
+            it 'updates the requested #{module_name}_item' do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: new_attributes }
+              #{module_name}_item.reload
+              expect(#{module_name}_item.name).to eq('Updated Item')
+            end
+
+            it 'redirects to the #{module_name}_item' do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: new_attributes }
+              expect(response).to redirect_to(#{module_name}_item)
+            end
+          end
+
+          context 'with invalid parameters' do
+            let(:invalid_attributes) do
+              { name: '', description: 'Updated Description' }
+            end
+
+            it "returns a success response (i.e. to display the 'edit' template)" do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: invalid_attributes }
+              expect(response).to have_http_status(:unprocessable_entity)
+            end
+          end
+        end
+
+        describe 'DELETE #destroy' do
+          it 'destroys the requested #{module_name}_item' do
+            #{module_name}_item # Create the item
+            expect {
+              delete :destroy, params: { id: #{module_name}_item.to_param }
+            }.to change(#{class_name}Item, :count).by(-1)
+          end
+
+          it 'redirects to the #{module_name}_items list' do
+            delete :destroy, params: { id: #{module_name}_item.to_param }
+            expect(response).to redirect_to(#{module_name}_index_url)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'controllers', "#{module_name}_controller_spec.rb"), controller_spec_content)
+
+    # Model spec
+    model_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Item, type: :model do
+        let(:user) { create(:user) }
+        
+        describe 'validations' do
+          it { should belong_to(:user) }
+          it { should validate_presence_of(:name) }
+          it { should validate_length_of(:name).is_at_least(2).is_at_most(100) }
+          it { should validate_length_of(:description).is_at_most(500) }
+        end
+
+        describe 'scopes' do
+          let!(:active_item) { create(:#{module_name}_item, user: user, active: true) }
+          let!(:inactive_item) { create(:#{module_name}_item, user: user, active: false) }
+          let!(:old_item) { create(:#{module_name}_item, user: user, created_at: 2.days.ago) }
+          let!(:new_item) { create(:#{module_name}_item, user: user, created_at: 1.day.ago) }
+
+          describe '.active' do
+            it 'returns only active items' do
+              expect(#{class_name}Item.active).to include(active_item)
+              expect(#{class_name}Item.active).not_to include(inactive_item)
+            end
+          end
+
+          describe '.recent' do
+            it 'returns items ordered by creation date (newest first)' do
+              recent_items = #{class_name}Item.recent
+              expect(recent_items.first).to eq(new_item)
+              expect(recent_items.second).to eq(old_item)
+            end
+          end
+        end
+
+        describe '#display_name' do
+          let(:item) { build(:#{module_name}_item, user: user) }
+
+          context 'when name is present' do
+            it 'returns the name' do
+              item.name = 'Test Item'
+              expect(item.display_name).to eq('Test Item')
+            end
+          end
+
+          context 'when name is blank' do
+            it 'returns a default name' do
+              item.name = ''
+              expect(item.display_name).to eq('Untitled #{class_name}')
+            end
+          end
+        end
+
+        describe '#to_s' do
+          let(:item) { build(:#{module_name}_item, user: user, name: 'Test Item') }
+
+          it 'returns the display name' do
+            expect(item.to_s).to eq('Test Item')
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'models', "#{module_name}_item_spec.rb"), model_spec_content)
+
+    # Service spec
+    service_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Service do
+        let(:user) { create(:user) }
+        let(:service) { described_class.new(user) }
+
+        describe '#initialize' do
+          it 'sets the user' do
+            expect(service.user).to eq(user)
+          end
+
+          it 'initializes empty errors' do
+            expect(service.errors).to be_empty
+          end
+        end
+
+        describe '#create_item' do
+          let(:attributes) { { name: 'Test Item', description: 'Test Description' } }
+
+          context 'with valid attributes' do
+            it 'creates a new item' do
+              expect {
+                service.create_item(attributes)
+              }.to change(#{class_name}Item, :count).by(1)
+            end
+
+            it 'returns the created item' do
+              item = service.create_item(attributes)
+              expect(item).to be_a(#{class_name}Item)
+              expect(item.name).to eq('Test Item')
+              expect(item.user).to eq(user)
+            end
+
+            it 'has no errors' do
+              service.create_item(attributes)
+              expect(service).to be_valid
+            end
+          end
+
+          context 'with invalid attributes' do
+            let(:invalid_attributes) { { name: '' } }
+
+            it 'does not create an item' do
+              expect {
+                service.create_item(invalid_attributes)
+              }.not_to change(#{class_name}Item, :count)
+            end
+
+            it 'returns nil' do
+              item = service.create_item(invalid_attributes)
+              expect(item).to be_nil
+            end
+
+            it 'has errors' do
+              service.create_item(invalid_attributes)
+              expect(service).not_to be_valid
+              expect(service.errors).not_to be_empty
+            end
+          end
+        end
+
+        describe '#update_item' do
+          let(:item) { create(:#{module_name}_item, user: user, name: 'Original Name') }
+          let(:attributes) { { name: 'Updated Name' } }
+
+          context 'with valid attributes' do
+            it 'updates the item' do
+              updated_item = service.update_item(item, attributes)
+              expect(updated_item.name).to eq('Updated Name')
+            end
+
+            it 'returns the updated item' do
+              updated_item = service.update_item(item, attributes)
+              expect(updated_item).to eq(item)
+            end
+
+            it 'has no errors' do
+              service.update_item(item, attributes)
+              expect(service).to be_valid
+            end
+          end
+
+          context 'with invalid attributes' do
+            let(:invalid_attributes) { { name: '' } }
+
+            it 'does not update the item' do
+              service.update_item(item, invalid_attributes)
+              item.reload
+              expect(item.name).to eq('Original Name')
+            end
+
+            it 'returns nil' do
+              result = service.update_item(item, invalid_attributes)
+              expect(result).to be_nil
+            end
+
+            it 'has errors' do
+              service.update_item(item, invalid_attributes)
+              expect(service).not_to be_valid
+              expect(service.errors).not_to be_empty
+            end
+          end
+        end
+
+        describe '#delete_item' do
+          let(:item) { create(:#{module_name}_item, user: user) }
+
+          it 'destroys the item' do
+            expect {
+              service.delete_item(item)
+            }.to change(#{class_name}Item, :count).by(-1)
+          end
+
+          it 'returns true on success' do
+            result = service.delete_item(item)
+            expect(result).to be true
+          end
+
+          it 'has no errors' do
+            service.delete_item(item)
+            expect(service).to be_valid
+          end
+        end
+
+        describe '#valid?' do
+          it 'returns true when no errors' do
+            expect(service).to be_valid
+          end
+
+          it 'returns false when there are errors' do
+            service.create_item({ name: '' })
+            expect(service).not_to be_valid
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'services', "#{module_name}_service_spec.rb"), service_spec_content)
+
+    # Request spec
+    request_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe "#{class_name} requests", type: :request do
+        let(:user) { create(:user) }
+        let(:#{module_name}_item) { create(:#{module_name}_item, user: user) }
+
+        before do
+          sign_in user
+        end
+
+        describe "GET /#{module_name}" do
+          it "returns http success" do
+            get "/#{module_name}"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "GET /#{module_name}/:id" do
+          it "returns http success" do
+            get "/#{module_name}/\#{#{module_name}_item.id}"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "GET /#{module_name}/new" do
+          it "returns http success" do
+            get "/#{module_name}/new"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "POST /#{module_name}" do
+          let(:valid_params) do
+            { #{module_name}_item: { name: "Test Item", description: "Test Description" } }
+          end
+
+          it "creates a new item and redirects" do
+            expect {
+              post "/#{module_name}", params: valid_params
+            }.to change(#{class_name}Item, :count).by(1)
+            
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+
+        describe "GET /#{module_name}/:id/edit" do
+          it "returns http success" do
+            get "/#{module_name}/\#{#{module_name}_item.id}/edit"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "PATCH /#{module_name}/:id" do
+          let(:valid_params) do
+            { #{module_name}_item: { name: "Updated Item" } }
+          end
+
+          it "updates the item and redirects" do
+            patch "/#{module_name}/\#{#{module_name}_item.id}", params: valid_params
+            
+            #{module_name}_item.reload
+            expect(#{module_name}_item.name).to eq("Updated Item")
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+
+        describe "DELETE /#{module_name}/:id" do
+          it "destroys the item and redirects" do
+            #{module_name}_item # Create the item
+            
+            expect {
+              delete "/#{module_name}/\#{#{module_name}_item.id}"
+            }.to change(#{class_name}Item, :count).by(-1)
+            
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'requests', "#{module_name}_spec.rb"), request_spec_content)
+
+    # Factory
+    factory_content = <<~RUBY
+      # frozen_string_literal: true
+
+      FactoryBot.define do
+        factory :#{module_name}_item, class: '#{class_name}Item' do
+          association :user
+          name { Faker::Lorem.words(number: 2).join(' ').titleize }
+          description { Faker::Lorem.paragraph }
+          active { true }
+          metadata { {} }
+
+          trait :inactive do
+            active { false }
+          end
+
+          trait :without_description do
+            description { nil }
+          end
+
+          trait :with_metadata do
+            metadata { { category: 'test', priority: 'high' } }
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'factories', "#{module_name}_items.rb"), factory_content)
+  end
+
+  def create_module_config(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    # Create routes stub
+    routes_content = <<~RUBY
+      # #{class_name} module routes
+      # Add these routes to your main config/routes.rb file
+      
+      resources :#{module_name}
+      # End #{class_name} module routes
+    RUBY
+
+    create_file(File.join(module_path, 'config', 'routes.rb'), routes_content)
+
+    # Create initializer stub
+    initializer_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module initializer
+      # This file will be copied to config/initializers/#{module_name}.rb during installation
+
+      Rails.application.configure do
+        config.#{module_name} = ActiveSupport::OrderedOptions.new
+        
+        # Module configuration options
+        config.#{module_name}.enabled = true
+        config.#{module_name}.items_per_page = 20
+        config.#{module_name}.allow_public_access = false
+        
+        # Add your custom configuration options here
+        # config.#{module_name}.custom_option = 'default_value'
+      end
+
+      # Optional: Add helpers or custom logic
+      # if defined?(ActionView::Base)
+      #   ActionView::Base.include #{class_name}Helper
+      # end
+    RUBY
+
+    create_file(File.join(module_path, 'config', 'initializers', "#{module_name}.rb"), initializer_content)
+  end
+
+  def create_file(path, content)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, content)
+    puts "  ✅ Created #{Pathname.new(path).relative_path_from(Pathname.new(TEMPLATE_PATH))}" if @verbose
+  end
+
+  def get_module_version(module_template_path)
+    version_path = File.join(module_template_path, 'VERSION')
+    return '1.0.0' unless File.exist?(version_path)
+    File.read(version_path).strip
+  end
+
+  def version_compare(version1, version2)
+    # Simple semantic version comparison
+    v1_parts = version1.split('.').map(&:to_i)
+    v2_parts = version2.split('.').map(&:to_i)
+    
+    # Pad arrays to same length
+    max_length = [v1_parts.length, v2_parts.length].max
+    v1_parts += [0] * (max_length - v1_parts.length)
+    v2_parts += [0] * (max_length - v2_parts.length)
+    
+    # Compare each part
+    v1_parts.zip(v2_parts).each do |a, b|
+      return 1 if a > b
+      return -1 if a < b
+    end
+    0
+  end
+
+  def create_module_backup(module_name, version)
+    timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
+    backup_dir = File.join('backups', 'synth_modules', "#{module_name}_v#{version}_#{timestamp}")
+    
+    FileUtils.mkdir_p(backup_dir)
+    
+    # Backup module files from app/domains
+    domains_path = File.join('app', 'domains', module_name)
+    if Dir.exist?(domains_path)
+      FileUtils.cp_r(domains_path, File.join(backup_dir, 'app_domains'))
+    end
+    
+    # Backup specs/tests
+    ['spec', 'test'].each do |test_dir|
+      test_path = File.join(test_dir, 'domains', module_name)
+      if Dir.exist?(test_path)
+        FileUtils.cp_r(test_path, File.join(backup_dir, "#{test_dir}_domains"))
+      end
+    end
+    
+    # Backup registry entry
+    registry = load_registry
+    module_registry = { 'module' => module_name, 'info' => registry.dig('installed', module_name) }
+    File.write(File.join(backup_dir, 'registry.json'), JSON.pretty_generate(module_registry))
+    
+    backup_dir
+  end
+
+  def detect_conflicts(module_name, module_template_path)
+    conflicts = []
+    
+    # Check if there are local modifications to module files
+    domains_path = File.join('app', 'domains', module_name)
+    return conflicts unless Dir.exist?(domains_path)
+    
+    # Look for files that exist in both template and current installation
+    Dir.glob(File.join(module_template_path, "**/*")).each do |template_file|
+      next if File.directory?(template_file)
+      next if ['install.rb', 'remove.rb', 'VERSION'].include?(File.basename(template_file))
+      
+      relative_path = Pathname.new(template_file).relative_path_from(Pathname.new(module_template_path))
+      current_file = File.join(domains_path, relative_path)
+      
+      if File.exist?(current_file)
+        template_content = File.read(template_file)
+        current_content = File.read(current_file)
+        
+        if template_content != current_content
+          conflicts << {
+            file: relative_path.to_s,
+            template_path: template_file,
+            current_path: current_file
+          }
+        end
+      end
+    end
+    
+    conflicts
+  end
+
+  def handle_conflicts(conflicts, module_name)
+    puts "\n⚠️  Found #{conflicts.length} file conflict(s) in #{module_name}:"
+    conflicts.each { |c| puts "  📄 #{c[:file]}" }
+    
+    puts "\nConflict resolution options:"
+    puts "  [o] Overwrite all with template versions"
+    puts "  [k] Keep all current versions"
+    puts "  [i] Review each conflict individually"
+    puts "  [a] Abort upgrade"
+    
+    print "\nChoose option [o/k/i/a]: "
+    choice = STDIN.gets.chomp.downcase
+    
+    case choice
+    when 'o'
+      # Overwrite all - do nothing, normal upgrade will handle this
+      puts "📝 Will overwrite all conflicted files with template versions"
+    when 'k'
+      # Keep all - mark conflicts to skip
+      conflicts.each { |c| c[:action] = :keep }
+      puts "📝 Will keep all current file versions"
+    when 'i'
+      # Interactive review
+      handle_conflicts_interactively(conflicts)
+    when 'a'
+      puts "❌ Upgrade aborted"
+      exit 0
+    else
+      puts "❌ Invalid choice. Aborting upgrade."
+      exit 1
+    end
+  end
+
+  def handle_conflicts_interactively(conflicts)
+    conflicts.each do |conflict|
+      puts "\n" + "="*60
+      puts "Conflict in: #{conflict[:file]}"
+      puts "="*60
+      
+      puts "\n[1] Template version:"
+      puts File.read(conflict[:template_path]).lines.first(5).join
+      puts "... (truncated)" if File.read(conflict[:template_path]).lines.length > 5
+      
+      puts "\n[2] Current version:"
+      puts File.read(conflict[:current_path]).lines.first(5).join
+      puts "... (truncated)" if File.read(conflict[:current_path]).lines.length > 5
+      
+      print "\nChoose: [1] Use template, [2] Keep current, [s] Skip this file: "
+      choice = STDIN.gets.chomp
+      
+      case choice
+      when '1'
+        conflict[:action] = :overwrite
+      when '2'
+        conflict[:action] = :keep
+      when 's'
+        conflict[:action] = :skip
+      else
+        puts "Invalid choice, keeping current version"
+        conflict[:action] = :keep
+      end
+    end
+  end
+
+  def perform_module_upgrade(module_name, module_template_path, current_version, new_version)
+    # Handle migrations first
+    handle_module_migrations(module_name, module_template_path)
+    
+    # Handle configuration updates
+    handle_module_config(module_name, module_template_path)
+    
+    # Update module files with conflict resolution
+    update_module_files(module_name, module_template_path)
+    
+    # Handle seed data
+    handle_module_seeds(module_name, module_template_path)
+    
+    # Update registry
+    update_registry(module_name, {
+      'version' => new_version,
+      'installed_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+      'template_path' => module_template_path,
+      'previous_version' => current_version,
+      'upgraded_at' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z')
+    })
+  end
+
+  def handle_module_migrations(module_name, module_template_path)
+    migration_path = File.join(module_template_path, 'db', 'migrate')
+    return unless Dir.exist?(migration_path)
+    
+    puts "🗄️  Processing migrations for #{module_name}..." if @verbose
+    
+    # Copy migrations to main db/migrate directory
+    Dir.glob(File.join(migration_path, "*.rb")).each do |migration_file|
+      migration_name = File.basename(migration_file)
+      target_path = File.join('db', 'migrate', migration_name)
+      
+      unless File.exist?(target_path)
+        FileUtils.mkdir_p('db/migrate')
+        FileUtils.cp(migration_file, target_path)
+        puts "  ✅ Copied migration #{migration_name}" if @verbose
+      end
+    end
+  end
+
+  def handle_module_config(module_name, module_template_path)
+    config_path = File.join(module_template_path, 'config')
+    return unless Dir.exist?(config_path)
+    
+    puts "⚙️  Processing configuration for #{module_name}..." if @verbose
+    
+    # Handle initializers
+    initializers_path = File.join(config_path, 'initializers')
+    if Dir.exist?(initializers_path)
+      FileUtils.mkdir_p('config/initializers')
+      Dir.glob(File.join(initializers_path, "*.rb")).each do |initializer|
+        target_path = File.join('config/initializers', File.basename(initializer))
+        FileUtils.cp(initializer, target_path)
+        puts "  ✅ Updated initializer #{File.basename(initializer)}" if @verbose
+      end
+    end
+    
+    # Handle routes
+    routes_file = File.join(config_path, 'routes.rb')
+    if File.exist?(routes_file)
+      puts "  📝 Found routes file - manual integration may be required" if @verbose
+    end
+  end
+
+  def update_module_files(module_name, module_template_path)
+    # Use existing copy_module_files method but with conflict awareness
+    copy_module_files(module_name, module_template_path)
+  end
+
+  def handle_module_seeds(module_name, module_template_path)
+    seeds_path = File.join(module_template_path, 'db', 'seeds.rb')
+    return unless File.exist?(seeds_path)
+    
+    puts "🌱 Found seed data for #{module_name} - consider running: rails db:seed" if @verbose
+    
+    # Copy seeds to a module-specific location
+    target_seeds_dir = File.join('db', 'seeds')
+    FileUtils.mkdir_p(target_seeds_dir)
+    target_seeds_file = File.join(target_seeds_dir, "#{module_name}_seeds.rb")
+    FileUtils.cp(seeds_path, target_seeds_file)
+    puts "  ✅ Copied seeds to #{target_seeds_file}" if @verbose
+  end
+end
+
+# Start the CLI
+SynthCLI.start(ARGV) if __FILE__ == $0
