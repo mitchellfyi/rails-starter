@@ -1,0 +1,211 @@
+<div class="card">
+  <h1 style="margin-bottom: 1rem; color: #1f2937;">Usage Analytics</h1>
+  <p style="color: #6b7280;">Monitor AI usage, costs, and performance across all workspaces.</p>
+</div>
+
+<!-- Date Range and Filters -->
+<div class="card" style="margin-bottom: 1rem;">
+  <%= form_with url: admin_usage_path, method: :get, local: true, style: "display: flex; gap: 1rem; align-items: end;" do |form| %>
+    <div>
+      <%= form.label :date_range, "Time Period", style: "display: block; margin-bottom: 0.25rem; font-weight: 500;" %>
+      <%= form.select :date_range, 
+                      options_for_select([
+                        ['Last 24 hours', '1d'],
+                        ['Last 7 days', '7d'],
+                        ['Last 30 days', '30d'],
+                        ['Last 90 days', '90d']
+                      ], @date_range),
+                      {}, 
+                      { class: "form-control", style: "min-width: 150px;" } %>
+    </div>
+    
+    <div>
+      <%= form.label :workspace_id, "Workspace", style: "display: block; margin-bottom: 0.25rem; font-weight: 500;" %>
+      <%= form.select :workspace_id, 
+                      options_from_collection_for_select([], :id, :name, @workspace_filter),
+                      { prompt: "All Workspaces" },
+                      { class: "form-control", style: "min-width: 200px;" } %>
+    </div>
+    
+    <%= form.submit "Apply Filters", class: "btn btn-primary" %>
+  <% end %>
+</div>
+
+<!-- Overall Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #3b82f6;">Total Executions</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= number_with_delimiter(@total_executions) %></p>
+    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">in <%= @date_range == '1d' ? 'last 24h' : "last #{@date_range}" %></p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #10b981;">Total Tokens</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= number_with_delimiter(@total_tokens) %></p>
+    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">~$<%= sprintf("%.2f", @total_tokens * 0.0001) %> estimated cost</p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #8b5cf6;">Success Rate</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @success_rate %>%</p>
+    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">of executions successful</p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">Avg Tokens/Execution</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @avg_tokens_per_execution %></p>
+    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">average usage</p>
+  </div>
+</div>
+
+<!-- Alerts Section -->
+<% if @failing_jobs[:total_failures] > 0 || @token_spikes.any? %>
+<div class="card" style="margin-bottom: 2rem; border-left: 4px solid #ef4444;">
+  <h3 style="margin-bottom: 1rem; color: #ef4444;">⚠️ Alerts</h3>
+  
+  <% if @failing_jobs[:total_failures] > 0 %>
+    <div style="padding: 0.75rem; background-color: #fef2f2; border-radius: 0.5rem; margin-bottom: 1rem;">
+      <p style="margin: 0; font-weight: 500; color: #991b1b;">
+        <%= @failing_jobs[:total_failures] %> failed executions detected
+        <% if @failing_jobs[:recent_failures] > 0 %>
+          (<%= @failing_jobs[:recent_failures] %> in the last hour)
+        <% end %>
+      </p>
+    </div>
+  <% end %>
+  
+  <% if @token_spikes.any? %>
+    <div style="padding: 0.75rem; background-color: #fffbeb; border-radius: 0.5rem;">
+      <p style="margin: 0; font-weight: 500; color: #92400e;">
+        <%= @token_spikes.count %> high-token usage spikes detected (95th percentile)
+      </p>
+    </div>
+  <% end %>
+</div>
+<% end %>
+
+<!-- Charts and Analytics -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <!-- Daily Usage Chart -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Daily Usage Trend</h3>
+    <div style="height: 300px; display: flex; align-items: end; gap: 4px; padding: 1rem 0;">
+      <% max_executions = @daily_usage.values.map { |d| d[:executions] }.max %>
+      <% max_executions = 1 if max_executions == 0 %>
+      <% @daily_usage.each do |date, data| %>
+        <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+          <div style="background-color: #3b82f6; width: 100%; height: <%= (data[:executions].to_f / max_executions * 200).round %>px; margin-bottom: 0.5rem; border-radius: 2px; min-height: 2px;" title="<%= data[:executions] %> executions, <%= number_with_delimiter(data[:tokens]) %> tokens"></div>
+          <span style="font-size: 0.75rem; color: #6b7280; writing-mode: vertical-rl; text-orientation: mixed;"><%= Date.parse(date).strftime('%m/%d') %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <!-- Top Models -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Top Models Used</h3>
+    <% if @top_models.any? %>
+      <% @top_models.each do |model, count| %>
+        <div style="padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="display: flex; justify-content: between; align-items: center;">
+            <span style="font-weight: 500;"><%= model || 'Unknown' %></span>
+            <span style="background-color: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;"><%= count %></span>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <p style="color: #6b7280;">No model usage data available</p>
+    <% end %>
+  </div>
+</div>
+
+<!-- Workspace Usage and Expensive Prompts -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem;">
+  <!-- Workspace Usage -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Workspace Usage</h3>
+    <% if @workspace_stats.any? %>
+      <% @workspace_stats.each do |stat| %>
+        <div style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.25rem;">
+            <span style="font-weight: 500;">
+              <% if stat.respond_to?(:name) %>
+                <%= link_to stat.name || "Workspace #{stat.id}", admin_usage_workspace_detail_path(stat.id, date_range: @date_range), style: "color: #3b82f6; text-decoration: none;" %>
+              <% else %>
+                <%= link_to "Workspace #{stat.workspace_id}", admin_usage_workspace_detail_path(stat.workspace_id, date_range: @date_range), style: "color: #3b82f6; text-decoration: none;" %>
+              <% end %>
+            </span>
+            <span style="font-weight: bold;"><%= number_with_delimiter(stat.total_tokens || 0) %> tokens</span>
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            <%= stat.execution_count %> executions • Avg: <%= stat.avg_tokens&.round || 0 %> tokens
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <p style="color: #6b7280;">No workspace usage data available</p>
+    <% end %>
+  </div>
+  
+  <!-- Most Expensive Prompts -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Most Expensive Prompts</h3>
+    <% if @expensive_prompts.any? %>
+      <% @expensive_prompts.each do |prompt| %>
+        <div style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.25rem;">
+            <span style="font-weight: 500;">
+              <% if prompt.respond_to?(:name) %>
+                <%= prompt.name %>
+              <% else %>
+                <%= truncate(prompt.rendered_prompt, length: 50) %>
+              <% end %>
+            </span>
+            <span style="font-weight: bold;"><%= number_with_delimiter(prompt.total_tokens) %> tokens</span>
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            <%= prompt.execution_count %> executions • Avg: <%= (prompt.avg_tokens || prompt.total_tokens.to_f / prompt.execution_count).round %> tokens
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <p style="color: #6b7280;">No prompt usage data available</p>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background-color: #2563eb;
+  }
+  
+  .form-control {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+  }
+</style>
