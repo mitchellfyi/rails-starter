@@ -1,0 +1,144 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <h1 class="text-xl font-semibold text-gray-900">
+      <%= @ai_dataset.new_record? ? "New AI Dataset" : "Edit AI Dataset" %>
+    </h1>
+    <p class="mt-1 text-sm text-gray-500">
+      Upload and manage training or embedding data for AI customization
+    </p>
+  </div>
+
+  <%= form_with model: [@workspace, @ai_dataset], local: true, multipart: true, class: "p-6" do |form| %>
+    <% if @ai_dataset.errors.any? %>
+      <div class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">
+              There were <%= pluralize(@ai_dataset.errors.count, "error") %> with your submission:
+            </h3>
+            <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+              <% @ai_dataset.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="space-y-6">
+      <!-- Basic Information -->
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div>
+          <%= form.label :name, class: "block text-sm font-medium text-gray-700" %>
+          <%= form.text_field :name, 
+                              class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm",
+                              placeholder: "e.g. Product Documentation" %>
+        </div>
+
+        <div>
+          <%= form.label :dataset_type, "Type", class: "block text-sm font-medium text-gray-700" %>
+          <%= form.select :dataset_type, 
+                          options_for_select([
+                            ['Embedding (for RAG/semantic search)', 'embedding'],
+                            ['Fine-tuning (for custom models)', 'fine-tune']
+                          ], @ai_dataset.dataset_type),
+                          { prompt: 'Select dataset type' },
+                          { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
+          <p class="mt-1 text-xs text-gray-500">
+            Choose the intended use for this dataset
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <%= form.label :description, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_area :description, 
+                           rows: 3,
+                           class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm",
+                           placeholder: "Describe the content and purpose of this dataset..." %>
+      </div>
+
+      <!-- File Upload -->
+      <div>
+        <%= form.label :files, "Files", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.file_field :files, 
+                            multiple: true,
+                            accept: ".txt,.md,.json,.csv",
+                            class: "mt-1 block w-full text-sm text-gray-500
+                                   file:mr-4 file:py-2 file:px-4
+                                   file:rounded-md file:border-0
+                                   file:text-sm file:font-medium
+                                   file:bg-blue-50 file:text-blue-700
+                                   hover:file:bg-blue-100" %>
+        <p class="mt-1 text-xs text-gray-500">
+          Supported formats: .txt, .md, .json, .csv (max 10MB per file)
+        </p>
+      </div>
+
+      <!-- Existing Files (for edit) -->
+      <% unless @ai_dataset.new_record? || @ai_dataset.files.empty? %>
+        <div>
+          <h3 class="text-sm font-medium text-gray-700 mb-3">Existing Files</h3>
+          <div class="space-y-2">
+            <% @ai_dataset.files.each do |file| %>
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                <div class="flex items-center space-x-3">
+                  <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900"><%= file.filename %></p>
+                    <p class="text-xs text-gray-500">
+                      <%= number_to_human_size(file.byte_size) %> • 
+                      <%= file.content_type %>
+                    </p>
+                  </div>
+                </div>
+                <%= link_to "Download", 
+                           download_file_workspace_ai_dataset_path(@workspace, @ai_dataset, file_id: file.id),
+                           class: "text-blue-600 hover:text-blue-800 text-sm" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Dataset Type Information -->
+      <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-blue-800">Dataset Types</h3>
+            <div class="mt-2 text-sm text-blue-700">
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>Embedding:</strong> For semantic search and RAG (Retrieval-Augmented Generation). Files will be chunked and embedded for similarity search.</li>
+                <li><strong>Fine-tuning:</strong> For training custom models. Files should be in OpenAI fine-tuning format (JSONL with prompt/completion pairs).</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="mt-8 flex items-center justify-between">
+      <%= link_to "Cancel", workspace_ai_datasets_path(@workspace), 
+                  class: "bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      
+      <div class="flex space-x-3">
+        <%= form.submit (@ai_dataset.new_record? ? "Create Dataset" : "Update Dataset"),
+                        class: "bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      </div>
+    </div>
+  <% end %>
+</div>

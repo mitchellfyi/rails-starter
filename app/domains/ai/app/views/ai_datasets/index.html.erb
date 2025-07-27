@@ -1,0 +1,108 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">AI Datasets</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Manage training and embedding datasets for AI customization
+        </p>
+      </div>
+      <%= link_to "New Dataset", new_workspace_ai_dataset_path(@workspace), 
+                  class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="px-6 py-3 border-b border-gray-200 bg-gray-50">
+    <%= form_with url: workspace_ai_datasets_path(@workspace), method: :get, local: true, class: "flex space-x-4" do |form| %>
+      <%= form.select :type, options_for_select([
+        ['All Types', ''],
+        ['Embedding', 'embedding'],
+        ['Fine-tune', 'fine-tune']
+      ], params[:type]), {}, { class: "rounded-md border-gray-300 text-sm" } %>
+      
+      <%= form.select :status, options_for_select([
+        ['All Statuses', ''],
+        ['Pending', 'pending'],
+        ['Processing', 'processing'],
+        ['Completed', 'completed'],
+        ['Failed', 'failed']
+      ], params[:status]), {}, { class: "rounded-md border-gray-300 text-sm" } %>
+      
+      <%= form.submit "Filter", class: "bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md text-sm" %>
+    <% end %>
+  </div>
+
+  <!-- Dataset List -->
+  <div class="divide-y divide-gray-200">
+    <% if @ai_datasets.any? %>
+      <% @ai_datasets.each do |dataset| %>
+        <div class="px-6 py-4 hover:bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center space-x-3">
+                <%= link_to dataset.name, [@workspace, dataset], 
+                           class: "text-lg font-medium text-blue-600 hover:text-blue-800" %>
+                
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                           <%= dataset.dataset_type == 'embedding' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800' %>">
+                  <%= dataset.dataset_type.titleize %>
+                </span>
+                
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                           <%= case dataset.processed_status
+                               when 'completed' then 'bg-green-100 text-green-800'
+                               when 'processing' then 'bg-yellow-100 text-yellow-800'
+                               when 'failed' then 'bg-red-100 text-red-800'
+                               else 'bg-gray-100 text-gray-800'
+                               end %>">
+                  <%= dataset.processed_status.titleize %>
+                </span>
+              </div>
+              
+              <% if dataset.description.present? %>
+                <p class="mt-1 text-sm text-gray-600"><%= dataset.description %></p>
+              <% end %>
+              
+              <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500">
+                <span><%= pluralize(dataset.file_count, 'file') %></span>
+                <span><%= dataset.total_file_size_human %></span>
+                <span>Created by <%= dataset.created_by.name %></span>
+                <span><%= time_ago_in_words(dataset.created_at) %> ago</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <% if dataset.can_process? %>
+                <%= link_to "Process", process_workspace_ai_dataset_path(@workspace, dataset),
+                           method: :post,
+                           class: "bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm",
+                           data: { confirm: "Are you sure you want to process this dataset?" } %>
+              <% end %>
+              
+              <%= link_to "View", [@workspace, dataset], 
+                         class: "text-blue-600 hover:text-blue-800 px-3 py-1 rounded text-sm" %>
+              
+              <%= link_to "Edit", edit_workspace_ai_dataset_path(@workspace, dataset),
+                         class: "text-gray-600 hover:text-gray-800 px-3 py-1 rounded text-sm" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-12 text-center">
+        <div class="text-gray-400">
+          <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No datasets</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating your first AI dataset.</p>
+        <div class="mt-6">
+          <%= link_to "New Dataset", new_workspace_ai_dataset_path(@workspace),
+                     class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

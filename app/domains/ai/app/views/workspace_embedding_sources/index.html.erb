@@ -1,0 +1,137 @@
+<div class="bg-white shadow rounded-lg">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900">Embedding Sources</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          Manage knowledge sources for RAG and semantic search
+        </p>
+      </div>
+      <%= link_to "New Source", new_workspace_workspace_embedding_source_path(@workspace), 
+                  class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+    </div>
+  </div>
+
+  <!-- Available Datasets Info -->
+  <% if @available_datasets.any? %>
+    <div class="px-6 py-3 border-b border-gray-200 bg-blue-50">
+      <p class="text-sm text-blue-700">
+        <svg class="inline h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        You have <%= pluralize(@available_datasets.count, 'completed dataset') %> available for creating embedding sources.
+      </p>
+    </div>
+  <% end %>
+
+  <!-- Filters -->
+  <div class="px-6 py-3 border-b border-gray-200 bg-gray-50">
+    <%= form_with url: workspace_workspace_embedding_sources_path(@workspace), method: :get, local: true, class: "flex space-x-4" do |form| %>
+      <%= form.select :type, options_for_select([
+        ['All Types', ''],
+        ['Dataset', 'dataset'],
+        ['Context Fetcher', 'context_fetcher'],
+        ['Semantic Memory', 'semantic_memory'],
+        ['External API', 'external_api'],
+        ['Manual', 'manual']
+      ], params[:type]), {}, { class: "rounded-md border-gray-300 text-sm" } %>
+      
+      <%= form.select :status, options_for_select([
+        ['All Statuses', ''],
+        ['Active', 'active'],
+        ['Inactive', 'inactive'],
+        ['Processing', 'processing'],
+        ['Error', 'error']
+      ], params[:status]), {}, { class: "rounded-md border-gray-300 text-sm" } %>
+      
+      <%= form.submit "Filter", class: "bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md text-sm" %>
+    <% end %>
+  </div>
+
+  <!-- Sources List -->
+  <div class="divide-y divide-gray-200">
+    <% if @embedding_sources.any? %>
+      <% @embedding_sources.each do |source| %>
+        <div class="px-6 py-4 hover:bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="flex items-center space-x-3">
+                <%= link_to source.name, [@workspace, source], 
+                           class: "text-lg font-medium text-blue-600 hover:text-blue-800" %>
+                
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                           <%= case source.source_type
+                               when 'dataset' then 'bg-green-100 text-green-800'
+                               when 'context_fetcher' then 'bg-blue-100 text-blue-800'
+                               when 'semantic_memory' then 'bg-purple-100 text-purple-800'
+                               when 'external_api' then 'bg-yellow-100 text-yellow-800'
+                               else 'bg-gray-100 text-gray-800'
+                               end %>">
+                  <%= source.source_type.titleize %>
+                </span>
+                
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                           <%= case source.status
+                               when 'active' then 'bg-green-100 text-green-800'
+                               when 'processing' then 'bg-yellow-100 text-yellow-800'
+                               when 'error' then 'bg-red-100 text-red-800'
+                               else 'bg-gray-100 text-gray-800'
+                               end %>">
+                  <%= source.status.titleize %>
+                </span>
+              </div>
+              
+              <% if source.description.present? %>
+                <p class="mt-1 text-sm text-gray-600"><%= source.description %></p>
+              <% end %>
+              
+              <div class="mt-2 flex items-center space-x-4 text-sm text-gray-500">
+                <% if source.ai_dataset %>
+                  <span>Dataset: <%= source.ai_dataset.name %></span>
+                <% end %>
+                <span>Created by <%= source.created_by.name %></span>
+                <span><%= time_ago_in_words(source.created_at) %> ago</span>
+                <% if source.last_tested_at %>
+                  <span>Last tested <%= time_ago_in_words(source.last_tested_at) %> ago</span>
+                <% end %>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <% if source.ready? %>
+                <%= link_to "Test", test_workspace_workspace_embedding_source_path(@workspace, source),
+                           method: :post,
+                           class: "bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded text-sm" %>
+                           
+                <%= link_to "Refresh", refresh_workspace_workspace_embedding_source_path(@workspace, source),
+                           method: :post,
+                           class: "bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm",
+                           data: { confirm: "Are you sure you want to refresh this source?" } %>
+              <% end %>
+              
+              <%= link_to "View", [@workspace, source], 
+                         class: "text-blue-600 hover:text-blue-800 px-3 py-1 rounded text-sm" %>
+              
+              <%= link_to "Edit", edit_workspace_workspace_embedding_source_path(@workspace, source),
+                         class: "text-gray-600 hover:text-gray-800 px-3 py-1 rounded text-sm" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-12 text-center">
+        <div class="text-gray-400">
+          <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-8v2m0 6v2" />
+          </svg>
+        </div>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No embedding sources</h3>
+        <p class="mt-1 text-sm text-gray-500">Get started by creating your first embedding source.</p>
+        <div class="mt-6">
+          <%= link_to "New Source", new_workspace_workspace_embedding_source_path(@workspace),
+                     class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
