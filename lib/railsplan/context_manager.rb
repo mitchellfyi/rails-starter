@@ -226,17 +226,20 @@ module RailsPlan
       relative_path = file.sub(@app_root + "/", "")
       class_name = classify(File.basename(file, ".rb"))
       
+      # Skip if class name is empty
+      return nil if class_name.empty?
+      
       # Extract basic information
       associations = extract_associations(content)
       validations = extract_validations(content)
       scopes = extract_scopes(content)
       
       {
-        file: relative_path,
-        class_name: class_name,
-        associations: associations,
-        validations: validations,
-        scopes: scopes
+        "file" => relative_path,
+        "class_name" => class_name,
+        "associations" => associations,
+        "validations" => validations,
+        "scopes" => scopes
       }
     end
     
@@ -244,13 +247,16 @@ module RailsPlan
       relative_path = file.sub(@app_root + "/", "")
       class_name = classify(File.basename(file, ".rb"))
       
+      # Skip if class name is empty
+      return nil if class_name.empty?
+      
       # Extract actions
       actions = content.scan(/def\s+([a-zA-Z_][a-zA-Z0-9_]*!)?\s*$/).flatten.compact
       
       {
-        file: relative_path,
-        class_name: class_name,
-        actions: actions
+        "file" => relative_path,
+        "class_name" => class_name,
+        "actions" => actions
       }
     end
     
@@ -282,17 +288,17 @@ module RailsPlan
       
       # belongs_to
       content.scan(/belongs_to\s+:([a-zA-Z_][a-zA-Z0-9_]*)/) do |match|
-        associations << { type: "belongs_to", name: match[0] }
+        associations << { "type" => "belongs_to", "name" => match[0] }
       end
       
       # has_many
       content.scan(/has_many\s+:([a-zA-Z_][a-zA-Z0-9_]*)/) do |match|
-        associations << { type: "has_many", name: match[0] }
+        associations << { "type" => "has_many", "name" => match[0] }
       end
       
       # has_one
       content.scan(/has_one\s+:([a-zA-Z_][a-zA-Z0-9_]*)/) do |match|
-        associations << { type: "has_one", name: match[0] }
+        associations << { "type" => "has_one", "name" => match[0] }
       end
       
       associations
@@ -302,7 +308,7 @@ module RailsPlan
       validations = []
       
       content.scan(/validates?\s+:([a-zA-Z_][a-zA-Z0-9_]*),?\s*([^\n]+)/) do |field, rules|
-        validations << { field: field, rules: rules.strip }
+        validations << { "field" => field, "rules" => rules.strip }
       end
       
       validations
@@ -312,7 +318,7 @@ module RailsPlan
       scopes = []
       
       content.scan(/scope\s+:([a-zA-Z_][a-zA-Z0-9_]*),?\s*([^\n]+)/) do |name, definition|
-        scopes << { name: name, definition: definition.strip }
+        scopes << { "name" => name, "definition" => definition.strip }
       end
       
       scopes
