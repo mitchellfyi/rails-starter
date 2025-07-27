@@ -79,6 +79,30 @@ Features:
 - Looks for module-specific test directories
 - Supports both `spec/` and `test/` directory structures
 
+### plan MODULE [OPERATION]
+Preview what changes would be made during module installation or upgrade.
+
+```bash
+bin/synth plan billing              # Preview billing module installation
+bin/synth plan ai upgrade          # Preview AI module upgrade
+```
+
+Features:
+- Shows files that would be created, updated, or overwritten
+- Lists database migrations that would be applied
+- Shows configuration changes (initializers, gems, generators)
+- Displays route changes that need manual integration
+- Lists dependencies that would be added
+- Provides file diff summaries for upgrades
+- Non-destructive preview operation
+
+The output includes:
+- **File Operations**: New files to create and existing files to update
+- **Database Changes**: Migrations with analysis of tables/indexes being created
+- **Configuration**: Initializers, gems, and generators that would be run
+- **Routes**: Route definitions that need manual integration
+- **Dependencies**: Ruby gems and JavaScript packages to be installed
+
 ### upgrade [MODULE]
 Upgrade one or all installed modules.
 
@@ -177,6 +201,12 @@ All module operations are logged to `log/synth.log` with timestamps and action d
 ```bash
 # List all modules
 bin/synth list
+
+# Preview billing module installation
+bin/synth plan billing
+
+# Preview AI module upgrade
+bin/synth plan ai upgrade
 
 # Install billing module
 bin/synth add billing
