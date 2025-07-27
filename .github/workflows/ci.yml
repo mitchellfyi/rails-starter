@@ -73,7 +73,7 @@ jobs:
         
     - name: Install Rails
       run: |
-        gem install rails -v '7.2.2' --no-document
+        gem install rails -v $RAILS_VERSION --no-document
         
     - name: Create test Rails app from template
       env:
