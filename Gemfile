@@ -1,10 +1,12 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '3.2.3'
+ruby '>= 3.3.0'
 
-# Bundle edge Rails instead: gem 'rails', github: 'rails/rails', branch: 'main'
-gem 'rails', '~> 7.1.0'
+# Use Rails edge (main branch) by default, with Rails 8 as fallback
+# To use Rails 8 stable instead, comment out the edge line and uncomment the stable line
+gem 'rails', github: 'rails/rails', branch: 'main'
+# gem 'rails', '~> 8.0.0'
 
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem 'sprockets-rails', '>= 3.4.0'

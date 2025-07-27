@@ -5,15 +5,20 @@
 # Usage:
 #   rails new myapp --dev -m https://example.com/template.rb
 #
+# This template uses Rails edge (main branch) by default for the latest features.
+# To use Rails 8 stable instead, edit the Gemfile and comment out the edge line.
+#
+# Requirements:
+#   - Ruby >= 3.3.0 (supports Ruby 3.3.x, 3.4.x, etc.)
+#   - Rails edge (main branch) or Rails 8.0+
+#
 # This script will guide you through setting up the base stack for the
-# Rails SaaS
-Starter Template.  It appends necessary gems to your
+# Rails SaaS Starter Template. It appends necessary gems to your
 # Gemfile, runs generators for authentication, background jobs, and
-# Tailwind/Hotwire, and scaffolds workspace/team models.  It also
-# installs a command
-line interface (`bin/synth`) and a default AI
-# module skeleton.  Feel free to customise this script to suit your
-# project’s needs.
+# Tailwind/Hotwire, and scaffolds workspace/team models. It also
+# installs a command line interface (`bin/synth`) and a default AI
+# module skeleton. Feel free to customise this script to suit your
+# project's needs.
 
 # Helper to load modular setup files
 def load_template_file(file_path)
@@ -22,6 +27,13 @@ end
 
 say "
  Setting up Rails SaaS Starter Template..."
+
+# Show Ruby version information
+say_status :ruby, "Ruby #{RUBY_VERSION} detected"
+
+# Configure Rails version (edge vs stable)
+load_template_file 'setup/rails_version.rb'
+configure_rails_version
 
 load_template_file 'setup/gems.rb'
 

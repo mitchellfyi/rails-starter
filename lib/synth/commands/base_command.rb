@@ -52,7 +52,7 @@ module Synth
         FileUtils.mkdir_p(File.dirname(log_file))
         
         File.open(log_file, 'a') do |f|
-          timestamp = Time.current.iso8601
+          timestamp = Time.now.strftime('%Y-%m-%dT%H:%M:%S%z')
           log_message = "[#{timestamp}] [#{action.to_s.upcase}] Module: #{module_name}"
           log_message += " - #{message}" if message
           f.puts log_message

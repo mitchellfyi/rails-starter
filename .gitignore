@@ -1,3 +1,4 @@
+/app
 *.rbc
 capybara-*.html
 .rspec
@@ -76,6 +77,12 @@ config/deploy.yml
 
 # Kamal deployment files
 .kamal/
+
+# Synth module registry (auto-generated)
+config/synth_modules.json
+
+# Auto-generated package files (if using npm/yarn)
+package-lock.json
 
 # Preview and temporary files
 *_preview.html

@@ -20,10 +20,10 @@ gem 'pundit', '~> 2.1'
 gem 'friendly_id', '~> 5.5'
 gem 'rolify', '~> 6.0'
 
-# Frontend
-gem 'turbo-rails', '~> 1.5'
-gem 'stimulus-rails', '~> 1.2'
-gem 'tailwindcss-rails', '~> 4.3'
+# Frontend - Updated for Rails edge compatibility
+gem 'turbo-rails', '~> 1.6'
+gem 'stimulus-rails', '~> 1.3'
+gem 'tailwindcss-rails', '~> 4.4'
 
 # API and JSON handling
 gem 'jsonapi-serializer', '~> 3.2'

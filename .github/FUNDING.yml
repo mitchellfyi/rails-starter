@@ -1,0 +1,15 @@
+# These are supported funding model platforms
+
+github: [mitchellfyi]
+custom: ["https://mitchell.fyi"]
+
+# Each platform (github, open_collective, ko_fi, tidelift, community_bridge, liberapay, issuehunt, otechie, custom) has a set of sponsored links that can be used to view the open source projects that are being sponsored on the platform.
+
+# For more information on the available platforms, please see:
+# https://docs.github.com/en/github/administering-a-repository/managing-repository-settings/displaying-a-sponsor-button-in-your-repository#about-funding-links
+
+# Funding links that do not work for you will be filtered out.
+# You can remove funding links that you don't want to appear in your repository.
+
+# If you want to use a custom funding link, then you can use the custom link type.
+# custom: ["https://mitchell.fyi"] 

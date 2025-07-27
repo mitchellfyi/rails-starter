@@ -288,7 +288,7 @@ module Synth
           admin_user = User.find_or_create_by(email: '#{config[:owner_email]}') do |user|
             user.password = '#{config[:admin_password]}'
             user.password_confirmation = '#{config[:admin_password]}'
-            user.confirmed_at = Time.current
+            user.confirmed_at = Time.now
             user.admin = true
           end
           
