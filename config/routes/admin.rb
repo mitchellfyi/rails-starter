@@ -19,5 +19,13 @@ Rails.application.routes.draw do
         patch :toggle_workspace
       end
     end
+    
+    # MCP fetchers with workspace support
+    resources :mcp_fetchers do
+      member do
+        patch :toggle
+        patch :toggle_workspace
+      end
+    end
   end
 end

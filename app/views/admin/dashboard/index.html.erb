@@ -16,6 +16,11 @@
   </div>
   
   <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">MCP Fetchers</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @active_mcp_fetchers || 0 %></p>
+  </div>
+  
+  <div class="card">
     <h3 style="margin: 0 0 0.5rem 0; color: #8b5cf6;">Recent Events</h3>
     <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @recent_audit_logs&.count || 0 %></p>
   </div>
@@ -55,7 +60,11 @@
       <% end %>
       
       <%= link_to admin_feature_flags_path, class: "btn btn-primary" do %>
-        Manage Feature Flags
+        🚩 Manage Feature Flags
+      <% end %>
+      
+      <%= link_to admin_mcp_fetchers_path, class: "btn btn-primary" do %>
+        🔗 Manage MCP Fetchers
       <% end %>
       
       <%= link_to admin_audit_path, class: "btn btn-secondary" do %>

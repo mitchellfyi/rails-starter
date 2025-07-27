@@ -7,6 +7,8 @@ class McpFetcher < ApplicationRecord
   validates :name, presence: true, uniqueness: true
   validates :provider_type, presence: true
   validates :description, presence: true
+  validate :configuration_is_valid_json
+  validate :parameters_is_valid_json
   
   scope :enabled, -> { where(enabled: true) }
   scope :disabled, -> { where(enabled: false) }
@@ -54,5 +56,31 @@ class McpFetcher < ApplicationRecord
   def sample_output_preview
     return 'No sample output' if sample_output.blank?
     sample_output.truncate(100)
+  end
+
+  private
+
+  def configuration_is_valid_json
+    return if configuration.blank?
+    
+    if configuration.is_a?(String)
+      begin
+        JSON.parse(configuration)
+      rescue JSON::ParserError
+        errors.add(:configuration, 'must be valid JSON')
+      end
+    end
+  end
+
+  def parameters_is_valid_json
+    return if parameters.blank?
+    
+    if parameters.is_a?(String)
+      begin
+        JSON.parse(parameters)
+      rescue JSON::ParserError
+        errors.add(:parameters, 'must be valid JSON')
+      end
+    end
   end
 end
