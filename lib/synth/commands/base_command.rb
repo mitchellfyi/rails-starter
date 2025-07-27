@@ -4,8 +4,8 @@ module Synth
   module Commands
     # Base class for all Synth CLI commands
     class BaseCommand
-      TEMPLATE_PATH = File.expand_path('../../../scaffold/lib/templates/synth', __dir__)
-      REGISTRY_PATH = File.expand_path('../../../scaffold/config/synth_modules.json', __dir__)
+      TEMPLATE_PATH = File.expand_path('lib/templates/synth', Rails.root)
+      REGISTRY_PATH = File.expand_path('config/synth_modules.json', Rails.root)
       
       attr_reader :verbose
 

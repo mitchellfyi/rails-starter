@@ -6,12 +6,10 @@
 #   rails new myapp --dev -m https://example.com/template.rb
 #
 # This script will guide you through setting up the base stack for the
-# Rails SaaS
-Starter Template.  It appends necessary gems to your
+# Rails SaaS Starter Template.  It appends necessary gems to your
 # Gemfile, runs generators for authentication, background jobs, and
 # Tailwind/Hotwire, and scaffolds workspace/team models.  It also
-# installs a command
-line interface (`bin/synth`) and a default AI
+# installs a command line interface (`bin/synth`) and a default AI
 # module skeleton.  Feel free to customise this script to suit your
 # project’s needs.
 
@@ -20,8 +18,7 @@ def load_template_file(file_path)
   load File.expand_path(file_path, __dir__)
 end
 
-say "
- Setting up Rails SaaS Starter Template..."
+say "🔧 Setting up Rails SaaS Starter Template..."
 
 load_template_file 'setup/gems.rb'
 
@@ -32,10 +29,10 @@ after_bundle do
   end
 
   load_template_file 'setup/initial_rails_setup.rb'
+  load_template_file 'setup/synth_cli_setup.rb'
 
   # Install core modules using bin/synth
-  say "
- Installing core modules..."
+  say "🔧 Installing core modules..."
   run 'bin/synth add auth'
   run 'bin/synth add workspace'
   run 'bin/synth add onboarding'
@@ -50,14 +47,12 @@ after_bundle do
   run 'bin/synth add testing'
   run 'bin/synth add theme'
 
-  load_template_file 'setup/synth_cli_setup.rb'
   load_template_file 'setup/environment_config.rb'
   load_template_file 'setup/api_serializers.rb'
   load_template_file 'setup/base_routes.rb'
 
   # Run database setup
-  say "
-  Setting up database..."
+  say "🗄️  Setting up database..."
   rails_command 'db:create'
   rails_command 'db:migrate'
 
@@ -181,17 +176,14 @@ after_bundle do
   MD
 
   say ""
-  say "
- Rails SaaS Starter Template setup complete!"
+  say "✅ Rails SaaS Starter Template setup complete!"
   say ""
-  say "
- Next steps:"
+  say "📋 Next steps:"
   say "   1. cd into your application directory"
   say "   2. Run 'bin/setup' to complete configuration"  
   say "   3. Update .env with your actual values"
   say "   4. Run 'bin/dev' to start the development server"
   say ""
-  say "
- Check README_SETUP.md for detailed instructions"
+  say "📖 Check README_SETUP.md for detailed instructions"
   say ""
 end
