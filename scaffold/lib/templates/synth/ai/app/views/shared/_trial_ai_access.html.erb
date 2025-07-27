@@ -1,204 +1,70 @@
 <%
-# Trial AI Access Component
-# Usage: <%= render 'shared/trial_ai_access', user: current_user, workspace: current_workspace %>
+# Onboarding component for trial AI access
+# Usage: <%= render 'shared/trial_ai_access', provider: 'openai', workspace: current_workspace %>
 
-fallback_service = FallbackCredentialService.new(
-  user: user,
-  workspace: workspace,
-  provider_slug: provider_slug || 'openai'
-)
-
-usage_info = fallback_service.remaining_fallback_usage
-onboarding_message = fallback_service.onboarding_message
-warnings = fallback_service.usage_warnings
+provider_slug = local_assigns[:provider] || 'openai'
+workspace = local_assigns[:workspace]
+fallback_credential = AiCredential.best_fallback_for_provider(provider_slug)
 %>
 
-<% if usage_info && usage_info[:can_use] %>
-  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+<% if fallback_credential&.available? && AiCredential.fallback_enabled? %>
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
     <div class="flex items-start">
       <div class="flex-shrink-0">
-        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-          <i class="fas fa-magic text-blue-600"></i>
-        </div>
+        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
       </div>
-      <div class="ml-4 flex-grow">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Try AI Features for Free!</h3>
+      <div class="ml-3 flex-1">
+        <h3 class="text-lg font-medium text-blue-900">Try AI Features for Free</h3>
         
-        <% if onboarding_message %>
-          <p class="text-gray-700 mb-4"><%= onboarding_message %></p>
+        <% if fallback_credential.onboarding_message.present? %>
+          <p class="mt-2 text-sm text-blue-800">
+            <%= fallback_credential.onboarding_message %>
+          </p>
         <% else %>
-          <p class="text-gray-700 mb-4">
-            We've provided free AI access so you can try out our features. 
-            Start exploring without setting up your own API keys.
+          <p class="mt-2 text-sm text-blue-800">
+            Get started with AI features using our shared API access. Perfect for trying out the platform before adding your own API keys.
           </p>
         <% end %>
         
-        <!-- Usage Status -->
-        <div class="space-y-2 mb-4">
-          <% if usage_info[:daily_limit] %>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-gray-600">Today's usage:</span>
-              <span class="font-medium">
-                <%= usage_info[:daily_usage] %> / <%= usage_info[:daily_limit] %> calls
-              </span>
+        <div class="mt-4">
+          <div class="flex items-center space-x-4 text-sm text-blue-700">
+            <div class="flex items-center">
+              <span class="font-medium">Provider:</span>
+              <span class="ml-1"><%= fallback_credential.ai_provider.name %></span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div class="bg-blue-600 h-2 rounded-full" 
-                   style="width: <%= [(usage_info[:daily_usage].to_f / usage_info[:daily_limit] * 100).round, 100].min %>%"></div>
+            <div class="flex items-center">
+              <span class="font-medium">Model:</span>
+              <span class="ml-1"><%= fallback_credential.preferred_model %></span>
             </div>
-          <% end %>
-          
-          <% if usage_info[:total_limit] %>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-gray-600">Total usage:</span>
-              <span class="font-medium">
-                <%= usage_info[:total_usage] %> / <%= usage_info[:total_limit] %> calls
-              </span>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2">
-              <div class="bg-green-600 h-2 rounded-full" 
-                   style="width: <%= [(usage_info[:total_usage].to_f / usage_info[:total_limit] * 100).round, 100].min %>%"></div>
-            </div>
-          <% end %>
-        </div>
-        
-        <!-- Warnings -->
-        <% warnings.each do |warning| %>
-          <div class="bg-yellow-100 border border-yellow-300 rounded p-3 mb-3">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+            <% if fallback_credential.fallback_usage_limit %>
+              <div class="flex items-center">
+                <span class="font-medium">Remaining:</span>
+                <span class="ml-1"><%= fallback_credential.remaining_usage %> calls</span>
               </div>
-              <div class="ml-2">
-                <p class="text-sm text-yellow-800"><%= warning[:message] %></p>
-              </div>
-            </div>
+            <% end %>
           </div>
-        <% end %>
+        </div>
         
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-3">
-          <%= link_to "Start Using AI", "#", 
-                      class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700",
-                      data: { action: "click->trial-ai#startTrial" } %>
-          <%= link_to "Learn More", "#", 
-                      class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+        <div class="mt-4 flex space-x-3">
+          <% if workspace %>
+            <%= link_to "Start Using AI Features", workspace_path(workspace, anchor: 'ai-features'), 
+                class: "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium" %>
+          <% end %>
           
-          <% if defined?(new_ai_credential_path) %>
-            <%= link_to "Add Your Own API Key", new_ai_credential_path, 
-                        class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+          <% if defined?(new_workspace_ai_credential_path) && workspace %>
+            <%= link_to "Add Your Own API Key", new_workspace_ai_credential_path(workspace), 
+                class: "bg-white hover:bg-blue-50 text-blue-600 border border-blue-600 px-4 py-2 rounded-md text-sm font-medium" %>
           <% end %>
         </div>
         
-        <div class="mt-4 text-xs text-gray-500">
-          <p>Using shared AI credentials provided by <%= usage_info[:credential_name] %></p>
-        </div>
-      </div>
-      
-      <div class="flex-shrink-0 ml-4">
-        <button type="button" 
-                class="text-gray-400 hover:text-gray-600" 
-                data-action="click->trial-ai#dismiss"
-                title="Dismiss">
-          <span class="sr-only">Dismiss</span>
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    </div>
-  </div>
-<% elsif !fallback_service.can_use_fallback? %>
-  <!-- No fallback available or user can't use it -->
-  <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-    <div class="flex items-start">
-      <div class="flex-shrink-0">
-        <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-          <i class="fas fa-key text-gray-600"></i>
-        </div>
-      </div>
-      <div class="ml-4">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Set Up AI Access</h3>
-        <p class="text-gray-700 mb-4">
-          To use AI features, you'll need to add your own API credentials.
-        </p>
-        
-        <% if defined?(new_ai_credential_path) %>
-          <%= link_to "Add API Credentials", new_ai_credential_path, 
-                      class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700" %>
-        <% end %>
-      </div>
-    </div>
-  </div>
-<% else %>
-  <!-- User has reached limits -->
-  <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-    <div class="flex items-start">
-      <div class="flex-shrink-0">
-        <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-          <i class="fas fa-exclamation-triangle text-yellow-600"></i>
-        </div>
-      </div>
-      <div class="ml-4">
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Trial Limit Reached</h3>
-        <p class="text-gray-700 mb-4">
-          You've reached your free AI usage limit. To continue using AI features, 
-          please add your own API credentials.
-        </p>
-        
-        <% if defined?(new_ai_credential_path) %>
-          <%= link_to "Add Your API Credentials", new_ai_credential_path, 
-                      class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700" %>
+        <% if fallback_credential.expires_at %>
+          <p class="mt-3 text-xs text-blue-600">
+            Trial access expires on <%= fallback_credential.expires_at.strftime("%B %d, %Y") %>
+          </p>
         <% end %>
       </div>
     </div>
   </div>
 <% end %>
-
-<!-- JavaScript for interactive features -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Simple trial AI component behavior
-  const trialComponent = document.querySelector('[data-controller="trial-ai"]') || document.body;
-  
-  const dismissButton = trialComponent.querySelector('[data-action*="dismiss"]');
-  if (dismissButton) {
-    dismissButton.addEventListener('click', function() {
-      const component = this.closest('.bg-gradient-to-r, .bg-gray-50, .bg-yellow-50');
-      if (component) {
-        component.style.transition = 'opacity 0.3s ease-out';
-        component.style.opacity = '0';
-        setTimeout(() => component.remove(), 300);
-      }
-    });
-  }
-  
-  const startButton = trialComponent.querySelector('[data-action*="startTrial"]');
-  if (startButton) {
-    startButton.addEventListener('click', function(e) {
-      e.preventDefault();
-      // You can customize this behavior to show AI interface, start a tutorial, etc.
-      console.log('Starting AI trial...');
-      
-      // Example: Show success message
-      const component = this.closest('.bg-gradient-to-r');
-      if (component) {
-        const successMessage = document.createElement('div');
-        successMessage.className = 'bg-green-100 border border-green-300 rounded p-3 mt-3';
-        successMessage.innerHTML = `
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <i class="fas fa-check-circle text-green-600"></i>
-            </div>
-            <div class="ml-2">
-              <p class="text-sm text-green-800">AI trial activated! You can now use AI features.</p>
-            </div>
-          </div>
-        `;
-        component.appendChild(successMessage);
-        
-        // Hide the start button
-        this.style.display = 'none';
-      }
-    });
-  }
-});
-</script>

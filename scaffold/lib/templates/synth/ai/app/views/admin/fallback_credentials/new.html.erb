@@ -1,0 +1,114 @@
+<% content_for :title, "New Fallback Credential" %>
+
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">New Fallback Credential</h1>
+    <p class="text-gray-600">Create a shared API key for trial users and onboarding</p>
+  </div>
+
+  <%= form_with model: [:admin, @credential], local: true, class: "space-y-6" do |form| %>
+    <% if @credential.errors.any? %>
+      <div class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">
+              There were <%= pluralize(@credential.errors.count, "error") %> with your submission:
+            </h3>
+            <div class="mt-2 text-sm text-red-700">
+              <ul class="list-disc pl-5 space-y-1">
+                <% @credential.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <%= form.label :name, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_field :name, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      </div>
+
+      <div>
+        <%= form.label :ai_provider_id, "AI Provider", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.select :ai_provider_id, options_from_collection_for_select(@providers, :id, :name, @credential.ai_provider_id), 
+            { prompt: "Select a provider" }, 
+            { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :api_key, class: "block text-sm font-medium text-gray-700" %>
+      <%= form.password_field :api_key, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      <div>
+        <%= form.label :preferred_model, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.text_field :preferred_model, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      </div>
+
+      <div>
+        <%= form.label :fallback_usage_limit, "Usage Limit (optional)", class: "block text-sm font-medium text-gray-700" %>
+        <%= form.number_field :fallback_usage_limit, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+        <p class="mt-1 text-sm text-gray-500">Leave blank for unlimited usage</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+      <div>
+        <%= form.label :temperature, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.number_field :temperature, step: 0.1, min: 0, max: 2, value: @credential.temperature || 0.7, 
+            class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      </div>
+
+      <div>
+        <%= form.label :max_tokens, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.number_field :max_tokens, min: 1, max: 100000, value: @credential.max_tokens || 4096,
+            class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      </div>
+
+      <div>
+        <%= form.label :response_format, class: "block text-sm font-medium text-gray-700" %>
+        <%= form.select :response_format, options_for_select([['Text', 'text'], ['JSON', 'json'], ['Markdown', 'markdown'], ['HTML', 'html']], @credential.response_format || 'text'), 
+            {}, { class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" } %>
+      </div>
+    </div>
+
+    <div>
+      <%= form.label :expires_at, "Expiration Date (optional)", class: "block text-sm font-medium text-gray-700" %>
+      <%= form.datetime_local_field :expires_at, class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      <p class="mt-1 text-sm text-gray-500">Leave blank for no expiration</p>
+    </div>
+
+    <div>
+      <%= form.label :onboarding_message, "Onboarding Message (optional)", class: "block text-sm font-medium text-gray-700" %>
+      <%= form.text_area :onboarding_message, rows: 3, 
+          placeholder: "Try our AI assistant with free credits! Perfect for getting started.",
+          class: "mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" %>
+      <p class="mt-1 text-sm text-gray-500">Custom message shown to users during onboarding</p>
+    </div>
+
+    <div class="space-y-4">
+      <div class="flex items-center">
+        <%= form.check_box :active, checked: true, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+        <%= form.label :active, "Active", class: "ml-2 block text-sm text-gray-900" %>
+      </div>
+
+      <div class="flex items-center">
+        <%= form.check_box :enabled_for_trials, checked: true, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+        <%= form.label :enabled_for_trials, "Enabled for trial users", class: "ml-2 block text-sm text-gray-900" %>
+      </div>
+    </div>
+
+    <div class="flex justify-end space-x-3">
+      <%= link_to "Cancel", admin_fallback_credentials_path, 
+          class: "bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+      <%= form.submit "Create Fallback Credential", 
+          class: "bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" %>
+    </div>
+  <% end %>
+</div>

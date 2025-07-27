@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AiCredential < ApplicationRecord
-  belongs_to :workspace
+  belongs_to :workspace, optional: true
   belongs_to :ai_provider
   belongs_to :imported_by, class_name: 'User', optional: true
   has_many :llm_outputs, foreign_key: :ai_credential_id, dependent: :nullify
@@ -13,9 +13,12 @@ class AiCredential < ApplicationRecord
   validates :temperature, presence: true, inclusion: { in: 0.0..2.0 }
   validates :max_tokens, presence: true, inclusion: { in: 1..100000 }
   validates :response_format, presence: true, inclusion: { in: %w[text json markdown html] }
+  validates :fallback_usage_limit, numericality: { greater_than: 0 }, allow_nil: true
+  validates :expires_at, comparison: { greater_than: :created_at }, allow_nil: true
   
   validate :model_supported_by_provider
   validate :only_one_default_per_provider_workspace
+  validate :fallback_requires_no_workspace
   
   # Encrypt API key using Rails credentials
   encrypts :api_key
@@ -28,9 +31,17 @@ class AiCredential < ApplicationRecord
   scope :synced_from_doppler, -> { where.not(doppler_secret_name: nil) }
   scope :synced_from_onepassword, -> { where.not(onepassword_item_id: nil) }
   
+  # Fallback credential scopes
+  scope :fallback, -> { where(is_fallback: true) }
+  scope :user_credentials, -> { where(is_fallback: false) }
+  scope :not_expired, -> { where('expires_at IS NULL OR expires_at > ?', Time.current) }
+  scope :within_usage_limit, -> { where('fallback_usage_limit IS NULL OR fallback_usage_count < fallback_usage_limit') }
+  scope :available_fallbacks, -> { fallback.active.not_expired.within_usage_limit.where(enabled_for_trials: true) }
+  
   # Get the default credential for a workspace and provider
   def self.default_for(workspace, provider_slug)
-    joins(:ai_provider)
+    user_credentials
+      .joins(:ai_provider)
       .where(workspace: workspace, ai_providers: { slug: provider_slug }, is_default: true)
       .first
   end
@@ -39,38 +50,34 @@ class AiCredential < ApplicationRecord
   def self.best_for(workspace, provider_slug, allow_fallback: true)
     # First try to get workspace-specific credentials
     user_credential = default_for(workspace, provider_slug) || 
-      joins(:ai_provider)
+      user_credentials
+        .joins(:ai_provider)
         .where(workspace: workspace, ai_providers: { slug: provider_slug }, active: true)
         .order(:last_used_at)
         .first
     
     # If no user credential and fallbacks are allowed, try fallback credentials
     if user_credential.nil? && allow_fallback
-      return FallbackAiCredential.best_for_provider(provider_slug)
+      return best_fallback_for_provider(provider_slug)
     end
     
     user_credential
   end
   
-  # Get the best available credential for a workspace and provider, including fallbacks
-  def self.best_for_user(workspace, provider_slug, user: nil)
-    # First try user's own credentials
-    user_credential = best_for(workspace, provider_slug, allow_fallback: false)
-    return user_credential if user_credential
-    
-    # If no user credential, check if user can use fallback credentials
-    return nil unless user && workspace
-    
-    fallback_credential = FallbackAiCredential.best_for_provider(provider_slug)
-    return nil unless fallback_credential&.available?
-    
-    # Check if user has reached their daily limit for this fallback
-    if fallback_credential.daily_limit.present?
-      daily_usage = fallback_credential.daily_usage_for_user(user, workspace: workspace)
-      return nil if daily_usage >= fallback_credential.daily_limit
-    end
-    
-    fallback_credential
+  # Get the best available fallback credential for a provider
+  def self.best_fallback_for_provider(provider_slug)
+    available_fallbacks
+      .joins(:ai_provider)
+      .where(ai_providers: { slug: provider_slug })
+      .order(:fallback_usage_count, :last_used_at)
+      .first
+  end
+  
+  # Check if fallback credentials are enabled globally
+  def self.fallback_enabled?
+    # This would be configurable via admin settings
+    # For now, return true if any fallback credentials exist
+    fallback.exists?
   end
   
   # Test the credential by pinging the provider
@@ -93,10 +100,44 @@ class AiCredential < ApplicationRecord
   
   # Mark credential as used
   def mark_used!
-    update!(
-      last_used_at: Time.current,
-      usage_count: usage_count + 1
-    )
+    if is_fallback?
+      update!(
+        last_used_at: Time.current,
+        usage_count: usage_count + 1,
+        fallback_usage_count: fallback_usage_count + 1
+      )
+    else
+      update!(
+        last_used_at: Time.current,
+        usage_count: usage_count + 1
+      )
+    end
+  end
+  
+  # Check if credential is available for use
+  def available?
+    return false unless active?
+    return false if is_fallback? && expired?
+    return false if is_fallback? && !within_usage_limit?
+    return false if is_fallback? && !enabled_for_trials?
+    true
+  end
+  
+  # Check if credential has expired (for fallbacks)
+  def expired?
+    is_fallback? && expires_at.present? && expires_at < Time.current
+  end
+  
+  # Check if within usage limit (for fallbacks)
+  def within_usage_limit?
+    return true unless is_fallback?
+    fallback_usage_limit.nil? || fallback_usage_count < fallback_usage_limit
+  end
+  
+  # Get remaining usage for fallback credentials
+  def remaining_usage
+    return Float::INFINITY unless is_fallback? && fallback_usage_limit.present?
+    fallback_usage_limit - fallback_usage_count
   end
   
   # Get configuration hash for LLM API calls
@@ -141,6 +182,7 @@ class AiCredential < ApplicationRecord
     return 'Doppler' if doppler_secret_name.present?
     return '1Password' if onepassword_item_id.present?
     return 'Environment' if environment_source.present?
+    return 'Fallback' if is_fallback?
     'Manual'
   end
   
@@ -236,14 +278,24 @@ class AiCredential < ApplicationRecord
   
   def only_one_default_per_provider_workspace
     return unless is_default?
+    return if is_fallback? # Fallback credentials can't be default
     
     existing_default = self.class
+      .user_credentials
       .where(workspace: workspace, ai_provider: ai_provider, is_default: true)
       .where.not(id: id)
       .exists?
     
     if existing_default
       errors.add(:is_default, "only one default credential allowed per provider in a workspace")
+    end
+  end
+  
+  def fallback_requires_no_workspace
+    return unless is_fallback?
+    
+    if workspace_id.present?
+      errors.add(:workspace, "fallback credentials cannot be associated with a workspace")
     end
   end
 end
