@@ -132,16 +132,6 @@ bin/synth test billing
 bin/synth doctor
 ```
 
-## 🤝 Contributing
-
-This project follows the guidelines in [AGENTS.md](docs/guides/AGENTS.md):
-
-1. **Pick a task** from the project board
-2. **Plan your work** by breaking it into small steps
-3. **Implement iteratively** with frequent commits
-4. **Write tests** and ensure they pass
-5. **Update documentation** as needed
-
 ## 📄 License
 
 This project is available under the [MIT License](LICENSE).
