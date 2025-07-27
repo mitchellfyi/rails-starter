@@ -8,6 +8,10 @@ Rails.application.routes.draw do
     get 'audit', to: 'audit#index'
     get 'audit/:id', to: 'audit#show', as: :audit_log
     
+    # Usage analytics for workspaces
+    get 'usage', to: 'usage#index'
+    get 'usage/workspace/:workspace_id', to: 'usage#workspace_detail', as: :usage_workspace_detail
+    
     # Feature flags with workspace support
     resources :feature_flags do
       member do

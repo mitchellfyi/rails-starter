@@ -1,0 +1,180 @@
+<div class="card">
+  <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+    <div>
+      <h1 style="margin: 0; color: #1f2937;">Workspace Usage Detail</h1>
+      <p style="color: #6b7280; margin: 0.5rem 0 0 0;">Detailed analytics for Workspace #<%= @workspace_id %></p>
+    </div>
+    <%= link_to "← Back to Overview", admin_usage_path(date_range: @date_range), class: "btn btn-secondary" %>
+  </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card" style="margin-bottom: 1rem;">
+  <%= form_with url: admin_usage_workspace_detail_path(@workspace_id), method: :get, local: true, style: "display: flex; gap: 1rem; align-items: end;" do |form| %>
+    <div>
+      <%= form.label :date_range, "Time Period", style: "display: block; margin-bottom: 0.25rem; font-weight: 500;" %>
+      <%= form.select :date_range, 
+                      options_for_select([
+                        ['Last 24 hours', '1d'],
+                        ['Last 7 days', '7d'],
+                        ['Last 30 days', '30d'],
+                        ['Last 90 days', '90d']
+                      ], @date_range),
+                      {}, 
+                      { class: "form-control", style: "min-width: 150px;" } %>
+    </div>
+    
+    <%= form.submit "Apply Filter", class: "btn btn-primary" %>
+  <% end %>
+</div>
+
+<!-- Workspace Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #3b82f6;">Total Executions</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= number_with_delimiter(@executions.count) %></p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #10b981;">Total Tokens</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= number_with_delimiter(@total_tokens) %></p>
+    <p style="font-size: 0.875rem; color: #6b7280; margin: 0;">~$<%= sprintf("%.2f", @total_tokens * 0.0001) %> estimated</p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #8b5cf6;">Success Rate</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;"><%= @success_rate %>%</p>
+  </div>
+  
+  <div class="card">
+    <h3 style="margin: 0 0 0.5rem 0; color: #f59e0b;">Avg Tokens</h3>
+    <p style="font-size: 2rem; font-weight: bold; margin: 0;">
+      <%= @executions.count > 0 ? (@total_tokens.to_f / @executions.count).round : 0 %>
+    </p>
+  </div>
+</div>
+
+<!-- Charts and Details -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1rem;">
+  <!-- Daily Usage Chart -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Daily Usage Trend</h3>
+    <div style="height: 300px; display: flex; align-items: end; gap: 4px; padding: 1rem 0;">
+      <% max_executions = @daily_usage.values.map { |d| d[:executions] }.max %>
+      <% max_executions = 1 if max_executions == 0 %>
+      <% @daily_usage.each do |date, data| %>
+        <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+          <div style="background-color: #3b82f6; width: 100%; height: <%= (data[:executions].to_f / max_executions * 200).round %>px; margin-bottom: 0.5rem; border-radius: 2px; min-height: 2px;" title="<%= data[:executions] %> executions, <%= number_with_delimiter(data[:tokens]) %> tokens"></div>
+          <span style="font-size: 0.75rem; color: #6b7280; writing-mode: vertical-rl; text-orientation: mixed;"><%= Date.parse(date).strftime('%m/%d') %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <!-- Model Usage -->
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Model Usage</h3>
+    <% if @model_usage.any? %>
+      <% total_model_tokens = @model_usage.values.sum %>
+      <% @model_usage.sort_by { |k, v| -v }.each do |model, tokens| %>
+        <div style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+          <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.25rem;">
+            <span style="font-weight: 500;"><%= model || 'Unknown' %></span>
+            <span style="font-weight: bold;"><%= number_with_delimiter(tokens) %> tokens</span>
+          </div>
+          <div style="background-color: #f3f4f6; border-radius: 0.25rem; height: 8px; margin-bottom: 0.25rem;">
+            <div style="background-color: #3b82f6; height: 100%; width: <%= total_model_tokens > 0 ? (tokens.to_f / total_model_tokens * 100).round(1) : 0 %>%; border-radius: 0.25rem;"></div>
+          </div>
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            <%= total_model_tokens > 0 ? sprintf("%.1f", tokens.to_f / total_model_tokens * 100) : 0 %>% of total usage
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <p style="color: #6b7280;">No model usage data available</p>
+    <% end %>
+  </div>
+</div>
+
+<!-- Recent Executions -->
+<div class="card" style="margin-top: 1rem;">
+  <h3 style="margin-bottom: 1rem; color: #1f2937;">Recent Executions</h3>
+  <% recent_executions = @executions.order(created_at: :desc).limit(20) %>
+  <% if recent_executions.any? %>
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #e5e7eb;">
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Created</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Model</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Status</th>
+            <th style="text-align: right; padding: 0.75rem; font-weight: 600;">Tokens</th>
+            <th style="text-align: left; padding: 0.75rem; font-weight: 600;">Prompt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% recent_executions.each do |execution| %>
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 0.75rem; font-size: 0.875rem;"><%= execution.created_at.strftime('%m/%d %H:%M') %></td>
+              <td style="padding: 0.75rem; font-size: 0.875rem;"><%= execution.model_used || 'N/A' %></td>
+              <td style="padding: 0.75rem;">
+                <span style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 500;
+                             background-color: <%= execution.status == 'completed' ? '#dcfce7' : execution.status == 'failed' ? '#fef2f2' : '#fef3c7' %>;
+                             color: <%= execution.status == 'completed' ? '#166534' : execution.status == 'failed' ? '#991b1b' : '#92400e' %>;">
+                  <%= execution.status.capitalize %>
+                </span>
+              </td>
+              <td style="padding: 0.75rem; text-align: right; font-size: 0.875rem;"><%= number_with_delimiter(execution.tokens_used || 0) %></td>
+              <td style="padding: 0.75rem; font-size: 0.875rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <%= truncate(execution.rendered_prompt, length: 100) %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <p style="color: #6b7280;">No execution data available for this workspace</p>
+  <% end %>
+</div>
+
+<style>
+  .card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  .btn-secondary {
+    background-color: #6b7280;
+    color: white;
+  }
+  
+  .btn:hover {
+    opacity: 0.9;
+  }
+  
+  .form-control {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+  }
+</style>

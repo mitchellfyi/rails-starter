@@ -50,6 +50,10 @@
   <div class="card">
     <h3 style="margin-bottom: 1rem; color: #1f2937;">Quick Actions</h3>
     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+      <%= link_to admin_usage_path, class: "btn btn-primary" do %>
+        📊 Usage Analytics
+      <% end %>
+      
       <%= link_to admin_feature_flags_path, class: "btn btn-primary" do %>
         Manage Feature Flags
       <% end %>
