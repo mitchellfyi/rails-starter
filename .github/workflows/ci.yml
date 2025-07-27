@@ -71,6 +71,10 @@ jobs:
       run: |
         brew install postgresql
         
+    - name: Install Rails
+      run: |
+        gem install rails -v '7.2.2' --no-document
+        
     - name: Create test Rails app from template
       env:
         RAILS_ENV: test
