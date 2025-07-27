@@ -1,0 +1,32 @@
+<div id="<%= id %>" 
+     class="<%= backdrop_classes %> hidden"
+     data-controller="modal">
+  
+  <div class="<%= modal_classes %>"
+       data-modal-target="dialog"
+       data-action="click->modal#stopPropagation">
+    
+    <% if title.present? || closable %>
+      <div class="<%= header_classes %>">
+        <% if title.present? %>
+          <h3 class="<%= title_classes %>">
+            <%= title %>
+          </h3>
+        <% end %>
+        
+        <% if closable %>
+          <button type="button" 
+                  class="<%= close_button_classes %>"
+                  data-action="click->modal#close">
+            <span class="sr-only">Close</span>
+            <%= close_button_svg %>
+          </button>
+        <% end %>
+      </div>
+    <% end %>
+    
+    <div class="modal-body">
+      <%= content %>
+    </div>
+  </div>
+</div>

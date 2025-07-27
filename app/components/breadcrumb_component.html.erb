@@ -1,0 +1,22 @@
+<% if has_items? %>
+  <nav class="<%= breadcrumb_classes %>" aria-label="Breadcrumb">
+    <ol class="flex items-center space-x-2">
+      <% items.each_with_index do |item, index| %>
+        <li class="flex items-center">
+          <% if index > 0 %>
+            <%= separator_svg %>
+          <% end %>
+          
+          <% if index == items.length - 1 %>
+            <!-- Current page -->
+            <span class="ml-2 font-medium text-gray-900"><%= item[:name] %></span>
+          <% else %>
+            <!-- Link to previous pages -->
+            <%= link_to item[:name], item[:path], 
+                        class: "ml-2 text-blue-600 hover:text-blue-800 hover:underline" %>
+          <% end %>
+        </li>
+      <% end %>
+    </ol>
+  </nav>
+<% end %>
