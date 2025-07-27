@@ -1,0 +1,27 @@
+<%= form_with model: demo_feature_item, local: true, class: "demo_feature-form" do |form| %>
+  <% if demo_feature_item.errors.any? %>
+    <div class="alert alert-error mb-4">
+      <h4><%= pluralize(demo_feature_item.errors.count, "error") %> prohibited this item from being saved:</h4>
+      <ul class="mt-2">
+        <% demo_feature_item.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= form.label :name, class: "label" %>
+    <%= form.text_field :name, class: "input-field" %>
+  </div>
+
+  <div class="field mt-4">
+    <%= form.label :description, class: "label" %>
+    <%= form.text_area :description, rows: 4, class: "input-field" %>
+  </div>
+
+  <div class="actions mt-6">
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", demo_feature_index_path, class: "btn btn-outline ml-2" %>
+  </div>
+<% end %>
