@@ -2,7 +2,7 @@
 
 require 'net/http'
 require 'json'
-require_relative '../../../../../../lib/api_client_factory'
+require Rails.root.join('lib', 'api_client_factory') if defined?(Rails)
 
 module Mcp
   module Fetcher

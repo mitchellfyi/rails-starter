@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../lib/api_client_factory'
+require_relative '../../lib/api_client_factory'
 require 'minitest/autorun'
 
 class ApiClientFactoryTest < Minitest::Test

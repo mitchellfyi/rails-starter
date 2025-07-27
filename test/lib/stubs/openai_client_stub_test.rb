@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../lib/stubs/openai_client_stub'
+require_relative '../../../lib/stubs/openai_client_stub'
 require 'minitest/autorun'
 
 class OpenAIClientStubTest < Minitest::Test

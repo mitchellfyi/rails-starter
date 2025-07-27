@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../../../lib/stubs/github_client_stub'
+require_relative '../../../lib/stubs/github_client_stub'
 require 'minitest/autorun'
 
 class GitHubClientStubTest < Minitest::Test

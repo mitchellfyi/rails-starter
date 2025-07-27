@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../lib/api_client_factory'
+require Rails.root.join('lib', 'api_client_factory') if defined?(Rails)
 
 # spec/support/billing_stubs.rb
 
