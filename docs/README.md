@@ -1,4 +1,4 @@
-# Rails Starter Documentation
+# RailsStarter Documentation
 
 This documentation is auto-generated from installed Synth modules and OpenAPI specifications.
 
@@ -8,9 +8,11 @@ This Rails SaaS application is built using the Rails SaaS Starter Template with 
 
 - **Admin**: This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for...
 - **Ai**: This module adds first‑class AI integration to your Rails app with versioned prompt templates, variable interpolation...
+- **Ai-multitenant**: This module provides a comprehensive multi-tenant AI system with workspace-scoped AI configurations, an AI playground...
 - **Api**: Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.
 - **Auth**: This module provides comprehensive authentication features including user registration, login, OAuth integration, and...
 - **Deploy**: This module provides deployment configurations and CI/CD setups for three popular platforms:
+- **Docs**: This module provides comprehensive documentation generation and management tools for your Rails SaaS application, inc...
 - **Mcp**: This module provides a flexible context provider system for enriching AI prompts with dynamic data from databases, AP...
 - **Theme**: A comprehensive theming framework for customizing colors, fonts, logos, and branding elements in your Rails SaaS appl...
 
@@ -45,9 +47,11 @@ bin/dev
 
 - [Admin](modules/admin.md)
 - [Ai](modules/ai.md)
+- [Ai-multitenant](modules/ai-multitenant.md)
 - [Api](modules/api.md)
 - [Auth](modules/auth.md)
 - [Deploy](modules/deploy.md)
+- [Docs](modules/docs.md)
 - [Mcp](modules/mcp.md)
 - [Theme](modules/theme.md)
 
@@ -88,3 +92,4 @@ bin/synth docs
 
 ---
 
+*Documentation generated on 2025-07-27 15:22:22 by `bin/synth docs`*
