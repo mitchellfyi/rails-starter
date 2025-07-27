@@ -1,25 +1,37 @@
 # frozen_string_literal: true
 
-class Api::V1::LLMJobsController < ApplicationController
-  before_action :authenticate_user!
+class Api::V1::LLMJobsController < Api::BaseController
 
   # POST /api/v1/llm_jobs
   def create
-    template = params.require(:template)
-    model = params.require(:model)
-    context = params.fetch(:context, {})
-    format = params.fetch(:format, 'text')
+    # Extract parameters from JSON:API format
+    data = params.require(:data)
+    attributes = data.require(:attributes)
+    
+    template = attributes.require(:template)
+    model = attributes.require(:model)
+    context = attributes.fetch(:context, {})
+    format = attributes.fetch(:format, 'text')
 
     # Validate format
     unless %w[text json markdown html].include?(format)
-      render json: { error: 'Invalid format. Must be one of: text, json, markdown, html' }, 
-             status: :bad_request
+      render_jsonapi_error(
+        status: :bad_request,
+        title: 'Invalid format',
+        detail: 'Format must be one of: text, json, markdown, html',
+        source: { pointer: '/data/attributes/format' }
+      )
       return
     end
 
     # Validate context is a hash
     unless context.is_a?(Hash)
-      render json: { error: 'Context must be a hash/object' }, status: :bad_request
+      render_jsonapi_error(
+        status: :bad_request,
+        title: 'Invalid context',
+        detail: 'Context must be a hash/object',
+        source: { pointer: '/data/attributes/context' }
+      )
       return
     end
 
@@ -43,17 +55,21 @@ class Api::V1::LLMJobsController < ApplicationController
       user_id: current_user.id
     )
 
-    render json: {
-      job_id: job.job_id,
-      output_id: llm_output.id,
-      status: 'queued',
-      estimated_completion: 30.seconds.from_now.iso8601
-    }, status: :created
+    render_jsonapi_resource(llm_output, LLMOutputSerializer, status: :created)
 
   rescue ActionController::ParameterMissing => e
-    render json: { error: "Missing required parameter: #{e.param}" }, status: :bad_request
+    render_jsonapi_error(
+      status: :bad_request,
+      title: 'Missing required parameter',
+      detail: "Missing parameter: #{e.param}",
+      source: { parameter: e.param.to_s }
+    )
   rescue => e
     Rails.logger.error "Error creating LLM job: #{e.message}"
-    render json: { error: 'Failed to queue job' }, status: :internal_server_error
+    render_jsonapi_error(
+      status: :internal_server_error,
+      title: 'Failed to queue job',
+      detail: e.message
+    )
   end
 end
