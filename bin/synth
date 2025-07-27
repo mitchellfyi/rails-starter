@@ -371,12 +371,17 @@ class SynthCLI
     results << check_ruby_version
     results << check_template_structure
     results << check_registry_integrity
+    results << check_environment_variables
+    results << check_api_keys
+    results << check_pending_migrations
+    results << check_module_integrity
     
     puts "\n🏥 Diagnostics complete"
     
     failed_checks = results.count(false)
     if failed_checks > 0
       puts "❌ #{failed_checks} check(s) failed"
+      puts "\n💡 Run with suggestions above to fix issues"
       exit 1
     else
       puts "✅ All checks passed"
@@ -894,6 +899,178 @@ class SynthCLI
     rescue JSON::ParserError
       puts "❌ Module registry is corrupted (invalid JSON)"
       false
+    end
+  end
+
+  def check_environment_variables
+    puts "\nChecking environment variables:"
+    
+    env_example_path = File.join(TEMPLATE_PATH, '..', '..', 'templates', '.env.example')
+    unless File.exist?(env_example_path)
+      puts "⚠️  .env.example file not found at #{env_example_path}"
+      return true # Not critical, continue
+    end
+    
+    critical_vars = []
+    required_vars = %w[
+      SECRET_KEY_BASE
+      DATABASE_URL
+      REDIS_URL
+    ]
+    
+    missing_vars = []
+    required_vars.each do |var|
+      unless ENV[var] && !ENV[var].empty?
+        missing_vars << var
+      end
+    end
+    
+    if missing_vars.empty?
+      puts "✅ Critical environment variables are set"
+      return true
+    else
+      puts "❌ Missing critical environment variables: #{missing_vars.join(', ')}"
+      puts "💡 Create a .env file with these variables or set them in your environment"
+      puts "💡 See .env.example for reference values"
+      return false
+    end
+  end
+
+  def check_api_keys
+    puts "\nChecking API key configuration:"
+    
+    all_valid = true
+    
+    # Check OpenAI API key
+    if ENV['OPENAI_API_KEY'] && !ENV['OPENAI_API_KEY'].empty?
+      if ENV['OPENAI_API_KEY'].start_with?('sk-')
+        puts "✅ OpenAI API key format looks valid"
+      else
+        puts "⚠️  OpenAI API key format appears invalid (should start with 'sk-')"
+        all_valid = false
+      end
+    else
+      puts "⚠️  OpenAI API key not set (OPENAI_API_KEY)"
+      puts "💡 Set OPENAI_API_KEY if you plan to use AI features"
+    end
+    
+    # Check Stripe API key
+    if ENV['STRIPE_SECRET_KEY'] && !ENV['STRIPE_SECRET_KEY'].empty?
+      if ENV['STRIPE_SECRET_KEY'].start_with?('sk_')
+        puts "✅ Stripe secret key format looks valid"
+      else
+        puts "⚠️  Stripe secret key format appears invalid (should start with 'sk_')"
+        all_valid = false
+      end
+    else
+      puts "⚠️  Stripe secret key not set (STRIPE_SECRET_KEY)"
+      puts "💡 Set STRIPE_SECRET_KEY if you plan to use billing features"
+    end
+    
+    # Check GitHub token
+    if ENV['GITHUB_TOKEN'] && !ENV['GITHUB_TOKEN'].empty?
+      if ENV['GITHUB_TOKEN'].start_with?('ghp_') || ENV['GITHUB_TOKEN'].start_with?('github_pat_')
+        puts "✅ GitHub token format looks valid"
+      else
+        puts "⚠️  GitHub token format appears invalid"
+        all_valid = false
+      end
+    else
+      puts "⚠️  GitHub token not set (GITHUB_TOKEN)"
+      puts "💡 Set GITHUB_TOKEN if you plan to use GitHub integration features"
+    end
+    
+    if all_valid
+      puts "✅ API key formats appear valid"
+    else
+      puts "💡 Check API key formats and regenerate if necessary"
+    end
+    
+    return all_valid
+  end
+
+  def check_pending_migrations
+    puts "\nChecking database migrations:"
+    
+    migrations_dir = 'db/migrate'
+    unless Dir.exist?(migrations_dir)
+      puts "⚠️  No migrations directory found at #{migrations_dir}"
+      return true # Not in a Rails app context, skip
+    end
+    
+    migration_files = Dir.glob(File.join(migrations_dir, '*.rb')).sort
+    if migration_files.empty?
+      puts "✅ No migrations found"
+      return true
+    end
+    
+    puts "📊 Found #{migration_files.length} migration file(s)"
+    
+    # Check if Rails is available to check migration status
+    begin
+      # Try to detect if we're in a Rails app context
+      if File.exist?('config/application.rb') || File.exist?('Rakefile')
+        puts "💡 In Rails app context - run 'rails db:migrate:status' to check migration status"
+        puts "💡 Run 'rails db:migrate' if there are pending migrations"
+      else
+        puts "⚠️  Not in Rails app context - cannot check migration status"
+        puts "💡 Ensure migrations are run when deploying the generated application"
+      end
+    rescue => e
+      puts "⚠️  Could not check migration status: #{e.message}"
+    end
+    
+    return true # Don't fail on migration checks as this is informational
+  end
+
+  def check_module_integrity
+    puts "\nChecking installed module integrity:"
+    
+    return true unless File.exist?(REGISTRY_PATH)
+    
+    begin
+      registry = JSON.parse(File.read(REGISTRY_PATH))
+      installed_modules = registry.dig('installed') || {}
+      
+      if installed_modules.empty?
+        puts "✅ No modules installed - registry is clean"
+        return true
+      end
+      
+      all_valid = true
+      installed_modules.each do |module_name, module_info|
+        domain_path = File.join('app', 'domains', module_name)
+        template_path = module_info['template_path']
+        
+        # Check if domain directory exists
+        unless Dir.exist?(domain_path)
+          puts "❌ Module '#{module_name}' missing domain directory at #{domain_path}"
+          puts "💡 Run 'bin/synth remove #{module_name}' and reinstall with 'bin/synth add #{module_name}'"
+          all_valid = false
+          next
+        end
+        
+        # Check if template path exists
+        unless Dir.exist?(template_path)
+          puts "❌ Module '#{module_name}' missing template at #{template_path}"
+          all_valid = false
+          next
+        end
+        
+        puts "✅ Module '#{module_name}' appears properly installed"
+      end
+      
+      if all_valid
+        puts "✅ All installed modules appear intact"
+      end
+      
+      return all_valid
+    rescue JSON::ParserError
+      puts "❌ Cannot check module integrity - registry is corrupted"
+      return false
+    rescue => e
+      puts "❌ Error checking module integrity: #{e.message}"
+      return false
     end
   end
 
