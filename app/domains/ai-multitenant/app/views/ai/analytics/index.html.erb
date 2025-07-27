@@ -1,0 +1,150 @@
+<% content_for :title, "AI Analytics" %>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">AI Analytics</h1>
+    <p class="mt-2 text-gray-600">Monitor AI usage, costs, and performance across your workspace</p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="text-2xl font-bold text-blue-600"><%= number_with_delimiter(@usage_stats[:total_requests]) %></div>
+      <div class="text-sm text-gray-500">Total Requests</div>
+      <div class="text-xs text-gray-400 mt-1">Last 30 days</div>
+    </div>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@usage_stats[:total_tokens]) %></div>
+      <div class="text-sm text-gray-500">Tokens Used</div>
+      <div class="text-xs text-gray-400 mt-1">Last 30 days</div>
+    </div>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="text-2xl font-bold text-purple-600">$<%= sprintf("%.4f", @usage_stats[:total_cost]) %></div>
+      <div class="text-sm text-gray-500">Estimated Cost</div>
+      <div class="text-xs text-gray-400 mt-1">Last 30 days</div>
+    </div>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+      <div class="text-2xl font-bold text-indigo-600"><%= sprintf("%.1f%%", (@usage_stats[:successful_requests].to_f / [@usage_stats[:total_requests], 1].max * 100)) %></div>
+      <div class="text-sm text-gray-500">Success Rate</div>
+      <div class="text-xs text-gray-400 mt-1">Last 30 days</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Daily Usage Chart -->
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Daily Usage Trend</h3>
+      </div>
+      <div class="p-6">
+        <%= line_chart @daily_usage.map { |day| [day[:date], day[:tokens_used]] }, 
+            height: "300px", 
+            suffix: " tokens",
+            colors: ["#3B82F6"] %>
+      </div>
+    </div>
+
+    <!-- Provider Breakdown -->
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Provider Usage</h3>
+      </div>
+      <div class="p-6">
+        <% if @provider_breakdown.any? %>
+          <%= pie_chart @provider_breakdown.map { |p| [p[:provider_name], p[:requests_count]] },
+              height: "300px",
+              colors: ["#3B82F6", "#10B981", "#F59E0B", "#EF4444"] %>
+        <% else %>
+          <div class="text-center text-gray-500 py-12">No provider usage data available</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Efficiency Metrics -->
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Efficiency Metrics</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="flex justify-between">
+          <span class="text-gray-600">Cost per 1K tokens</span>
+          <span class="font-medium">$<%= sprintf("%.6f", @efficiency_metrics[:cost_efficiency]) %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-600">Tokens per request</span>
+          <span class="font-medium"><%= @efficiency_metrics[:request_efficiency] %></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-600">Avg response time</span>
+          <span class="font-medium"><%= sprintf("%.2f", @efficiency_metrics[:time_efficiency]) %>s</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-600">Total cost</span>
+          <span class="font-medium">$<%= sprintf("%.4f", @efficiency_metrics[:total_cost]) %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Breakdown -->
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">Model Usage</h3>
+      </div>
+      <div class="p-6">
+        <% if @model_breakdown.any? %>
+          <div class="space-y-3">
+            <% @model_breakdown.each do |model_data| %>
+              <div class="flex justify-between items-center">
+                <div>
+                  <div class="font-medium"><%= model_data[:model] %></div>
+                  <div class="text-sm text-gray-500"><%= number_with_delimiter(model_data[:tokens_used]) %> tokens</div>
+                </div>
+                <div class="text-right">
+                  <div class="font-medium"><%= model_data[:requests_count] %> requests</div>
+                  <div class="text-sm text-gray-500">$<%= sprintf("%.4f", model_data[:estimated_cost]) %></div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center text-gray-500 py-8">No model usage data available</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trending Data -->
+  <% if @trending_data[:trends] %>
+    <div class="mt-8 bg-white shadow rounded-lg">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">7-Day Trends</h3>
+      </div>
+      <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <% %w[requests tokens cost].each do |metric| %>
+            <% trend = @trending_data[:trends][metric.to_sym] %>
+            <% if trend %>
+              <div class="text-center">
+                <div class="text-2xl font-bold 
+                  <%= trend[:direction] == 'up' ? 'text-green-600' : trend[:direction] == 'down' ? 'text-red-600' : 'text-gray-600' %>">
+                  <%= trend[:direction] == 'up' ? '↗' : trend[:direction] == 'down' ? '↘' : '→' %>
+                  <%= sprintf("%.1f%%", trend[:percentage].abs) %>
+                </div>
+                <div class="text-sm text-gray-500"><%= metric.humanize %></div>
+                <div class="text-xs text-gray-400">
+                  <%= trend[:direction] == 'up' ? 'Increase' : trend[:direction] == 'down' ? 'Decrease' : 'No change' %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
