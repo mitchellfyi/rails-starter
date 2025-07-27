@@ -1,0 +1,87 @@
+<h1>System Prompts</h1>
+
+<% if @workspace %>
+  <p class="mb-4">
+    <strong>Workspace:</strong> <%= @workspace.name %>
+    <%= link_to 'View Global Prompts', system_prompts_path, class: 'ml-4 text-blue-600 hover:text-blue-800' %>
+  </p>
+<% else %>
+  <p class="mb-4">
+    <strong>Global System Prompts</strong>
+    <span class="text-gray-600 ml-2">(Available to all workspaces as fallback)</span>
+  </p>
+<% end %>
+
+<div class="mb-4">
+  <%= link_to 'New System Prompt', new_system_prompt_path(workspace_id: @workspace&.id), 
+              class: 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded' %>
+</div>
+
+<% if @system_prompts.any? %>
+  <div class="grid gap-4">
+    <% @system_prompts.each do |prompt| %>
+      <div class="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
+        <div class="flex justify-between items-start mb-2">
+          <h3 class="text-lg font-semibold">
+            <%= link_to prompt.name, system_prompt_path(prompt), class: 'text-blue-600 hover:text-blue-800' %>
+          </h3>
+          <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                       <%= prompt.status == 'active' ? 'bg-green-100 text-green-800' : 
+                           prompt.status == 'draft' ? 'bg-yellow-100 text-yellow-800' : 
+                           'bg-gray-100 text-gray-800' %>">
+            <%= prompt.status.titleize %>
+          </span>
+        </div>
+        
+        <% if prompt.description.present? %>
+          <p class="text-gray-600 mb-2"><%= prompt.description %></p>
+        <% end %>
+        
+        <div class="text-sm text-gray-500 mb-2">
+          Version: <%= prompt.version %> | 
+          <% if prompt.global? %>
+            Global Prompt
+          <% else %>
+            Workspace: <%= prompt.workspace.name %>
+          <% end %>
+        </div>
+        
+        <% if prompt.associated_roles.any? || prompt.associated_functions.any? || prompt.associated_agents.any? %>
+          <div class="text-sm text-gray-600 mb-2">
+            <% if prompt.associated_roles.any? %>
+              <span class="mr-4"><strong>Roles:</strong> <%= prompt.associated_roles.join(', ') %></span>
+            <% end %>
+            <% if prompt.associated_functions.any? %>
+              <span class="mr-4"><strong>Functions:</strong> <%= prompt.associated_functions.join(', ') %></span>
+            <% end %>
+            <% if prompt.associated_agents.any? %>
+              <span><strong>Agents:</strong> <%= prompt.associated_agents.join(', ') %></span>
+            <% end %>
+          </div>
+        <% end %>
+        
+        <div class="flex space-x-2 text-sm">
+          <%= link_to 'View', system_prompt_path(prompt), class: 'text-blue-600 hover:text-blue-800' %>
+          <%= link_to 'Edit', edit_system_prompt_path(prompt), class: 'text-green-600 hover:text-green-800' %>
+          <% unless prompt.status == 'active' %>
+            <%= link_to 'Activate', activate_system_prompt_path(prompt), method: :patch, 
+                        class: 'text-purple-600 hover:text-purple-800',
+                        data: { confirm: 'This will deactivate other versions. Continue?' } %>
+          <% end %>
+          <%= link_to 'Clone', clone_system_prompt_path(prompt), class: 'text-orange-600 hover:text-orange-800' %>
+          <%= link_to 'Delete', system_prompt_path(prompt), method: :delete, 
+                      class: 'text-red-600 hover:text-red-800',
+                      data: { confirm: 'Are you sure?' } %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="text-center py-8 text-gray-500">
+    <p>No system prompts found.</p>
+    <p class="mt-2">
+      <%= link_to 'Create your first system prompt', new_system_prompt_path(workspace_id: @workspace&.id), 
+                  class: 'text-blue-600 hover:text-blue-800' %>
+    </p>
+  </div>
+<% end %>
