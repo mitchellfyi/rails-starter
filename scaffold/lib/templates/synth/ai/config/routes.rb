@@ -1,9 +1,21 @@
 # frozen_string_literal: true
 
-# Routes for LLM outputs, feedback system, and PromptTemplate management
+# Routes for LLM outputs, feedback system, PromptTemplate management, and AI credentials
 # Add these to your application's routes.rb file
 
 Rails.application.routes.draw do
+  # AI Provider management (admin only)
+  resources :ai_providers
+  
+  # Workspace-scoped AI credentials
+  resources :workspaces, param: :slug do
+    resources :ai_credentials do
+      member do
+        post :test_connection
+      end
+    end
+  end
+  
   # PromptTemplate management routes
   resources :prompt_templates do
     member do
@@ -44,6 +56,15 @@ Rails.application.routes.draw do
 
       # Endpoint to queue LLM jobs directly
       post 'llm_jobs', to: 'llm_jobs#create'
+      
+      # Workspace-scoped AI credentials API
+      resources :workspaces, param: :slug do
+        resources :ai_credentials, only: [:index, :show] do
+          member do
+            post :test_connection
+          end
+        end
+      end
     end
   end
 end

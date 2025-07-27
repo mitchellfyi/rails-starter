@@ -17,7 +17,12 @@ class LLMJob < ApplicationJob
     delay
   end
 
-  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil)
+  # Class method to create workspace-scoped job runner
+  def self.for(workspace)
+    WorkspaceLLMJobRunner.new(workspace)
+  end
+
+  def perform(template:, model:, context: {}, format: 'text', user_id: nil, agent_id: nil, ai_credential_id: nil, workspace_id: nil)
     Rails.logger.info "Starting LLMJob", {
       template: template,
       model: model,
@@ -25,8 +30,14 @@ class LLMJob < ApplicationJob
       format: format,
       user_id: user_id,
       agent_id: agent_id,
+      ai_credential_id: ai_credential_id,
+      workspace_id: workspace_id,
       job_id: job_id
     }
+
+    # Load workspace and credential if provided
+    workspace = Workspace.find(workspace_id) if workspace_id
+    ai_credential = AiCredential.find(ai_credential_id) if ai_credential_id
 
     # Get the prompt template
     prompt_template = find_prompt_template(template)
@@ -34,8 +45,8 @@ class LLMJob < ApplicationJob
     # Interpolate context variables into the template
     prompt = interpolate_template(prompt_template, context)
     
-    # Call the LLM API
-    response = call_llm_api(model, prompt, format)
+    # Call the LLM API with workspace-specific configuration
+    response = call_llm_api(model, prompt, format, ai_credential)
     
     # Store the output
     llm_output = store_output(
@@ -47,7 +58,9 @@ class LLMJob < ApplicationJob
       raw_response: response[:raw],
       parsed_output: response[:parsed],
       user_id: user_id,
-      agent_id: agent_id
+      agent_id: agent_id,
+      ai_credential: ai_credential,
+      workspace: workspace
     )
 
     Rails.logger.info "LLMJob completed successfully", {
@@ -84,9 +97,61 @@ class LLMJob < ApplicationJob
     result
   end
 
-  def call_llm_api(model, prompt, format)
-    # This would integrate with actual LLM providers (OpenAI, Claude, etc.)
-    # For now, return a mock response
+  def call_llm_api(model, prompt, format, ai_credential = nil)
+    if ai_credential
+      # Use workspace-specific credential configuration
+      runner = ai_credential.create_job_runner
+      client = runner.client
+      config = ai_credential.api_config
+      
+      case ai_credential.ai_provider.slug
+      when 'openai'
+        call_openai_api(client, prompt, config, format)
+      when 'anthropic'
+        call_anthropic_api(client, prompt, config, format)
+      when 'cohere'
+        call_cohere_api(client, prompt, config, format)
+      else
+        raise "Unsupported provider: #{ai_credential.ai_provider.slug}"
+      end
+    else
+      # Fall back to legacy behavior for backward compatibility
+      call_legacy_llm_api(model, prompt, format)
+    end
+  end
+
+  def call_openai_api(client, prompt, config, format)
+    response = client.chat(
+      parameters: {
+        model: config[:model],
+        messages: [{ role: "user", content: prompt }],
+        temperature: config[:temperature],
+        max_tokens: config[:max_tokens]
+      }
+    )
+
+    raw = response.dig("choices", 0, "message", "content")
+    parsed = format_response(raw, format)
+
+    { raw: raw, parsed: parsed }
+  end
+
+  def call_anthropic_api(client, prompt, config, format)
+    # Placeholder for Anthropic API integration
+    raw = "Anthropic response for: #{prompt[0..50]}..."
+    parsed = format_response(raw, format)
+    { raw: raw, parsed: parsed }
+  end
+
+  def call_cohere_api(client, prompt, config, format)
+    # Placeholder for Cohere API integration
+    raw = "Cohere response for: #{prompt[0..50]}..."
+    parsed = format_response(raw, format)
+    { raw: raw, parsed: parsed }
+  end
+
+  def call_legacy_llm_api(model, prompt, format)
+    # Legacy behavior for backward compatibility
     case format
     when 'json'
       parsed = { "response" => "Mock JSON response for: #{prompt[0..50]}..." }
@@ -99,13 +164,25 @@ class LLMJob < ApplicationJob
       parsed = raw
     end
 
-    {
-      raw: raw,
-      parsed: parsed
-    }
+    { raw: raw, parsed: parsed }
   end
 
-  def store_output(template:, model:, context:, format:, prompt:, raw_response:, parsed_output:, user_id:, agent_id:)
+  def format_response(raw_response, format)
+    case format
+    when 'json'
+      begin
+        JSON.parse(raw_response)
+      rescue JSON::ParserError
+        raw_response
+      end
+    when 'markdown', 'html', 'text'
+      raw_response
+    else
+      raw_response
+    end
+  end
+
+  def store_output(template:, model:, context:, format:, prompt:, raw_response:, parsed_output:, user_id:, agent_id:, ai_credential: nil, workspace: nil)
     LLMOutput.create!(
       template_name: template,
       model_name: model,
@@ -116,6 +193,8 @@ class LLMJob < ApplicationJob
       parsed_output: parsed_output,
       user_id: user_id,
       agent_id: agent_id,
+      ai_credential: ai_credential,
+      workspace: workspace,
       job_id: job_id,
       status: 'completed'
     )

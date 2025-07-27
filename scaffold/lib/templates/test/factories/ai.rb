@@ -1,9 +1,84 @@
 # frozen_string_literal: true
 
 # AI Module Factories
-# Factories for prompt templates, LLM jobs, and outputs
+# Factories for prompt templates, LLM jobs, outputs, AI providers, and credentials
 
 FactoryBot.define do
+  # AI Provider factory
+  factory :ai_provider do
+    sequence(:name) { |n| "AI Provider #{n}" }
+    sequence(:slug) { |n| "ai_provider_#{n}" }
+    description { Faker::Lorem.sentence }
+    api_base_url { "https://api.example#{rand(1..100)}.com" }
+    supported_models { ["model-1", "model-2", "model-3"] }
+    default_config { { temperature: 0.7, max_tokens: 4096 } }
+    active { true }
+    priority { rand(0..10) }
+
+    trait :openai do
+      name { "OpenAI" }
+      slug { "openai" }
+      api_base_url { "https://api.openai.com" }
+      supported_models { ["gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"] }
+    end
+
+    trait :anthropic do
+      name { "Anthropic" }
+      slug { "anthropic" }
+      api_base_url { "https://api.anthropic.com" }
+      supported_models { ["claude-3-opus", "claude-3-sonnet", "claude-2.1"] }
+    end
+
+    trait :inactive do
+      active { false }
+    end
+  end
+
+  # AI Credential factory
+  factory :ai_credential do
+    ai_provider
+    workspace
+    sequence(:name) { |n| "Credential #{n}" }
+    api_key { "test_api_key_#{SecureRandom.hex(8)}" }
+    preferred_model { ai_provider.supported_models.sample }
+    temperature { 0.7 }
+    max_tokens { 4096 }
+    response_format { "text" }
+    provider_config { {} }
+    active { true }
+    is_default { false }
+
+    trait :default do
+      is_default { true }
+    end
+
+    trait :with_system_prompt do
+      system_prompt { "You are a helpful AI assistant." }
+    end
+
+    trait :json_format do
+      response_format { "json" }
+    end
+
+    trait :high_temperature do
+      temperature { 1.2 }
+    end
+
+    trait :low_temperature do
+      temperature { 0.3 }
+    end
+
+    trait :recently_used do
+      last_used_at { 1.hour.ago }
+      usage_count { 5 }
+    end
+
+    trait :tested do
+      last_tested_at { 30.minutes.ago }
+      last_test_result { { success: true, message: "Connection successful" }.to_json }
+    end
+  end
+
   # Prompt Template factory
   factory :prompt_template do
     name { Faker::Lorem.words(number: 2).join('_') }
@@ -82,14 +157,25 @@ FactoryBot.define do
     trait :claude do
       model { 'claude-3-sonnet' }
     end
+
+    trait :with_ai_credential do
+      ai_credential
+    end
   end
 
   # LLM Output factory
   factory :llm_output do
     llm_job
+    ai_credential { nil }
+    workspace { nil }
     content { Faker::Lorem.paragraph(sentence_count: 3) }
     tokens_used { rand(50..500) }
     cost_cents { tokens_used * 0.1 } # Rough estimate
+
+    trait :with_ai_credential do
+      ai_credential
+      workspace { ai_credential.workspace }
+    end
 
     trait :with_positive_feedback do
       feedback_rating { 1 } # thumbs up
