@@ -1,0 +1,256 @@
+<% content_for :title, "Environment Credentials" %>
+
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Environment Credentials</h1>
+          <p class="mt-2 text-sm text-gray-700">
+            Manage API keys and credentials for <%= current_workspace.name %>
+          </p>
+        </div>
+        <div class="flex space-x-3">
+          <%= link_to "Import Wizard", import_wizard_workspace_environment_credentials_path(current_workspace), 
+                      class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+          <%= link_to "External Sources", external_secrets_workspace_environment_credentials_path(current_workspace),
+                      class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Total Credentials</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= @existing_mappings.count %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Environment Variables</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= @detected_vars.count %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17v4a2 2 0 002 2h4M13 13h4a2 2 0 012 2v4a2 2 0 01-2 2H9a2 2 0 01-2-2v-4a2 2 0 012-2h4z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">External Synced</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= @existing_mappings.count { |c| c.synced_from_external? } %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Available Providers</dt>
+                <dd class="text-lg font-medium text-gray-900"><%= @available_providers.count %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detected Environment Variables -->
+    <% if @detected_vars.any? %>
+      <div class="bg-white shadow overflow-hidden sm:rounded-md mb-8">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Detected Environment Variables</h3>
+          <p class="mt-1 max-w-2xl text-sm text-gray-500">
+            API keys found in environment variables and .env files
+          </p>
+        </div>
+        <ul class="divide-y divide-gray-200">
+          <% @detected_vars.each do |env_key, data| %>
+            <li class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-<%= case data[:provider]
+                      when 'openai' then 'green'
+                      when 'anthropic' then 'purple'  
+                      when 'cohere' then 'blue'
+                      when 'huggingface' then 'yellow'
+                      else 'gray'
+                    end %>-100 text-<%= case data[:provider]
+                      when 'openai' then 'green'
+                      when 'anthropic' then 'purple'
+                      when 'cohere' then 'blue' 
+                      when 'huggingface' then 'yellow'
+                      else 'gray'
+                    end %>-800">
+                      <%= data[:provider].humanize %>
+                    </span>
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900"><%= env_key %></div>
+                    <div class="text-sm text-gray-500">
+                      Source: <%= data[:source] %> | Value: <%= data[:value] %>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex-shrink-0">
+                  <% if @existing_mappings.any? { |c| c.environment_source == env_key } %>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Already Imported
+                    </span>
+                  <% else %>
+                    <%= link_to "Import", import_wizard_workspace_environment_credentials_path(current_workspace, highlight: env_key),
+                                class: "text-indigo-600 hover:text-indigo-900 text-sm font-medium" %>
+                  <% end %>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% else %>
+      <div class="bg-white shadow sm:rounded-md mb-8">
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">No Environment Variables Detected</h3>
+          <div class="mt-2 max-w-xl text-sm text-gray-500">
+            <p>No AI provider API keys were found in your environment variables or .env files.</p>
+          </div>
+          <div class="mt-5">
+            <%= link_to "Learn about environment setup", "#", 
+                        class: "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Existing Credentials -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <div class="px-4 py-5 sm:px-6 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">Existing Credentials</h3>
+          <p class="mt-1 max-w-2xl text-sm text-gray-500">
+            AI credentials configured for this workspace
+          </p>
+        </div>
+        <div class="flex space-x-3">
+          <%= button_to "Test All", test_all_credentials_workspace_environment_credentials_path(current_workspace),
+                        method: :post,
+                        remote: true,
+                        class: "inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500",
+                        data: { 
+                          confirm: "This will test all #{@existing_mappings.count} credentials. Continue?",
+                          target: "#test-results"
+                        } %>
+          <%= link_to "Add New", new_workspace_ai_credential_path(current_workspace),
+                      class: "inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+        </div>
+      </div>
+
+      <% if @existing_mappings.any? %>
+        <ul class="divide-y divide-gray-200">
+          <% @existing_mappings.group_by(&:ai_provider).each do |provider, credentials| %>
+            <li class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0">
+                    <img class="h-10 w-10 rounded-full" src="<%= provider.logo_url || '/assets/ai-provider-default.png' %>" alt="<%= provider.name %>">
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900"><%= provider.name %></div>
+                    <div class="text-sm text-gray-500"><%= credentials.count %> credential<%= 's' if credentials.count != 1 %></div>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                  <% credentials.each do |credential| %>
+                    <div class="text-right">
+                      <div class="text-sm font-medium text-gray-900"><%= credential.name %></div>
+                      <div class="text-sm text-gray-500">
+                        <%= credential.external_source %>
+                        <% if credential.needs_external_sync? %>
+                          <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-1">
+                            Needs Sync
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                  <div class="flex-shrink-0">
+                    <%= link_to "Manage", workspace_ai_credentials_path(current_workspace, provider: provider.slug),
+                                class: "text-indigo-600 hover:text-indigo-900 text-sm font-medium" %>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="px-4 py-5 sm:p-6">
+          <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+              <path d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A10.003 10.003 0 0124 26c4.21 0 7.813 2.602 9.288 6.286M30 14a6 6 0 11-12 0 6 6 0 0112 0zm12 6a4 4 0 11-8 0 4 4 0 018 0zm-28 0a4 4 0 11-8 0 4 4 0 018 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No credentials configured</h3>
+            <p class="mt-1 text-sm text-gray-500">Get started by importing from environment variables or adding manually.</p>
+            <div class="mt-6">
+              <%= link_to "Import from Environment", import_wizard_workspace_environment_credentials_path(current_workspace),
+                          class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Test Results Container -->
+    <div id="test-results" class="mt-8 hidden">
+      <!-- Results will be loaded here via AJAX -->
+    </div>
+  </div>
+</div>

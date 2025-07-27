@@ -14,6 +14,19 @@ Rails.application.routes.draw do
         post :test_connection
       end
     end
+    
+    # Environment credentials management
+    resources :environment_credentials, only: [:index] do
+      collection do
+        get :import_wizard
+        post :import
+        get :external_secrets
+        post :sync_vault
+        post :sync_doppler
+        post :sync_onepassword
+        post :test_all_credentials
+      end
+    end
   end
   
   # PromptTemplate management routes

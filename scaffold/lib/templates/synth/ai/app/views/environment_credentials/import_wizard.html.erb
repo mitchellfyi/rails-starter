@@ -1,0 +1,199 @@
+<% content_for :title, "Import Environment Variables" %>
+
+<div class="min-h-screen bg-gray-50 py-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Import Environment Variables</h1>
+          <p class="mt-2 text-sm text-gray-700">
+            Review and import detected API keys from environment variables
+          </p>
+        </div>
+        <div>
+          <%= link_to "← Back to Environment Credentials", workspace_environment_credentials_path(current_workspace),
+                      class: "inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Form -->
+    <%= form_with url: import_workspace_environment_credentials_path(current_workspace), local: true, method: :post do |form| %>
+      <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Import Suggestions
+            <% if @import_suggestions.any? %>
+              <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <%= @import_suggestions.count %> found
+              </span>
+            <% end %>
+          </h3>
+          <p class="mt-1 max-w-2xl text-sm text-gray-500">
+            These environment variables appear to contain AI provider API keys. Review and select which ones to import.
+          </p>
+        </div>
+
+        <% if @import_suggestions.any? %>
+          <div class="border-t border-gray-200">
+            <% @import_suggestions.each_with_index do |suggestion, index| %>
+              <div class="px-4 py-5 sm:px-6 border-b border-gray-100 <%= 'bg-yellow-50' if params[:highlight] == suggestion[:env_key] %>">
+                <div class="flex items-start space-x-4">
+                  <!-- Enable Checkbox -->
+                  <div class="flex items-center h-5 mt-1">
+                    <%= check_box_tag "mappings[#{index}][enabled]", "1", true, 
+                                      class: "focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded" %>
+                  </div>
+
+                  <!-- Main Content -->
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <h4 class="text-sm font-medium text-gray-900">
+                          <%= suggestion[:env_key] %>
+                          <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-<%= case suggestion[:provider].slug
+                            when 'openai' then 'green'
+                            when 'anthropic' then 'purple'
+                            when 'cohere' then 'blue'
+                            when 'huggingface' then 'yellow'
+                            else 'gray'
+                          end %>-100 text-<%= case suggestion[:provider].slug
+                            when 'openai' then 'green'
+                            when 'anthropic' then 'purple'
+                            when 'cohere' then 'blue'
+                            when 'huggingface' then 'yellow'
+                            else 'gray'
+                          end %>-800">
+                            <%= suggestion[:provider].name %>
+                          </span>
+                        </h4>
+                        <p class="text-sm text-gray-500">
+                          Source: <%= suggestion[:env_source] %>
+                        </p>
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <span class="text-xs text-gray-500">Model:</span>
+                        <span class="text-xs font-medium text-gray-900"><%= suggestion[:suggested_model] %></span>
+                      </div>
+                    </div>
+
+                    <!-- Configuration Fields -->
+                    <div class="mt-4 grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4">
+                      <!-- Hidden fields for suggestion data -->
+                      <%= hidden_field_tag "mappings[#{index}][env_key]", suggestion[:env_key] %>
+                      <%= hidden_field_tag "mappings[#{index}][env_source]", suggestion[:env_source] %>
+                      <%= hidden_field_tag "mappings[#{index}][provider_id]", suggestion[:provider].id %>
+
+                      <!-- Credential Name -->
+                      <div>
+                        <%= label_tag "mappings[#{index}][name]", "Credential Name", class: "block text-sm font-medium text-gray-700" %>
+                        <%= text_field_tag "mappings[#{index}][name]", suggestion[:suggested_name],
+                                          class: "mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" %>
+                      </div>
+
+                      <!-- Model Selection -->
+                      <div>
+                        <%= label_tag "mappings[#{index}][model]", "Model", class: "block text-sm font-medium text-gray-700" %>
+                        <%= select_tag "mappings[#{index}][model]", 
+                                      options_for_select(suggestion[:provider].supported_models.map { |model| [model, model] }, suggestion[:suggested_model]),
+                                      class: "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" %>
+                      </div>
+
+                      <!-- Temperature -->
+                      <div>
+                        <%= label_tag "mappings[#{index}][temperature]", "Temperature", class: "block text-sm font-medium text-gray-700" %>
+                        <%= number_field_tag "mappings[#{index}][temperature]", "0.7",
+                                            step: 0.1, min: 0.0, max: 2.0,
+                                            class: "mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" %>
+                      </div>
+
+                      <!-- Max Tokens -->
+                      <div>
+                        <%= label_tag "mappings[#{index}][max_tokens]", "Max Tokens", class: "block text-sm font-medium text-gray-700" %>
+                        <%= number_field_tag "mappings[#{index}][max_tokens]", "4096",
+                                            min: 1, max: 100000,
+                                            class: "mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" %>
+                      </div>
+
+                      <!-- Response Format -->
+                      <div>
+                        <%= label_tag "mappings[#{index}][response_format]", "Response Format", class: "block text-sm font-medium text-gray-700" %>
+                        <%= select_tag "mappings[#{index}][response_format]",
+                                      options_for_select([['Text', 'text'], ['JSON', 'json'], ['Markdown', 'markdown'], ['HTML', 'html']], 'text'),
+                                      class: "mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" %>
+                      </div>
+
+                      <!-- Test Immediately -->
+                      <div class="flex items-center">
+                        <%= check_box_tag "mappings[#{index}][test_immediately]", "1", true,
+                                          class: "focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded" %>
+                        <%= label_tag "mappings[#{index}][test_immediately]", "Test connection after import",
+                                      class: "ml-2 block text-sm text-gray-900" %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            <div class="flex justify-between items-center">
+              <div class="text-sm text-gray-500">
+                <%= @import_suggestions.count %> environment variable<%= 's' if @import_suggestions.count != 1 %> detected
+              </div>
+              <div class="flex space-x-3">
+                <%= link_to "Cancel", workspace_environment_credentials_path(current_workspace),
+                            class: "bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+                <%= submit_tag "Import Selected Credentials",
+                              class: "inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" %>
+              </div>
+            </div>
+          </div>
+        <% else %>
+          <!-- No Suggestions Found -->
+          <div class="px-4 py-5 sm:p-6">
+            <div class="text-center">
+              <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path d="M8 14v20c0 4.418 7.163 8 16 8 1.381 0 2.721-.087 4-.252M8 14c0 4.418 7.163 8 16 8s16-3.582 16-8M8 14c0-4.418 7.163-8 16-8s16 3.582 16 8m0 0v14m-16-4c0 4.418 7.163 8 16 8 1.381 0 2.721-.087 4-.252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <h3 class="mt-2 text-sm font-medium text-gray-900">No API keys detected</h3>
+              <p class="mt-1 text-sm text-gray-500">
+                We couldn't find any AI provider API keys in your environment variables or .env files.
+              </p>
+              <div class="mt-6 flex justify-center space-x-4">
+                <%= link_to "Add credentials manually", new_workspace_ai_credential_path(current_workspace),
+                            class: "inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700" %>
+                <%= link_to "Learn about .env setup", "#",
+                            class: "inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50" %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Help Section -->
+    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3 flex-1 md:flex md:justify-between">
+          <p class="text-sm text-blue-700">
+            <strong>Tip:</strong> Environment variables are scanned from <code>.env</code>, <code>.env.local</code>, <code>.env.development</code>, and <code>.env.production</code> files, as well as actual environment variables.
+          </p>
+          <p class="mt-3 text-sm md:mt-0 md:ml-6">
+            <a href="#" class="whitespace-nowrap font-medium text-blue-700 hover:text-blue-600">
+              Learn more →
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

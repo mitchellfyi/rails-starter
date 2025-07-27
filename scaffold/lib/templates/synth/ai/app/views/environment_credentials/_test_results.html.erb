@@ -1,0 +1,236 @@
+<div class="bg-white shadow sm:rounded-lg">
+  <div class="px-4 py-5 sm:px-6">
+    <h3 class="text-lg leading-6 font-medium text-gray-900">
+      Credential Test Results
+      <span class="ml-2 text-sm text-gray-500">
+        (<%= test_results[:total_count] %> total, <%= test_results[:success_rate] %>% success rate)
+      </span>
+    </h3>
+    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+      Comprehensive validation results for all workspace credentials
+    </p>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div class="bg-green-50 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Successful</dt>
+                <dd class="text-lg font-medium text-green-900"><%= test_results[:successful_count] %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-red-50 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Failed</dt>
+                <dd class="text-lg font-medium text-red-900"><%= test_results[:failed_count] %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-blue-50 overflow-hidden shadow rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <svg class="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Avg Duration</dt>
+                <dd class="text-lg font-medium text-blue-900">
+                  <%= (test_results[:credentials].sum { |c| c[:duration] || 0 } / test_results[:total_count]).round(2) %>s
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Individual Results -->
+  <% if test_results[:credentials].any? %>
+    <div class="border-t border-gray-200">
+      <ul class="divide-y divide-gray-200">
+        <% test_results[:credentials].each do |result| %>
+          <li class="px-4 py-6 sm:px-6">
+            <div class="flex items-start justify-between">
+              <div class="flex items-start space-x-3">
+                <!-- Status Icon -->
+                <div class="flex-shrink-0">
+                  <% if result[:success] %>
+                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                  <% else %>
+                    <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                      <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                  <% end %>
+                </div>
+
+                <!-- Credential Info -->
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-medium text-gray-900"><%= result[:credential_name] %></p>
+                      <p class="text-sm text-gray-500">
+                        <%= result[:provider] %>
+                        <% if result[:external_source] && result[:external_source] != 'Manual' %>
+                          • <%= result[:external_source] %>
+                        <% end %>
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm text-gray-500">
+                        <% if result[:duration] %>
+                          <%= result[:duration].round(2) %>s
+                        <% end %>
+                      </p>
+                      <p class="text-xs text-gray-400">
+                        <%= result[:completed_at] ? time_ago_in_words(Time.parse(result[:completed_at].to_s)) + ' ago' : '' %>
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Success Message or Error -->
+                  <div class="mt-2">
+                    <% if result[:success] %>
+                      <p class="text-sm text-green-600">
+                        ✓ <%= result[:message] || 'Connection successful' %>
+                      </p>
+                      <% if result[:sync_message] %>
+                        <p class="text-sm text-blue-600">
+                          ↻ <%= result[:sync_message] %>
+                        </p>
+                      <% end %>
+                    <% else %>
+                      <p class="text-sm text-red-600">
+                        ✗ <%= result[:error] || 'Connection failed' %>
+                      </p>
+                      <% if result[:sync_error] %>
+                        <p class="text-sm text-orange-600">
+                          ⚠ Sync error: <%= result[:sync_error] %>
+                        </p>
+                      <% end %>
+                    <% end %>
+                  </div>
+
+                  <!-- Validation Results -->
+                  <% if result[:validations] && result[:validations].any? %>
+                    <div class="mt-3">
+                      <details class="group">
+                        <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+                          Validation Details (<%= result[:validations].count { |v| v[:status] == 'pass' } %>/<%= result[:validations].count %> passed)
+                        </summary>
+                        <div class="mt-2 space-y-1">
+                          <% result[:validations].each do |validation| %>
+                            <div class="flex items-center space-x-2 text-xs">
+                              <% case validation[:status] %>
+                              <% when 'pass' %>
+                                <span class="text-green-500">✓</span>
+                              <% when 'fail' %>
+                                <span class="text-red-500">✗</span>
+                              <% when 'warning' %>
+                                <span class="text-yellow-500">⚠</span>
+                              <% end %>
+                              <span class="text-gray-600"><%= validation[:message] %></span>
+                            </div>
+                          <% end %>
+                        </div>
+                      </details>
+                    </div>
+                  <% end %>
+
+                  <!-- Additional Test Info -->
+                  <% if result[:model_test] || result[:prompt_test] %>
+                    <div class="mt-3">
+                      <details class="group">
+                        <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+                          Detailed Test Results
+                        </summary>
+                        <div class="mt-2 space-y-2 text-xs">
+                          <% if result[:model_test] %>
+                            <div>
+                              <span class="font-medium">Model Test: </span>
+                              <% if result[:model_test][:success] %>
+                                <span class="text-green-600">✓ <%= result[:model_test][:message] %></span>
+                              <% else %>
+                                <span class="text-red-600">✗ <%= result[:model_test][:error] %></span>
+                              <% end %>
+                            </div>
+                          <% end %>
+                          <% if result[:prompt_test] %>
+                            <div>
+                              <span class="font-medium">Prompt Test: </span>
+                              <% if result[:prompt_test][:success] %>
+                                <span class="text-green-600">✓ <%= result[:prompt_test][:message] %></span>
+                                <% if result[:prompt_test][:response_preview] %>
+                                  <div class="mt-1 p-2 bg-gray-50 rounded text-gray-600">
+                                    <%= result[:prompt_test][:response_preview] %>
+                                  </div>
+                                <% end %>
+                              <% else %>
+                                <span class="text-red-600">✗ <%= result[:prompt_test][:error] %></span>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                      </details>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- Footer Actions -->
+  <div class="border-t border-gray-200 px-4 py-4 sm:px-6">
+    <div class="flex justify-between items-center">
+      <p class="text-sm text-gray-500">
+        Test completed at <%= Time.current.strftime('%Y-%m-%d %H:%M:%S') %>
+      </p>
+      <div class="flex space-x-3">
+        <%= button_to "Re-run Tests", test_all_credentials_workspace_environment_credentials_path(current_workspace),
+                      method: :post,
+                      remote: true,
+                      class: "inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50",
+                      data: { target: "#test-results" } %>
+        <%= link_to "Export Results", "#",
+                    class: "inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700" %>
+      </div>
+    </div>
+  </div>
+</div>
