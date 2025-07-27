@@ -81,7 +81,9 @@ expected_file_creations = [
   '_theme_switcher.html.erb',
   '_brand_logo.html.erb',
   'theme_switcher_controller.js',
-  'theme.rb'
+  'theme_preferences_controller.rb',
+  'theme.rb',
+  'add_theme_preference_to_users.rb'
 ]
 
 expected_file_creations.each do |file|
@@ -101,20 +103,35 @@ else
   exit 1
 end
 
-# Test 8: Verify JavaScript theme switching functionality
-if install_content.include?('localStorage.getItem(\'theme\')') && install_content.include?('data-theme')
-  puts "✅ JavaScript theme switching functionality included"
+# Test 8: Verify JavaScript theme switching and server sync functionality
+if install_content.include?('localStorage.getItem(\'theme\')') && 
+   install_content.include?('data-theme') &&
+   install_content.include?('syncThemePreference') &&
+   install_content.include?('fetch(this.syncUrlValue')
+  puts "✅ JavaScript theme switching and server sync functionality included"
 else
-  puts "❌ JavaScript theme switching functionality missing"
+  puts "❌ JavaScript theme switching or server sync functionality missing"
+  exit 1
+end
+
+# Test 9: Verify server-side persistence features
+if install_content.include?('ThemePreferencesController') &&
+   install_content.include?('session[:theme_preference]') &&
+   install_content.include?('current_user.theme_preference')
+  puts "✅ Server-side theme persistence functionality included"
+else
+  puts "❌ Server-side theme persistence functionality missing"
   exit 1
 end
 
 puts ""
 puts "🎉 All theme module integration tests passed!"
-puts "📝 Theme customization framework is ready for use"
+puts "📝 Enhanced theme customization framework with server-side persistence is ready for use"
 puts ""
 puts "Next steps:"
 puts "- Add theme module to generated apps with: bin/synth add theme"
+puts "- Run migration: rails db:migrate (optional, for database persistence)"
 puts "- Customize colors in app/assets/stylesheets/theme.css"
 puts "- Add brand logos to app/assets/images/brand/"
 puts "- Configure theme settings in config/initializers/theme.rb"
+puts "- Theme preferences will persist across sessions and devices"

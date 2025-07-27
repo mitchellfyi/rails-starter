@@ -123,6 +123,25 @@ class ThemeModuleTest < Minitest::Test
     assert_includes logo_content, 'dark:hidden', 'Should include dark mode handling'
   end
   
+  def test_theme_controller_creation
+    theme_dir = File.expand_path('..', __dir__)
+    install_path = File.join(theme_dir, 'install.rb')
+    load install_path
+    
+    assert File.exist?('app/controllers/theme_preferences_controller.rb'),
+           'Theme preferences controller should be created'
+    
+    controller_content = File.read('app/controllers/theme_preferences_controller.rb')
+    assert_includes controller_content, 'def show',
+                    'Should include show action'
+    assert_includes controller_content, 'def update',
+                    'Should include update action'
+    assert_includes controller_content, 'session[:theme_preference]',
+                    'Should include session storage'
+    assert_includes controller_content, 'current_user.theme_preference',
+                    'Should include database storage'
+  end
+
   def test_stimulus_controller_creation
     theme_dir = File.expand_path('..', __dir__)
     install_path = File.join(theme_dir, 'install.rb')
@@ -134,12 +153,55 @@ class ThemeModuleTest < Minitest::Test
     controller_content = File.read('app/javascript/controllers/theme_switcher_controller.js')
     assert_includes controller_content, 'localStorage.getItem(\'theme\')',
                     'Should handle localStorage persistence'
-    assert_includes controller_content, 'applyTheme(theme)',
-                    'Should include theme application logic'
-    assert_includes controller_content, 'themeChanged',
-                    'Should dispatch theme change events'
+    assert_includes controller_content, 'syncThemePreference',
+                    'Should include server sync functionality'
+    assert_includes controller_content, 'loadThemePreference',
+                    'Should include theme loading from server'
+    assert_includes controller_content, 'fetch(this.syncUrlValue',
+                    'Should make API calls to server'
   end
   
+  def test_theme_switcher_server_integration
+    theme_dir = File.expand_path('..', __dir__)
+    install_path = File.join(theme_dir, 'install.rb')
+    load install_path
+    
+    switcher_content = File.read('app/views/shared/_theme_switcher.html.erb')
+    assert_includes switcher_content, 'data-theme-switcher-sync-url-value',
+                    'Should include sync URL data attribute'
+    assert_includes switcher_content, 'data-theme-switcher-csrf-token-value',
+                    'Should include CSRF token data attribute'
+    assert_includes switcher_content, 'theme_preference_path',
+                    'Should reference theme preference route'
+  end
+  
+  def test_database_migration_creation
+    theme_dir = File.expand_path('..', __dir__)
+    install_path = File.join(theme_dir, 'install.rb')
+    load install_path
+    
+    migration_files = Dir.glob('db/migrate/*_add_theme_preference_to_users.rb')
+    assert migration_files.any?, 'Should create theme preference migration'
+    
+    migration_content = File.read(migration_files.first)
+    assert_includes migration_content, 'add_column :users, :theme_preference',
+                    'Should add theme_preference column'
+    assert_includes migration_content, 'add_index :users, :theme_preference',
+                    'Should add index for theme_preference'
+  end
+  
+  def test_enhanced_theme_configuration
+    theme_dir = File.expand_path('..', __dir__)
+    install_path = File.join(theme_dir, 'install.rb')
+    load install_path
+    
+    initializer_content = File.read('config/initializers/theme.rb')
+    assert_includes initializer_content, 'config.theme.enable_server_sync',
+                    'Should include server sync configuration'
+    assert_includes initializer_content, 'config.theme.enable_database_persistence',
+                    'Should include database persistence configuration'
+  end
+
   def test_brand_assets_creation
     theme_dir = File.expand_path('..', __dir__)
     install_path = File.join(theme_dir, 'install.rb')
