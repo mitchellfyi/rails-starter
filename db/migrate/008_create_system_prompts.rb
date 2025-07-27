@@ -12,10 +12,10 @@ class CreateSystemPrompts < ActiveRecord::Migration[7.0]
       t.references :created_by, foreign_key: { to_table: :users }, null: true
       t.string :version, default: '1.0.0'
       
-      # Arrays for associations with roles, functions, agents
-      t.string :associated_roles, array: true, default: []
-      t.string :associated_functions, array: true, default: []
-      t.string :associated_agents, array: true, default: []
+      # Text fields for associations (SQLite doesn't support arrays)
+      t.text :associated_roles # JSON string
+      t.text :associated_functions # JSON string
+      t.text :associated_agents # JSON string
       
       t.timestamps
     end
@@ -27,9 +27,6 @@ class CreateSystemPrompts < ActiveRecord::Migration[7.0]
     # Performance indexes
     add_index :system_prompts, :status
     add_index :system_prompts, :version
-    add_index :system_prompts, :workspace_id
-    add_index :system_prompts, :associated_roles, using: 'gin'
-    add_index :system_prompts, :associated_functions, using: 'gin'
-    add_index :system_prompts, :associated_agents, using: 'gin'
+    # workspace_id index already created by t.references
   end
 end

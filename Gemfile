@@ -34,7 +34,11 @@ gem 'jbuilder'
 # gem 'kredis'
 
 # Use Active Model has_secure_password [https://github.com/bcrypt-ruby/bcrypt-ruby]
-# gem 'bcrypt', '~> 3.1.7'
+gem 'bcrypt', '~> 3.1.7'
+
+# Security gems for paranoid mode
+gem 'secure_headers', '~> 6.5'
+gem 'attr_encrypted', '~> 4.0'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[ mingw mswin x64_mingw jruby ]
@@ -54,6 +58,10 @@ group :development, :test do
   
   # Accessibility testing
   gem 'axe-core-rspec'
+  
+  # Testing for 2FA (when paranoid mode is enabled)
+  gem 'rqrcode', '~> 2.2'
+  gem 'rotp', '~> 6.3'
 end
 
 group :development do
