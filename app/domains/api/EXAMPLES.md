@@ -1,6 +1,65 @@
-# API Module Example Responses
+# API Module Examples
 
-This document shows examples of the JSON:API compliant responses that the API module generates.
+## JSON:API Request/Response Examples
+
+### LLM Jobs API
+
+#### POST /api/v1/llm_jobs
+
+**Request:**
+```json
+{
+  "data": {
+    "type": "llm-job",
+    "attributes": {
+      "template": "email_response",
+      "model": "gpt-4",
+      "context": {
+        "customer_name": "John Doe",
+        "issue": "Billing inquiry"
+      },
+      "format": "text"
+    }
+  }
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "data": {
+    "id": "123",
+    "type": "llm-output",
+    "attributes": {
+      "template_name": "email_response",
+      "model_name": "gpt-4",
+      "status": "pending",
+      "job_id": "abc-123-def",
+      "estimated_completion": "2023-12-01T10:31:00Z",
+      "created_at": "2023-12-01T10:30:00Z",
+      "updated_at": "2023-12-01T10:30:00Z"
+    },
+    "relationships": {
+      "user": {
+        "data": {
+          "id": "456",
+          "type": "user"
+        }
+      }
+    }
+  },
+  "included": [
+    {
+      "id": "456",
+      "type": "user",
+      "attributes": {
+        "email": "user@example.com",
+        "created_at": "2023-11-01T00:00:00Z"
+      }
+    }
+  ]
+}
+```
 
 ## GET /api/v1/workspaces
 

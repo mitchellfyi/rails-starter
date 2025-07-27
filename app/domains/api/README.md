@@ -2,6 +2,14 @@
 
 Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.
 
+## 🎯 Status: Enforced JSON:API Structure + OpenAPI Docs
+
+This module ensures all APIs follow JSON:API specification with:
+- ✅ Consistent pagination format
+- ✅ Standardized error responses  
+- ✅ Auto-generated OpenAPI schema via `/api/docs`
+- ✅ Validation of routes against specification
+
 ## Features
 
 - **JSON:API Compliance**: All API endpoints follow the [JSON:API specification](https://jsonapi.org/)
