@@ -1,0 +1,120 @@
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1 style="margin: 0; color: #1f2937;"><%= @mcp_fetcher.name %></h1>
+    <div>
+      <%= link_to "Edit", edit_admin_mcp_fetcher_path(@mcp_fetcher), class: "btn btn-primary" %>
+      <%= link_to "← Back to Fetchers", admin_mcp_fetchers_path, class: "btn btn-secondary" %>
+    </div>
+  </div>
+  
+  <p style="color: #6b7280; margin-bottom: 1rem;"><%= @mcp_fetcher.description %></p>
+  
+  <!-- Provider Type -->
+  <div style="margin-bottom: 1rem;">
+    <span style="font-weight: 500;">Provider Type:</span>
+    <span style="background: #3b82f6; color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem; margin-left: 0.5rem;">
+      <%= @mcp_fetcher.provider_type.humanize %>
+    </span>
+  </div>
+  
+  <!-- Global Status -->
+  <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+    <span style="font-weight: 500;">Global Status:</span>
+    <span style="background: <%= @mcp_fetcher.enabled? ? '#10b981' : '#6b7280' %>; color: white; padding: 0.5rem 1rem; border-radius: 0.25rem;">
+      <%= @mcp_fetcher.enabled? ? 'Enabled' : 'Disabled' %>
+    </span>
+    <%= link_to @mcp_fetcher.enabled? ? 'Disable Globally' : 'Enable Globally', 
+               admin_mcp_fetcher_toggle_path(@mcp_fetcher), 
+               method: :patch,
+               class: "btn #{ @mcp_fetcher.enabled? ? 'btn-danger' : 'btn-success' }" %>
+  </div>
+</div>
+
+<!-- Configuration -->
+<div class="card">
+  <h3 style="margin-bottom: 1rem; color: #1f2937;">Configuration</h3>
+  
+  <% if @mcp_fetcher.configuration.present? %>
+    <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+      <strong style="font-size: 0.875rem; color: #374151;">Configuration:</strong>
+      <pre style="font-family: monospace; font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0 0 0; white-space: pre-wrap;"><%= JSON.pretty_generate(@mcp_fetcher.configuration) %></pre>
+    </div>
+  <% end %>
+  
+  <% if @mcp_fetcher.parameters.present? %>
+    <div style="background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+      <strong style="font-size: 0.875rem; color: #374151;">Parameters:</strong>
+      <pre style="font-family: monospace; font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0 0 0; white-space: pre-wrap;"><%= JSON.pretty_generate(@mcp_fetcher.parameters) %></pre>
+    </div>
+  <% end %>
+  
+  <% if @mcp_fetcher.sample_output.present? %>
+    <div style="background: #f0fdf4; padding: 1rem; border-radius: 0.5rem;">
+      <strong style="font-size: 0.875rem; color: #374151;">Sample Output:</strong>
+      <pre style="font-family: monospace; font-size: 0.875rem; color: #6b7280; margin: 0.5rem 0 0 0; white-space: pre-wrap;"><%= @mcp_fetcher.sample_output %></pre>
+    </div>
+  <% end %>
+</div>
+
+<!-- Workspace Configuration -->
+<% if @workspaces&.any? %>
+  <div class="card">
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Workspace Configuration</h3>
+    <p style="color: #6b7280; margin-bottom: 1rem;">Control this MCP fetcher for specific workspaces.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+      <% @workspaces.each do |workspace| %>
+        <div style="border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem;">
+          <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
+            <h4 style="margin: 0; color: #1f2937;"><%= workspace.name %></h4>
+            <div style="margin-left: auto;">
+              <%= link_to admin_mcp_fetcher_toggle_workspace_path(@mcp_fetcher, workspace_id: workspace.id), 
+                         method: :patch, 
+                         class: "btn #{ @mcp_fetcher.enabled_for_workspace?(workspace) ? 'btn-danger' : 'btn-success' }" do %>
+                <%= @mcp_fetcher.enabled_for_workspace?(workspace) ? 'Disable' : 'Enable' %>
+              <% end %>
+            </div>
+          </div>
+          
+          <div style="font-size: 0.875rem; color: #6b7280;">
+            Status: <strong><%= @mcp_fetcher.workspace_status(workspace) %></strong>
+          </div>
+          
+          <% if @mcp_fetcher.workspace_override?(workspace) %>
+            <div style="font-size: 0.75rem; color: #f59e0b; margin-top: 0.25rem;">
+              ⚠️ Workspace override active
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="card">
+    <div style="text-align: center; padding: 2rem; color: #6b7280;">
+      <p>No workspaces available for per-workspace control.</p>
+      <p style="font-size: 0.875rem;">This MCP fetcher can only be controlled globally.</p>
+    </div>
+  </div>
+<% end %>
+
+<!-- Recent Activity -->
+<div class="card">
+  <h3 style="margin-bottom: 1rem; color: #1f2937;">Recent Activity</h3>
+  <% recent_logs = AuditLog.where(resource_type: 'McpFetcher', resource_id: @mcp_fetcher.id).recent.limit(10) %>
+  <% if recent_logs.any? %>
+    <% recent_logs.each do |log| %>
+      <div style="padding: 0.75rem 0; border-bottom: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-weight: 500;"><%= log.description %></p>
+        <p style="margin: 0; font-size: 0.875rem; color: #6b7280;">
+          <%= log.created_at.strftime('%m/%d/%Y %I:%M %p') %>
+          <% if log.user %>
+            by <%= log.user.email %>
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  <% else %>
+    <p style="color: #6b7280;">No recent activity for this MCP fetcher.</p>
+  <% end %>
+</div>
