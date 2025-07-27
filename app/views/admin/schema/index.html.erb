@@ -1,0 +1,317 @@
+<% content_for :page_title, "Schema Explorer" %>
+
+<div class="admin-content">
+  <div class="content-header">
+    <h1>Schema Explorer</h1>
+    <p class="content-description">
+      Explore your database schema, models, and relationships. Browse tables, inspect model attributes, and understand your data structure.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Models Overview -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Application Models</h2>
+        <p class="card-description">Active Record models in your application</p>
+      </div>
+      <div class="card-content">
+        <div class="space-y-3">
+          <% @models.each do |model| %>
+            <div class="model-item">
+              <%= link_to admin_schema_model_path(model[:name]), class: "model-link" do %>
+                <div class="model-info">
+                  <div class="model-name"><%= model[:name] %></div>
+                  <div class="model-details">
+                    Table: <code><%= model[:table_name] %></code> • 
+                    Records: <span class="record-count"><%= model[:count] %></span>
+                  </div>
+                </div>
+                <svg class="model-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Database Tables -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Database Tables</h2>
+        <p class="card-description">All tables in your database</p>
+      </div>
+      <div class="card-content">
+        <div class="table-list">
+          <% @tables.each do |table| %>
+            <div class="table-item">
+              <code class="table-name"><%= table %></code>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mt-6">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Quick Actions</h2>
+      </div>
+      <div class="card-content">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <%= link_to admin_schema_query_path, class: "action-card" do %>
+            <div class="action-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Query Interface</h3>
+              <p class="action-description">Execute SQL queries safely</p>
+            </div>
+          <% end %>
+
+          <div class="action-card">
+            <div class="action-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Database Info</h3>
+              <p class="action-description">
+                <strong><%= @tables.length %></strong> tables, 
+                <strong><%= @models.length %></strong> models
+              </p>
+            </div>
+          </div>
+
+          <div class="action-card">
+            <div class="action-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="action-content">
+              <h3 class="action-title">Schema Status</h3>
+              <p class="action-description">All models properly mapped</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.admin-content {
+  padding: 1.5rem;
+}
+
+.content-header {
+  margin-bottom: 2rem;
+}
+
+.content-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.content-description {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.card-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.card-content {
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+}
+
+.model-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.model-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.model-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.model-info {
+  flex: 1;
+}
+
+.model-name {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.model-details {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.model-details code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+}
+
+.record-count {
+  font-weight: 600;
+  color: #059669;
+}
+
+.model-arrow {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.table-item {
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 0.25rem;
+}
+
+.table-name {
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+}
+
+.action-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.action-icon {
+  width: 3rem;
+  height: 3rem;
+  background: #eff6ff;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  flex-shrink: 0;
+}
+
+.action-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #3b82f6;
+}
+
+.action-content {
+  flex: 1;
+}
+
+.action-title {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.action-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.gap-6 {
+  gap: 1.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+.mt-6 {
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .md\\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>

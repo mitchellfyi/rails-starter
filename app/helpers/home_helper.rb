@@ -49,7 +49,7 @@ module HomeHelper
     
     headers = []
     markdown.each_line do |line|
-      if line.match(/^(#{1,3}) (.+)$/)
+      if line.match(/^(#+) (.+)$/)
         level = $1.length
         title = $2.strip
         anchor = title.downcase.gsub(/[^a-z0-9\-_]/, '-').gsub(/-+/, '-').gsub(/^-|-$/, '')
