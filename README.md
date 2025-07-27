@@ -87,6 +87,8 @@ For detailed information about the test matrix and CI/CD setup, see [GitHub Acti
 
 Seed data sets up a demo organisation with a user, example prompt templates, example LLM jobs and outputs, dummy Stripe plans, and a sample blog post.  Seeds are idempotent, meaning you can run them multiple times without duplicating data.
 
+**I18n/Locale-Driven Seeds**: The template includes comprehensive internationalization support for seed content. When multiple locales are configured, seeds automatically create localized content for feature flags, system prompts, workspace names, and other user-visible text. Falls back gracefully to English when only a single locale is available. See `I18N_SEEDS.md` for details.
+
 ## Documentation
 
 For detailed guides on specific features:
