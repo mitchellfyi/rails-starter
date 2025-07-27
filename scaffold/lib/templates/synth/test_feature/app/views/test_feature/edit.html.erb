@@ -1,0 +1,13 @@
+<% content_for :title, "Edit #{@test_feature_item.display_name}" %>
+
+<div class="test_feature-edit">
+  <div class="header-section">
+    <h1 class="text-2xl font-bold text-gray-900">Edit <%= @test_feature_item.display_name %></h1>
+  </div>
+
+  <div class="content-section mt-6">
+    <div class="card">
+      <%= render 'form', test_feature_item: @test_feature_item %>
+    </div>
+  </div>
+</div>

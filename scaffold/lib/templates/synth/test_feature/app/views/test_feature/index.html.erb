@@ -1,0 +1,42 @@
+<% content_for :title, "TestFeature" %>
+
+<div class="test_feature-index">
+  <div class="header-section">
+    <h1 class="text-2xl font-bold text-gray-900">TestFeature</h1>
+    <p class="text-gray-600">Manage your test_feature items</p>
+  </div>
+
+  <div class="actions-section mt-4">
+    <%= link_to "New TestFeature Item", new_test_feature_path, 
+        class: "btn btn-primary" %>
+  </div>
+
+  <div class="content-section mt-6">
+    <% if @test_feature_items.any? %>
+      <div class="grid gap-4">
+        <% @test_feature_items.each do |item| %>
+          <div class="card">
+            <h3 class="font-semibold"><%= item.display_name %></h3>
+            <p class="text-gray-600"><%= item.description %></p>
+            
+            <div class="actions mt-3">
+              <%= link_to "View", item, class: "btn btn-sm btn-outline" %>
+              <%= link_to "Edit", edit_test_feature_path(item), class: "btn btn-sm btn-outline" %>
+              <%= link_to "Delete", item, method: :delete, 
+                  confirm: "Are you sure?", 
+                  class: "btn btn-sm btn-outline text-red-600" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p class="text-gray-500 text-center py-8">
+          No test_feature items yet. 
+          <%= link_to "Create your first one", new_test_feature_path, 
+              class: "text-blue-600 hover:underline" %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>

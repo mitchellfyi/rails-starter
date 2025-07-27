@@ -540,6 +540,13 @@ class SynthCLI
         exit 1
       end
       cli.remove(module_name)
+    when 'init-module'
+      module_name = args[1]
+      unless module_name
+        puts "❌ Module name required. Usage: bin/synth init-module MODULE_NAME"
+        exit 1
+      end
+      cli.init_module(module_name)
     when 'info'
       module_name = args[1]
       unless module_name
@@ -606,6 +613,33 @@ class SynthCLI
     end
 
     remove_module(module_name)
+  end
+
+  def init_module(module_name)
+    # Validate module name
+    unless valid_module_name?(module_name)
+      puts "❌ Invalid module name '#{module_name}'"
+      puts "   Module names must be lowercase, alphanumeric, and may contain underscores or hyphens"
+      exit 1
+    end
+
+    module_path = File.join(TEMPLATE_PATH, module_name)
+    
+    if Dir.exist?(module_path) && !force_mode?
+      puts "❌ Module '#{module_name}' already exists at #{module_path}"
+      puts "   Use --force to overwrite existing module"
+      exit 1
+    end
+
+    puts "🚀 Generating new module: #{module_name}"
+    generate_module_template(module_name, module_path)
+    puts "✅ Successfully generated module template at #{module_path}"
+    puts ""
+    puts "📋 Next steps:"
+    puts "   1. Edit the generated files to implement your module"
+    puts "   2. Update install.rb with your module-specific installation logic"
+    puts "   3. Test your module with: bin/synth add #{module_name}"
+    puts "   4. Document your module in the README.md"
   end
 
   def info(module_name)
@@ -686,6 +720,7 @@ class SynthCLI
         list                  List available and installed modules
         add MODULE            Install a feature module
         remove MODULE         Uninstall a feature module  
+        init-module MODULE    Generate a new module template
         info MODULE           Show detailed information about a module
         test [MODULE]         Run tests for a module or all modules
         docs                  Generate documentation from installed modules and OpenAPI schema
@@ -709,6 +744,7 @@ class SynthCLI
         bin/synth list
         bin/synth add billing
         bin/synth remove cms --force
+        bin/synth init-module my_feature
         bin/synth info ai
         bin/synth test billing
         bin/synth docs
@@ -1344,6 +1380,1577 @@ class SynthCLI
 
   def force_mode?
     ARGV.include?('--force') || ARGV.include?('-f')
+  end
+
+  def valid_module_name?(name)
+    # Module names should be lowercase, alphanumeric, underscores and hyphens allowed
+    name =~ /\A[a-z][a-z0-9_-]*\z/
+  end
+
+  def simple_singularize(word)
+    # Simple singularization - just remove 's' if it ends with 's'
+    # This is a basic implementation since we don't have ActiveSupport here
+    if word.end_with?('s') && word.length > 1
+      word[0...-1]
+    else
+      word
+    end
+  end
+
+  def generate_module_template(module_name, module_path)
+    puts "📁 Creating module directory structure..."
+    create_module_directories(module_name, module_path)
+    
+    puts "📄 Generating module files..."
+    create_module_files(module_name, module_path)
+    
+    puts "🧪 Creating test structure..."
+    create_module_tests(module_name, module_path)
+    
+    puts "⚙️  Setting up configuration files..."
+    create_module_config(module_name, module_path)
+  end
+
+  def create_module_directories(module_name, module_path)
+    directories = [
+      module_path,
+      File.join(module_path, 'app'),
+      File.join(module_path, 'app', 'controllers'),
+      File.join(module_path, 'app', 'controllers', 'concerns'),
+      File.join(module_path, 'app', 'models'),
+      File.join(module_path, 'app', 'models', 'concerns'),
+      File.join(module_path, 'app', 'views'),
+      File.join(module_path, 'app', 'services'),
+      File.join(module_path, 'app', 'jobs'),
+      File.join(module_path, 'app', 'mailers'),
+      File.join(module_path, 'app', 'policies'),
+      File.join(module_path, 'app', 'javascript'),
+      File.join(module_path, 'app', 'javascript', 'controllers'),
+      File.join(module_path, 'config'),
+      File.join(module_path, 'config', 'initializers'),
+      File.join(module_path, 'db'),
+      File.join(module_path, 'db', 'migrate'),
+      File.join(module_path, 'test'),
+      File.join(module_path, 'test', 'controllers'),
+      File.join(module_path, 'test', 'models'),
+      File.join(module_path, 'test', 'integration'),
+      File.join(module_path, 'test', 'services'),
+      File.join(module_path, 'test', 'fixtures'),
+      File.join(module_path, 'spec'),
+      File.join(module_path, 'spec', 'controllers'),
+      File.join(module_path, 'spec', 'models'),
+      File.join(module_path, 'spec', 'requests'),
+      File.join(module_path, 'spec', 'services'),
+      File.join(module_path, 'spec', 'factories')
+    ]
+
+    directories.each do |dir|
+      FileUtils.mkdir_p(dir)
+      puts "  ✅ Created #{Pathname.new(dir).relative_path_from(Pathname.new(TEMPLATE_PATH))}" if @verbose
+    end
+  end
+
+  def create_module_files(module_name, module_path)
+    # Create VERSION file
+    create_file(File.join(module_path, 'VERSION'), "1.0.0\n")
+
+    # Create README.md
+    create_module_readme(module_name, module_path)
+
+    # Create install.rb script
+    create_module_installer(module_name, module_path)
+
+    # Create remove.rb script  
+    create_module_remover(module_name, module_path)
+
+    # Create basic app files
+    create_module_app_files(module_name, module_path)
+
+    # Create migration template
+    create_module_migration(module_name, module_path)
+  end
+
+  def create_module_readme(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    readme_content = <<~MARKDOWN
+      # #{class_name} Module
+
+      Brief description of what this module provides for the Rails SaaS starter template.
+
+      ## Features
+
+      - Feature 1: Description
+      - Feature 2: Description  
+      - Feature 3: Description
+
+      ## Installation
+
+      ```bash
+      bin/synth add #{module_name}
+      ```
+
+      ## Usage
+
+      Describe how to use this module after installation.
+
+      ### Configuration
+
+      Configure the module in `config/initializers/#{module_name}.rb`:
+
+      ```ruby
+      Rails.application.configure do
+        config.#{module_name} = ActiveSupport::OrderedOptions.new
+        
+        # Add your configuration options here
+        config.#{module_name}.enabled = true
+      end
+      ```
+
+      ### Basic Usage
+
+      ```ruby
+      # Example usage code
+      ```
+
+      ## Components Added
+
+      - **Controllers**: `app/domains/#{module_name}/app/controllers/`
+      - **Models**: `app/domains/#{module_name}/app/models/`
+      - **Views**: `app/domains/#{module_name}/app/views/`
+      - **Services**: `app/domains/#{module_name}/app/services/`
+      - **Tests**: `spec/domains/#{module_name}/` or `test/domains/#{module_name}/`
+
+      ## Configuration
+
+      - **Initializer**: `config/initializers/#{module_name}.rb`
+      - **Routes**: Routes are added to `config/routes.rb`
+
+      ## Database Changes
+
+      This module includes the following database changes:
+
+      - Migration: `db/migrate/*_create_#{module_name}_tables.rb`
+
+      ## Dependencies
+
+      This module requires:
+
+      - Ruby 3.0+
+      - Rails 7.0+
+      - PostgreSQL with required extensions
+
+      ## Testing
+
+      Run tests for this module:
+
+      ```bash
+      bin/synth test #{module_name}
+      ```
+
+      ## Customization
+
+      Describe how users can customize this module for their needs.
+
+      ## API
+
+      If this module provides API endpoints, document them here.
+
+      ## Troubleshooting
+
+      Common issues and solutions:
+
+      ### Issue 1
+      Problem description and solution.
+
+      ### Issue 2
+      Problem description and solution.
+
+      ## Support
+
+      For issues related to this module, please check:
+
+      - [Rails SaaS Starter Template Documentation](../../../README.md)
+      - [Module test files](test/) for usage examples
+    MARKDOWN
+
+    create_file(File.join(module_path, 'README.md'), readme_content)
+  end
+
+  def create_module_installer(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    install_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module installer for the Rails SaaS starter template.
+      # This install script is executed by the bin/synth CLI when adding the #{module_name} module.
+
+      say_status :#{module_name}, "Installing #{class_name} module"
+
+      # Add any required gems to the application's Gemfile
+      # add_gem 'example_gem', '~> 1.0'
+
+      # Run after bundle install to set up the module
+      after_bundle do
+        # Create domain-specific directories
+        run 'mkdir -p app/controllers app/models app/views app/services'
+        run 'mkdir -p test/models test/controllers test/services'
+        run 'mkdir -p spec/models spec/controllers spec/requests spec/services'
+        
+        # Create initializer for module configuration
+        initializer '#{module_name}.rb', <<~'INIT_RUBY'
+          # #{class_name} module configuration
+          Rails.application.config.#{module_name} = ActiveSupport::OrderedOptions.new
+          
+          # Enable the module by default
+          Rails.application.config.#{module_name}.enabled = true
+          
+          # Add your configuration options here
+          # Rails.application.config.#{module_name}.option_name = 'default_value'
+        INIT_RUBY
+
+        # Copy module files to the application
+        #{module_name}_source = File.join(__dir__, 'app')
+        if Dir.exist?(#{module_name}_source)
+          # Copy controllers
+          Dir.glob(File.join(#{module_name}_source, 'controllers', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy models
+          Dir.glob(File.join(#{module_name}_source, 'models', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy views
+          Dir.glob(File.join(#{module_name}_source, 'views', '**', '*')).each do |file|
+            next if File.directory?(file)
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+          
+          # Copy services
+          Dir.glob(File.join(#{module_name}_source, 'services', '**', '*.rb')).each do |file|
+            relative_path = Pathname.new(file).relative_path_from(Pathname.new(#{module_name}_source))
+            copy_file file, File.join('app', relative_path)
+          end
+        end
+
+        # Copy migrations
+        migration_source = File.join(__dir__, 'db', 'migrate')
+        if Dir.exist?(migration_source)
+          Dir.glob(File.join(migration_source, '*.rb')).each do |migration_file|
+            migration_name = File.basename(migration_file)
+            target_name = "\#{Time.now.strftime('%Y%m%d%H%M%S')}_\#{migration_name}"
+            copy_file migration_file, File.join('db', 'migrate', target_name)
+          end
+        end
+
+        # Add routes if routes file exists
+        routes_file = File.join(__dir__, 'config', 'routes.rb')
+        if File.exist?(routes_file)
+          route_content = File.read(routes_file)
+          # Add the routes to the main routes file
+          # You may need to customize this based on your routing needs
+          insert_into_file 'config/routes.rb', route_content, after: "Rails.application.routes.draw do\\n"
+        end
+
+        # Run any additional setup commands
+        # run 'rails db:migrate'
+        # run 'yarn add package-name'
+
+        say_status :#{module_name}, "✅ #{class_name} module installed successfully!"
+        say_status :#{module_name}, "📝 Configure the module in config/initializers/#{module_name}.rb"
+        say_status :#{module_name}, "🗄️  Run 'rails db:migrate' to apply database changes"
+        say_status :#{module_name}, "📖 See the module documentation in app/domains/#{module_name}/README.md"
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'install.rb'), install_content)
+  end
+
+  def create_module_remover(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    remove_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module removal script for the Rails SaaS starter template.
+      # This script is executed by the bin/synth CLI when removing the #{module_name} module.
+
+      say_status :#{module_name}, "Removing #{class_name} module"
+
+      # Remove initializer
+      initializer_file = 'config/initializers/#{module_name}.rb'
+      if File.exist?(initializer_file)
+        remove_file initializer_file
+        say_status :#{module_name}, "Removed initializer"
+      end
+
+      # Remove routes (you may need to customize this)
+      routes_file = 'config/routes.rb'
+      if File.exist?(routes_file)
+        # This is a basic example - you may need more sophisticated route removal
+        # depending on how your module adds routes
+        gsub_file routes_file, /\\s*# #{class_name} module routes.*?# End #{class_name} module routes\\s*/m, ''
+        say_status :#{module_name}, "Cleaned up routes"
+      end
+
+      # Note: Migrations are not automatically removed to prevent data loss
+      # Users should manually review and remove migrations if appropriate
+
+      say_status :#{module_name}, "✅ #{class_name} module removed successfully!"
+      say_status :#{module_name}, "⚠️  Database migrations were not removed automatically"
+      say_status :#{module_name}, "   Review db/migrate/ and remove #{module_name} migrations if appropriate"
+      say_status :#{module_name}, "   Run 'rails db:rollback' to undo recent migrations if needed"
+    RUBY
+
+    create_file(File.join(module_path, 'remove.rb'), remove_content)
+  end
+
+  def create_module_app_files(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    controller_class = "#{class_name}Controller"
+    model_class = "#{simple_singularize(class_name)}"
+    service_class = "#{class_name}Service"
+    
+    # Create a basic controller
+    controller_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{controller_class} handles #{module_name} related requests
+      class #{controller_class} < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_#{module_name}_item, only: [:show, :edit, :update, :destroy]
+
+        # GET /#{module_name}
+        def index
+          @#{module_name}_items = current_user.#{module_name}_items
+        end
+
+        # GET /#{module_name}/1
+        def show
+        end
+
+        # GET /#{module_name}/new
+        def new
+          @#{module_name}_item = current_user.#{module_name}_items.build
+        end
+
+        # GET /#{module_name}/1/edit
+        def edit
+        end
+
+        # POST /#{module_name}
+        def create
+          @#{module_name}_item = current_user.#{module_name}_items.build(#{module_name}_item_params)
+
+          if @#{module_name}_item.save
+            redirect_to @#{module_name}_item, notice: '#{class_name} item was successfully created.'
+          else
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        # PATCH/PUT /#{module_name}/1
+        def update
+          if @#{module_name}_item.update(#{module_name}_item_params)
+            redirect_to @#{module_name}_item, notice: '#{class_name} item was successfully updated.'
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        # DELETE /#{module_name}/1
+        def destroy
+          @#{module_name}_item.destroy
+          redirect_to #{module_name}_index_url, notice: '#{class_name} item was successfully deleted.'
+        end
+
+        private
+
+        def set_#{module_name}_item
+          @#{module_name}_item = current_user.#{module_name}_items.find(params[:id])
+        end
+
+        def #{module_name}_item_params
+          params.require(:#{module_name}_item).permit(:name, :description)
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'controllers', "#{module_name}_controller.rb"), controller_content)
+
+    # Create a basic model
+    model_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{model_class} represents a #{module_name} item in the system
+      class #{model_class}Item < ApplicationRecord
+        belongs_to :user
+
+        validates :name, presence: true, length: { minimum: 2, maximum: 100 }
+        validates :description, length: { maximum: 500 }
+
+        scope :active, -> { where(active: true) }
+        scope :recent, -> { order(created_at: :desc) }
+
+        # Add any custom methods here
+        def display_name
+          name.presence || "Untitled #{class_name}"
+        end
+
+        def to_s
+          display_name
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'models', "#{module_name}_item.rb"), model_content)
+
+    # Create a basic service
+    service_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{service_class} handles #{module_name} business logic
+      class #{service_class}
+        attr_reader :user, :errors
+
+        def initialize(user)
+          @user = user
+          @errors = []
+        end
+
+        # Create a new #{module_name} item
+        def create_item(attributes = {})
+          item = user.#{module_name}_items.build(attributes)
+          
+          if item.save
+            # Perform any additional setup or notifications
+            notify_item_created(item)
+            item
+          else
+            @errors = item.errors.full_messages
+            nil
+          end
+        end
+
+        # Update an existing #{module_name} item
+        def update_item(item, attributes = {})
+          if item.update(attributes)
+            # Perform any additional updates or notifications
+            notify_item_updated(item)
+            item
+          else
+            @errors = item.errors.full_messages
+            nil
+          end
+        end
+
+        # Delete a #{module_name} item
+        def delete_item(item)
+          if item.destroy
+            # Perform any cleanup or notifications
+            notify_item_deleted(item)
+            true
+          else
+            @errors = item.errors.full_messages
+            false
+          end
+        end
+
+        # Check if service has errors
+        def valid?
+          errors.empty?
+        end
+
+        private
+
+        def notify_item_created(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item created: \#{item.id}"
+        end
+
+        def notify_item_updated(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item updated: \#{item.id}"
+        end
+
+        def notify_item_deleted(item)
+          # Add notification logic here
+          Rails.logger.info "#{class_name} item deleted: \#{item.id}"
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'app', 'services', "#{module_name}_service.rb"), service_content)
+
+    # Create basic views
+    create_module_views(module_name, module_path)
+  end
+
+  def create_module_views(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    views_path = File.join(module_path, 'app', 'views', module_name)
+    FileUtils.mkdir_p(views_path)
+
+    # Index view
+    index_content = <<~ERB
+      <% content_for :title, "#{class_name}" %>
+
+      <div class="#{module_name}-index">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">#{class_name}</h1>
+          <p class="text-gray-600">Manage your #{module_name} items</p>
+        </div>
+
+        <div class="actions-section mt-4">
+          <%= link_to "New #{class_name} Item", new_#{module_name}_path, 
+              class: "btn btn-primary" %>
+        </div>
+
+        <div class="content-section mt-6">
+          <% if @#{module_name}_items.any? %>
+            <div class="grid gap-4">
+              <% @#{module_name}_items.each do |item| %>
+                <div class="card">
+                  <h3 class="font-semibold"><%= item.display_name %></h3>
+                  <p class="text-gray-600"><%= item.description %></p>
+                  
+                  <div class="actions mt-3">
+                    <%= link_to "View", item, class: "btn btn-sm btn-outline" %>
+                    <%= link_to "Edit", edit_#{module_name}_path(item), class: "btn btn-sm btn-outline" %>
+                    <%= link_to "Delete", item, method: :delete, 
+                        confirm: "Are you sure?", 
+                        class: "btn btn-sm btn-outline text-red-600" %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="empty-state">
+              <p class="text-gray-500 text-center py-8">
+                No #{module_name} items yet. 
+                <%= link_to "Create your first one", new_#{module_name}_path, 
+                    class: "text-blue-600 hover:underline" %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'index.html.erb'), index_content)
+
+    # Show view
+    show_content = <<~ERB
+      <% content_for :title, @#{module_name}_item.display_name %>
+
+      <div class="#{module_name}-show">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900"><%= @#{module_name}_item.display_name %></h1>
+          
+          <div class="actions mt-2">
+            <%= link_to "Edit", edit_#{module_name}_path(@#{module_name}_item), 
+                class: "btn btn-outline" %>
+            <%= link_to "Back to #{class_name}", #{module_name}_index_path, 
+                class: "btn btn-outline" %>
+          </div>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <div class="field">
+              <label class="label">Name</label>
+              <p><%= @#{module_name}_item.name %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Description</label>
+              <p><%= @#{module_name}_item.description.presence || "No description provided" %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Created</label>
+              <p><%= @#{module_name}_item.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+            </div>
+
+            <div class="field mt-4">
+              <label class="label">Last Updated</label>
+              <p><%= @#{module_name}_item.updated_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'show.html.erb'), show_content)
+
+    # Form partial
+    form_content = <<~ERB
+      <%= form_with model: #{module_name}_item, local: true, class: "#{module_name}-form" do |form| %>
+        <% if #{module_name}_item.errors.any? %>
+          <div class="alert alert-error mb-4">
+            <h4><%= pluralize(#{module_name}_item.errors.count, "error") %> prohibited this item from being saved:</h4>
+            <ul class="mt-2">
+              <% #{module_name}_item.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <div class="field">
+          <%= form.label :name, class: "label" %>
+          <%= form.text_field :name, class: "input-field" %>
+        </div>
+
+        <div class="field mt-4">
+          <%= form.label :description, class: "label" %>
+          <%= form.text_area :description, rows: 4, class: "input-field" %>
+        </div>
+
+        <div class="actions mt-6">
+          <%= form.submit class: "btn btn-primary" %>
+          <%= link_to "Cancel", #{module_name}_index_path, class: "btn btn-outline ml-2" %>
+        </div>
+      <% end %>
+    ERB
+
+    create_file(File.join(views_path, '_form.html.erb'), form_content)
+
+    # New view
+    new_content = <<~ERB
+      <% content_for :title, "New #{class_name} Item" %>
+
+      <div class="#{module_name}-new">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">New #{class_name} Item</h1>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <%= render 'form', #{module_name}_item: @#{module_name}_item %>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'new.html.erb'), new_content)
+
+    # Edit view
+    edit_content = <<~ERB
+      <% content_for :title, "Edit \#{@#{module_name}_item.display_name}" %>
+
+      <div class="#{module_name}-edit">
+        <div class="header-section">
+          <h1 class="text-2xl font-bold text-gray-900">Edit <%= @#{module_name}_item.display_name %></h1>
+        </div>
+
+        <div class="content-section mt-6">
+          <div class="card">
+            <%= render 'form', #{module_name}_item: @#{module_name}_item %>
+          </div>
+        </div>
+      </div>
+    ERB
+
+    create_file(File.join(views_path, 'edit.html.erb'), edit_content)
+  end
+
+  def create_module_migration(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    migration_name = "create_#{module_name}_items"
+    
+    migration_content = <<~RUBY
+      # frozen_string_literal: true
+
+      class Create#{class_name}Items < ActiveRecord::Migration[7.0]
+        def change
+          create_table :#{module_name}_items do |t|
+            t.references :user, null: false, foreign_key: true
+            t.string :name, null: false
+            t.text :description
+            t.boolean :active, default: true, null: false
+            t.json :metadata, default: {}
+
+            t.timestamps
+          end
+
+          add_index :#{module_name}_items, [:user_id, :active]
+          add_index :#{module_name}_items, :name
+          add_index :#{module_name}_items, :created_at
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'db', 'migrate', "#{migration_name}.rb"), migration_content)
+  end
+
+  def create_module_tests(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    # Create Minitest files
+    create_minitest_files(module_name, module_path, class_name)
+    
+    # Create RSpec files
+    create_rspec_files(module_name, module_path, class_name)
+  end
+
+  def create_minitest_files(module_name, module_path, class_name)
+    # Controller test
+    controller_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ControllerTest < ActionDispatch::IntegrationTest
+        setup do
+          @user = users(:one)
+          @#{module_name}_item = #{module_name}_items(:one)
+          sign_in @user
+        end
+
+        test "should get index" do
+          get #{module_name}_index_url
+          assert_response :success
+        end
+
+        test "should get new" do
+          get new_#{module_name}_url
+          assert_response :success
+        end
+
+        test "should create #{module_name}_item" do
+          assert_difference('#{class_name}Item.count') do
+            post #{module_name}_index_url, params: { 
+              #{module_name}_item: { 
+                name: "Test Item", 
+                description: "Test Description" 
+              } 
+            }
+          end
+
+          assert_redirected_to #{module_name}_url(#{class_name}Item.last)
+        end
+
+        test "should show #{module_name}_item" do
+          get #{module_name}_url(@#{module_name}_item)
+          assert_response :success
+        end
+
+        test "should get edit" do
+          get edit_#{module_name}_url(@#{module_name}_item)
+          assert_response :success
+        end
+
+        test "should update #{module_name}_item" do
+          patch #{module_name}_url(@#{module_name}_item), params: { 
+            #{module_name}_item: { 
+              name: @#{module_name}_item.name, 
+              description: "Updated Description" 
+            } 
+          }
+          assert_redirected_to #{module_name}_url(@#{module_name}_item)
+        end
+
+        test "should destroy #{module_name}_item" do
+          assert_difference('#{class_name}Item.count', -1) do
+            delete #{module_name}_url(@#{module_name}_item)
+          end
+
+          assert_redirected_to #{module_name}_index_url
+        end
+
+        test "should not access other user's items" do
+          other_user = users(:two)
+          other_item = #{class_name}Item.create!(
+            user: other_user, 
+            name: "Other User Item"
+          )
+
+          assert_raises(ActiveRecord::RecordNotFound) do
+            get #{module_name}_url(other_item)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'controllers', "#{module_name}_controller_test.rb"), controller_test_content)
+
+    # Model test
+    model_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ItemTest < ActiveSupport::TestCase
+        def setup
+          @user = users(:one)
+          @#{module_name}_item = #{class_name}Item.new(
+            user: @user,
+            name: "Test Item",
+            description: "Test Description"
+          )
+        end
+
+        test "should be valid" do
+          assert @#{module_name}_item.valid?
+        end
+
+        test "should require name" do
+          @#{module_name}_item.name = nil
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "can't be blank"
+        end
+
+        test "should require user" do
+          @#{module_name}_item.user = nil
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:user], "must exist"
+        end
+
+        test "name should not be too short" do
+          @#{module_name}_item.name = "a"
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "is too short (minimum is 2 characters)"
+        end
+
+        test "name should not be too long" do
+          @#{module_name}_item.name = "a" * 101
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:name], "is too long (maximum is 100 characters)"
+        end
+
+        test "description should not be too long" do
+          @#{module_name}_item.description = "a" * 501
+          assert_not @#{module_name}_item.valid?
+          assert_includes @#{module_name}_item.errors[:description], "is too long (maximum is 500 characters)"
+        end
+
+        test "should have display_name method" do
+          assert_equal "Test Item", @#{module_name}_item.display_name
+        end
+
+        test "display_name should fallback when name is blank" do
+          @#{module_name}_item.name = ""
+          assert_equal "Untitled #{class_name}", @#{module_name}_item.display_name
+        end
+
+        test "should scope active items" do
+          active_item = #{class_name}Item.create!(user: @user, name: "Active", active: true)
+          inactive_item = #{class_name}Item.create!(user: @user, name: "Inactive", active: false)
+
+          assert_includes #{class_name}Item.active, active_item
+          assert_not_includes #{class_name}Item.active, inactive_item
+        end
+
+        test "should order recent items" do
+          old_item = #{class_name}Item.create!(user: @user, name: "Old", created_at: 2.days.ago)
+          new_item = #{class_name}Item.create!(user: @user, name: "New", created_at: 1.day.ago)
+
+          recent_items = #{class_name}Item.recent
+          assert_equal new_item, recent_items.first
+          assert_equal old_item, recent_items.second
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'models', "#{module_name}_item_test.rb"), model_test_content)
+
+    # Service test
+    service_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}ServiceTest < ActiveSupport::TestCase
+        def setup
+          @user = users(:one)
+          @service = #{class_name}Service.new(@user)
+        end
+
+        test "should initialize with user" do
+          assert_equal @user, @service.user
+          assert_empty @service.errors
+        end
+
+        test "should create item successfully" do
+          attributes = { name: "Test Item", description: "Test Description" }
+          
+          assert_difference('#{class_name}Item.count') do
+            item = @service.create_item(attributes)
+            assert_not_nil item
+            assert_equal "Test Item", item.name
+            assert_equal "Test Description", item.description
+            assert_equal @user, item.user
+          end
+          
+          assert @service.valid?
+        end
+
+        test "should not create invalid item" do
+          attributes = { name: "" } # Invalid name
+          
+          assert_no_difference('#{class_name}Item.count') do
+            item = @service.create_item(attributes)
+            assert_nil item
+          end
+          
+          assert_not @service.valid?
+          assert_not_empty @service.errors
+        end
+
+        test "should update item successfully" do
+          item = #{class_name}Item.create!(user: @user, name: "Original Name")
+          
+          updated_item = @service.update_item(item, { name: "Updated Name" })
+          
+          assert_not_nil updated_item
+          assert_equal "Updated Name", updated_item.name
+          assert @service.valid?
+        end
+
+        test "should not update item with invalid data" do
+          item = #{class_name}Item.create!(user: @user, name: "Original Name")
+          
+          updated_item = @service.update_item(item, { name: "" })
+          
+          assert_nil updated_item
+          assert_not @service.valid?
+          assert_not_empty @service.errors
+        end
+
+        test "should delete item successfully" do
+          item = #{class_name}Item.create!(user: @user, name: "To Delete")
+          
+          assert_difference('#{class_name}Item.count', -1) do
+            result = @service.delete_item(item)
+            assert result
+          end
+          
+          assert @service.valid?
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'services', "#{module_name}_service_test.rb"), service_test_content)
+
+    # Integration test
+    integration_test_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'test_helper'
+
+      class #{class_name}IntegrationTest < ActionDispatch::IntegrationTest
+        def setup
+          @user = users(:one)
+          sign_in @user
+        end
+
+        test "complete #{module_name} workflow" do
+          # Visit index page
+          get #{module_name}_index_path
+          assert_response :success
+          assert_select 'h1', '#{class_name}'
+
+          # Create new item
+          get new_#{module_name}_path
+          assert_response :success
+
+          post #{module_name}_index_path, params: {
+            #{module_name}_item: {
+              name: "Integration Test Item",
+              description: "Created during integration test"
+            }
+          }
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+          assert_select 'h1', 'Integration Test Item'
+
+          # Edit the item
+          item = #{class_name}Item.last
+          get edit_#{module_name}_path(item)
+          assert_response :success
+
+          patch #{module_name}_path(item), params: {
+            #{module_name}_item: {
+              name: "Updated Integration Test Item",
+              description: "Updated during integration test"
+            }
+          }
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+          assert_select 'h1', 'Updated Integration Test Item'
+
+          # Delete the item
+          assert_difference('#{class_name}Item.count', -1) do
+            delete #{module_name}_path(item)
+          end
+          
+          assert_response :redirect
+          follow_redirect!
+          assert_response :success
+        end
+
+        test "should handle validation errors gracefully" do
+          post #{module_name}_index_path, params: {
+            #{module_name}_item: {
+              name: "", # Invalid
+              description: "Should not be created"
+            }
+          }
+          
+          assert_response :unprocessable_entity
+          assert_select '.alert-error'
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'test', 'integration', "#{module_name}_integration_test.rb"), integration_test_content)
+
+    # Fixtures
+    fixtures_content = <<~YAML
+      # Test fixtures for #{class_name}Item
+      
+      one:
+        user: one
+        name: "First #{class_name} Item"
+        description: "This is the first test #{module_name} item"
+        active: true
+        metadata: {}
+
+      two:
+        user: two
+        name: "Second #{class_name} Item"
+        description: "This is the second test #{module_name} item"
+        active: true
+        metadata: {}
+
+      inactive:
+        user: one
+        name: "Inactive #{class_name} Item"
+        description: "This is an inactive test #{module_name} item"
+        active: false
+        metadata: {}
+    YAML
+
+    create_file(File.join(module_path, 'test', 'fixtures', "#{module_name}_items.yml"), fixtures_content)
+  end
+
+  def create_rspec_files(module_name, module_path, class_name)
+    # Controller spec
+    controller_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Controller, type: :controller do
+        let(:user) { create(:user) }
+        let(:#{module_name}_item) { create(:#{module_name}_item, user: user) }
+
+        before do
+          sign_in user
+        end
+
+        describe 'GET #index' do
+          it 'returns a success response' do
+            get :index
+            expect(response).to be_successful
+          end
+
+          it 'assigns @#{module_name}_items' do
+            #{module_name}_item # Create the item
+            get :index
+            expect(assigns(:#{module_name}_items)).to include(#{module_name}_item)
+          end
+        end
+
+        describe 'GET #show' do
+          it 'returns a success response' do
+            get :show, params: { id: #{module_name}_item.to_param }
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'GET #new' do
+          it 'returns a success response' do
+            get :new
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'GET #edit' do
+          it 'returns a success response' do
+            get :edit, params: { id: #{module_name}_item.to_param }
+            expect(response).to be_successful
+          end
+        end
+
+        describe 'POST #create' do
+          context 'with valid parameters' do
+            let(:valid_attributes) do
+              { name: 'Test Item', description: 'Test Description' }
+            end
+
+            it 'creates a new #{class_name}Item' do
+              expect {
+                post :create, params: { #{module_name}_item: valid_attributes }
+              }.to change(#{class_name}Item, :count).by(1)
+            end
+
+            it 'redirects to the created #{module_name}_item' do
+              post :create, params: { #{module_name}_item: valid_attributes }
+              expect(response).to redirect_to(#{class_name}Item.last)
+            end
+          end
+
+          context 'with invalid parameters' do
+            let(:invalid_attributes) do
+              { name: '', description: 'Test Description' }
+            end
+
+            it 'does not create a new #{class_name}Item' do
+              expect {
+                post :create, params: { #{module_name}_item: invalid_attributes }
+              }.to change(#{class_name}Item, :count).by(0)
+            end
+
+            it "returns a success response (i.e. to display the 'new' template)" do
+              post :create, params: { #{module_name}_item: invalid_attributes }
+              expect(response).to have_http_status(:unprocessable_entity)
+            end
+          end
+        end
+
+        describe 'PUT #update' do
+          context 'with valid parameters' do
+            let(:new_attributes) do
+              { name: 'Updated Item', description: 'Updated Description' }
+            end
+
+            it 'updates the requested #{module_name}_item' do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: new_attributes }
+              #{module_name}_item.reload
+              expect(#{module_name}_item.name).to eq('Updated Item')
+            end
+
+            it 'redirects to the #{module_name}_item' do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: new_attributes }
+              expect(response).to redirect_to(#{module_name}_item)
+            end
+          end
+
+          context 'with invalid parameters' do
+            let(:invalid_attributes) do
+              { name: '', description: 'Updated Description' }
+            end
+
+            it "returns a success response (i.e. to display the 'edit' template)" do
+              put :update, params: { id: #{module_name}_item.to_param, #{module_name}_item: invalid_attributes }
+              expect(response).to have_http_status(:unprocessable_entity)
+            end
+          end
+        end
+
+        describe 'DELETE #destroy' do
+          it 'destroys the requested #{module_name}_item' do
+            #{module_name}_item # Create the item
+            expect {
+              delete :destroy, params: { id: #{module_name}_item.to_param }
+            }.to change(#{class_name}Item, :count).by(-1)
+          end
+
+          it 'redirects to the #{module_name}_items list' do
+            delete :destroy, params: { id: #{module_name}_item.to_param }
+            expect(response).to redirect_to(#{module_name}_index_url)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'controllers', "#{module_name}_controller_spec.rb"), controller_spec_content)
+
+    # Model spec
+    model_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Item, type: :model do
+        let(:user) { create(:user) }
+        
+        describe 'validations' do
+          it { should belong_to(:user) }
+          it { should validate_presence_of(:name) }
+          it { should validate_length_of(:name).is_at_least(2).is_at_most(100) }
+          it { should validate_length_of(:description).is_at_most(500) }
+        end
+
+        describe 'scopes' do
+          let!(:active_item) { create(:#{module_name}_item, user: user, active: true) }
+          let!(:inactive_item) { create(:#{module_name}_item, user: user, active: false) }
+          let!(:old_item) { create(:#{module_name}_item, user: user, created_at: 2.days.ago) }
+          let!(:new_item) { create(:#{module_name}_item, user: user, created_at: 1.day.ago) }
+
+          describe '.active' do
+            it 'returns only active items' do
+              expect(#{class_name}Item.active).to include(active_item)
+              expect(#{class_name}Item.active).not_to include(inactive_item)
+            end
+          end
+
+          describe '.recent' do
+            it 'returns items ordered by creation date (newest first)' do
+              recent_items = #{class_name}Item.recent
+              expect(recent_items.first).to eq(new_item)
+              expect(recent_items.second).to eq(old_item)
+            end
+          end
+        end
+
+        describe '#display_name' do
+          let(:item) { build(:#{module_name}_item, user: user) }
+
+          context 'when name is present' do
+            it 'returns the name' do
+              item.name = 'Test Item'
+              expect(item.display_name).to eq('Test Item')
+            end
+          end
+
+          context 'when name is blank' do
+            it 'returns a default name' do
+              item.name = ''
+              expect(item.display_name).to eq('Untitled #{class_name}')
+            end
+          end
+        end
+
+        describe '#to_s' do
+          let(:item) { build(:#{module_name}_item, user: user, name: 'Test Item') }
+
+          it 'returns the display name' do
+            expect(item.to_s).to eq('Test Item')
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'models', "#{module_name}_item_spec.rb"), model_spec_content)
+
+    # Service spec
+    service_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe #{class_name}Service do
+        let(:user) { create(:user) }
+        let(:service) { described_class.new(user) }
+
+        describe '#initialize' do
+          it 'sets the user' do
+            expect(service.user).to eq(user)
+          end
+
+          it 'initializes empty errors' do
+            expect(service.errors).to be_empty
+          end
+        end
+
+        describe '#create_item' do
+          let(:attributes) { { name: 'Test Item', description: 'Test Description' } }
+
+          context 'with valid attributes' do
+            it 'creates a new item' do
+              expect {
+                service.create_item(attributes)
+              }.to change(#{class_name}Item, :count).by(1)
+            end
+
+            it 'returns the created item' do
+              item = service.create_item(attributes)
+              expect(item).to be_a(#{class_name}Item)
+              expect(item.name).to eq('Test Item')
+              expect(item.user).to eq(user)
+            end
+
+            it 'has no errors' do
+              service.create_item(attributes)
+              expect(service).to be_valid
+            end
+          end
+
+          context 'with invalid attributes' do
+            let(:invalid_attributes) { { name: '' } }
+
+            it 'does not create an item' do
+              expect {
+                service.create_item(invalid_attributes)
+              }.not_to change(#{class_name}Item, :count)
+            end
+
+            it 'returns nil' do
+              item = service.create_item(invalid_attributes)
+              expect(item).to be_nil
+            end
+
+            it 'has errors' do
+              service.create_item(invalid_attributes)
+              expect(service).not_to be_valid
+              expect(service.errors).not_to be_empty
+            end
+          end
+        end
+
+        describe '#update_item' do
+          let(:item) { create(:#{module_name}_item, user: user, name: 'Original Name') }
+          let(:attributes) { { name: 'Updated Name' } }
+
+          context 'with valid attributes' do
+            it 'updates the item' do
+              updated_item = service.update_item(item, attributes)
+              expect(updated_item.name).to eq('Updated Name')
+            end
+
+            it 'returns the updated item' do
+              updated_item = service.update_item(item, attributes)
+              expect(updated_item).to eq(item)
+            end
+
+            it 'has no errors' do
+              service.update_item(item, attributes)
+              expect(service).to be_valid
+            end
+          end
+
+          context 'with invalid attributes' do
+            let(:invalid_attributes) { { name: '' } }
+
+            it 'does not update the item' do
+              service.update_item(item, invalid_attributes)
+              item.reload
+              expect(item.name).to eq('Original Name')
+            end
+
+            it 'returns nil' do
+              result = service.update_item(item, invalid_attributes)
+              expect(result).to be_nil
+            end
+
+            it 'has errors' do
+              service.update_item(item, invalid_attributes)
+              expect(service).not_to be_valid
+              expect(service.errors).not_to be_empty
+            end
+          end
+        end
+
+        describe '#delete_item' do
+          let(:item) { create(:#{module_name}_item, user: user) }
+
+          it 'destroys the item' do
+            expect {
+              service.delete_item(item)
+            }.to change(#{class_name}Item, :count).by(-1)
+          end
+
+          it 'returns true on success' do
+            result = service.delete_item(item)
+            expect(result).to be true
+          end
+
+          it 'has no errors' do
+            service.delete_item(item)
+            expect(service).to be_valid
+          end
+        end
+
+        describe '#valid?' do
+          it 'returns true when no errors' do
+            expect(service).to be_valid
+          end
+
+          it 'returns false when there are errors' do
+            service.create_item({ name: '' })
+            expect(service).not_to be_valid
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'services', "#{module_name}_service_spec.rb"), service_spec_content)
+
+    # Request spec
+    request_spec_content = <<~RUBY
+      # frozen_string_literal: true
+
+      require 'rails_helper'
+
+      RSpec.describe "#{class_name} requests", type: :request do
+        let(:user) { create(:user) }
+        let(:#{module_name}_item) { create(:#{module_name}_item, user: user) }
+
+        before do
+          sign_in user
+        end
+
+        describe "GET /#{module_name}" do
+          it "returns http success" do
+            get "/#{module_name}"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "GET /#{module_name}/:id" do
+          it "returns http success" do
+            get "/#{module_name}/\#{#{module_name}_item.id}"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "GET /#{module_name}/new" do
+          it "returns http success" do
+            get "/#{module_name}/new"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "POST /#{module_name}" do
+          let(:valid_params) do
+            { #{module_name}_item: { name: "Test Item", description: "Test Description" } }
+          end
+
+          it "creates a new item and redirects" do
+            expect {
+              post "/#{module_name}", params: valid_params
+            }.to change(#{class_name}Item, :count).by(1)
+            
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+
+        describe "GET /#{module_name}/:id/edit" do
+          it "returns http success" do
+            get "/#{module_name}/\#{#{module_name}_item.id}/edit"
+            expect(response).to have_http_status(:success)
+          end
+        end
+
+        describe "PATCH /#{module_name}/:id" do
+          let(:valid_params) do
+            { #{module_name}_item: { name: "Updated Item" } }
+          end
+
+          it "updates the item and redirects" do
+            patch "/#{module_name}/\#{#{module_name}_item.id}", params: valid_params
+            
+            #{module_name}_item.reload
+            expect(#{module_name}_item.name).to eq("Updated Item")
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+
+        describe "DELETE /#{module_name}/:id" do
+          it "destroys the item and redirects" do
+            #{module_name}_item # Create the item
+            
+            expect {
+              delete "/#{module_name}/\#{#{module_name}_item.id}"
+            }.to change(#{class_name}Item, :count).by(-1)
+            
+            expect(response).to have_http_status(:redirect)
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'requests', "#{module_name}_spec.rb"), request_spec_content)
+
+    # Factory
+    factory_content = <<~RUBY
+      # frozen_string_literal: true
+
+      FactoryBot.define do
+        factory :#{module_name}_item, class: '#{class_name}Item' do
+          association :user
+          name { Faker::Lorem.words(number: 2).join(' ').titleize }
+          description { Faker::Lorem.paragraph }
+          active { true }
+          metadata { {} }
+
+          trait :inactive do
+            active { false }
+          end
+
+          trait :without_description do
+            description { nil }
+          end
+
+          trait :with_metadata do
+            metadata { { category: 'test', priority: 'high' } }
+          end
+        end
+      end
+    RUBY
+
+    create_file(File.join(module_path, 'spec', 'factories', "#{module_name}_items.rb"), factory_content)
+  end
+
+  def create_module_config(module_name, module_path)
+    class_name = module_name.split(/[-_]/).map(&:capitalize).join
+    
+    # Create routes stub
+    routes_content = <<~RUBY
+      # #{class_name} module routes
+      # Add these routes to your main config/routes.rb file
+      
+      resources :#{module_name}
+      # End #{class_name} module routes
+    RUBY
+
+    create_file(File.join(module_path, 'config', 'routes.rb'), routes_content)
+
+    # Create initializer stub
+    initializer_content = <<~RUBY
+      # frozen_string_literal: true
+
+      # #{class_name} module initializer
+      # This file will be copied to config/initializers/#{module_name}.rb during installation
+
+      Rails.application.configure do
+        config.#{module_name} = ActiveSupport::OrderedOptions.new
+        
+        # Module configuration options
+        config.#{module_name}.enabled = true
+        config.#{module_name}.items_per_page = 20
+        config.#{module_name}.allow_public_access = false
+        
+        # Add your custom configuration options here
+        # config.#{module_name}.custom_option = 'default_value'
+      end
+
+      # Optional: Add helpers or custom logic
+      # if defined?(ActionView::Base)
+      #   ActionView::Base.include #{class_name}Helper
+      # end
+    RUBY
+
+    create_file(File.join(module_path, 'config', 'initializers', "#{module_name}.rb"), initializer_content)
+  end
+
+  def create_file(path, content)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, content)
+    puts "  ✅ Created #{Pathname.new(path).relative_path_from(Pathname.new(TEMPLATE_PATH))}" if @verbose
   end
 
   def get_module_version(module_template_path)
