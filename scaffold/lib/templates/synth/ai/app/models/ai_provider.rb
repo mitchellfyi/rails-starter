@@ -37,7 +37,7 @@ class AiProvider < ApplicationRecord
       { success: false, error: "Unknown provider: #{slug}" }
     end
   rescue => e
-    { success: false, error: e.message }
+    { success: false, error: e.message, error_class: e.class.name }
   end
   
   private
@@ -69,15 +69,31 @@ class AiProvider < ApplicationRecord
     else
       { success: false, error: "No models returned from OpenAI API" }
     end
+  rescue => e
+    { success: false, error: "OpenAI API error: #{e.message}", error_class: e.class.name }
   end
   
   def test_anthropic_connection(client)
-    # Placeholder for Anthropic connection test
-    { success: true, message: "Anthropic connection test not implemented" }
+    # For Anthropic, we'll try a simple completion request with minimal tokens
+    # This is a placeholder - would need actual Anthropic API implementation
+    {
+      success: true,
+      message: "Anthropic connection test (mock implementation)",
+      note: "Real implementation would test with a minimal API call"
+    }
+  rescue => e
+    { success: false, error: "Anthropic API error: #{e.message}", error_class: e.class.name }
   end
   
   def test_cohere_connection(client)
-    # Placeholder for Cohere connection test
-    { success: true, message: "Cohere connection test not implemented" }
+    # For Cohere, we'll try to list available models
+    # This is a placeholder - would need actual Cohere API implementation
+    {
+      success: true,
+      message: "Cohere connection test (mock implementation)",
+      note: "Real implementation would test with a minimal API call"
+    }
+  rescue => e
+    { success: false, error: "Cohere API error: #{e.message}", error_class: e.class.name }
   end
 end

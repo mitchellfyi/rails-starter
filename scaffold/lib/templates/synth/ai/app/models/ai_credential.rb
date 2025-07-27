@@ -41,26 +41,20 @@ class AiCredential < ApplicationRecord
   
   # Test the credential by pinging the provider
   def test_connection
-    result = ai_provider.test_connectivity(api_key)
-    
-    update!(
-      last_tested_at: Time.current,
-      last_test_result: result.to_json
-    )
-    
-    result
+    service = AiProviderTestService.new(self)
+    service.test_connection
   end
   
   # Check if the credential test was successful
   def test_successful?
-    return false unless last_test_result.present?
-    
-    begin
-      result = JSON.parse(last_test_result)
-      result['success'] == true
-    rescue JSON::ParserError
-      false
-    end
+    service = AiProviderTestService.new(self)
+    service.last_test_successful?
+  end
+  
+  # Get detailed test history
+  def test_history
+    service = AiProviderTestService.new(self)
+    service.test_history
   end
   
   # Mark credential as used
