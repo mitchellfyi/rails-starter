@@ -18,7 +18,7 @@ create_file 'app/domains/api/app/controllers/api/base_controller.rb', <<~RUBY
     class BaseController < ApplicationController
       include JsonApiResponses
       include ErrorHandling
-      include Pundit::Authorization
+      include PaginationHelpers
       
       protect_from_forgery with: :null_session
       before_action :authenticate_user!
@@ -93,7 +93,7 @@ create_file 'app/domains/api/app/controllers/concerns/error_handling.rb', <<~RUB
     included do
       rescue_from ActiveRecord::RecordNotFound, with: :handle_not_found
       rescue_from ActiveRecord::RecordInvalid, with: :handle_validation_error
-      rescue_from Pundit::NotAuthorizedError, with: :handle_unauthorized
+      rescue_from ActionController::ParameterMissing, with: :handle_parameter_missing
     end
 
     private
@@ -118,12 +118,77 @@ create_file 'app/domains/api/app/controllers/concerns/error_handling.rb', <<~RUB
       render_jsonapi_errors(errors)
     end
 
-    def handle_unauthorized(exception)
+    def handle_parameter_missing(exception)
       render_jsonapi_error(
-        status: :forbidden,
-        title: 'Access denied',
-        detail: exception.message
+        status: :bad_request,
+        title: 'Missing required parameter',
+        detail: "Missing parameter: #{exception.param}",
+        source: { parameter: exception.param.to_s }
       )
+    end
+  end
+RUBY
+
+# Create pagination helpers
+create_file 'app/domains/api/app/controllers/concerns/pagination_helpers.rb', <<~RUBY
+  # frozen_string_literal: true
+
+  module PaginationHelpers
+    extend ActiveSupport::Concern
+
+    private
+
+    # Paginate collection and return with JSON:API meta information
+    def paginate_collection(collection, per_page: 25)
+      page = params[:page]&.fetch(:number, 1)&.to_i || 1
+      per_page = params[:page]&.fetch(:size, per_page)&.to_i || per_page
+      
+      # Ensure reasonable limits
+      per_page = [per_page, 100].min
+      per_page = [per_page, 1].max
+      
+      paginated = collection.page(page).per(per_page)
+      
+      {
+        collection: paginated,
+        meta: pagination_meta(paginated)
+      }
+    end
+
+    # Generate pagination links according to JSON:API spec
+    def pagination_links(collection, base_url = request.base_url + request.path)
+      return {} unless collection.respond_to?(:current_page)
+
+      links = {}
+      current_page = collection.current_page
+      total_pages = collection.total_pages
+      per_page = collection.limit_value
+
+      # Self link
+      links[:self] = paginated_url(base_url, current_page, per_page)
+
+      # First and last
+      links[:first] = paginated_url(base_url, 1, per_page)
+      links[:last] = paginated_url(base_url, total_pages, per_page) if total_pages > 0
+
+      # Previous and next
+      if current_page > 1
+        links[:prev] = paginated_url(base_url, current_page - 1, per_page)
+      end
+
+      if current_page < total_pages
+        links[:next] = paginated_url(base_url, current_page + 1, per_page)
+      end
+
+      links
+    end
+
+    def paginated_url(base_url, page, per_page)
+      uri = URI(base_url)
+      query_params = Rack::Utils.parse_query(uri.query)
+      query_params['page'] = { 'number' => page, 'size' => per_page }
+      uri.query = query_params.to_query
+      uri.to_s
     end
   end
 RUBY
@@ -245,27 +310,48 @@ create_file 'app/domains/api/app/serializers/user_serializer.rb', <<~RUBY
   end
 RUBY
 
-# Add API routes
-route <<~RUBY
-  scope module: :api do
-    namespace :api do
-      namespace :v1 do
-        resources :workspaces, except: [:new, :edit]
+# Add API routes configuration
+create_file 'app/domains/api/config/routes.rb', <<~RUBY
+  # frozen_string_literal: true
+
+  # API routes configuration for Rails SaaS Starter Template
+  # This file should be included in your main application's routes.rb
+
+  Rails.application.routes.draw do
+    # Mount API documentation
+    mount Rswag::Ui::Engine => '/api-docs'
+    mount Rswag::Api::Engine => '/api-docs'
+
+    # JSON:API compliant endpoints
+    scope module: :api do
+      namespace :api do
+        namespace :v1 do
+          # Add your API resources here
+          # Example: resources :posts, only: [:index, :show, :create, :update, :destroy]
+        end
       end
     end
   end
 RUBY
 
+# Add rswag mount to routes (fallback)
+route "mount Rswag::Ui::Engine => '/api-docs' unless Rails.application.routes.routes.any? { |r| r.path.spec.to_s.include?('api-docs') }"
+route "mount Rswag::Api::Engine => '/api-docs' unless Rails.application.routes.routes.any? { |r| r.path.spec.to_s.include?('api-docs') }"
+
 # Configure rswag for OpenAPI documentation
-initializer 'rswag.rb', <<~RUBY
+initializer 'swagger.rb', <<~RUBY
   # frozen_string_literal: true
 
-  Rswag::Ui.configure do |c|
-    c.swagger_endpoint '/api-docs/v1/swagger.yaml', 'API V1 Docs'
-  end
+  # OpenAPI/Swagger configuration for API documentation
 
-  Rswag::Api.configure do |c|
-    c.swagger_root = Rails.root.to_s + '/swagger'
+  Rails.application.config.to_prepare do
+    # Mount Swagger UI at /api-docs
+    unless Rails.application.routes.routes.any? { |route| route.path.spec.to_s.include?('api-docs') }
+      Rails.application.routes.draw do
+        mount Rswag::Ui::Engine => '/api-docs'
+        mount Rswag::Api::Engine => '/api-docs'
+      end
+    end
   end
 RUBY
 
@@ -882,43 +968,104 @@ create_file 'app/domains/api/lib/tasks/api.rake', <<~RUBY
     task generate_schema: :environment do
       require 'rswag/specs/rake_task'
       Rake::Task['rswag:specs:swaggerize'].invoke
+      puts "✅ OpenAPI schema generated at swagger/v1/swagger.yaml"
     end
 
     desc 'Validate that OpenAPI schema is up to date'
     task validate_schema: :environment do
+      require 'digest'
+      
+      schema_path = Rails.root.join('swagger', 'v1', 'swagger.yaml')
+      
+      unless schema_path.exist?
+        puts "❌ OpenAPI schema not found. Run 'rake api:generate_schema' first."
+        exit 1
+      end
+      
       # Store current schema
-      current_schema = File.read(SWAGGER_SCHEMA_PATH) if File.exist?(SWAGGER_SCHEMA_PATH)
+      current_schema = File.read(schema_path)
+      current_checksum = Digest::SHA256.hexdigest(current_schema)
       
       # Generate new schema
-      Rake::Task['api:generate_schema'].invoke
+      require 'rswag/specs/rake_task'
+      Rake::Task['rswag:specs:swaggerize'].invoke
       
       # Compare with current
-      new_schema = File.read(SWAGGER_SCHEMA_PATH)
+      new_schema = File.read(schema_path)
+      new_checksum = Digest::SHA256.hexdigest(new_schema)
       
-      if current_schema != new_schema
+      if current_checksum != new_checksum
         puts "❌ OpenAPI schema is out of date. Run 'rake api:generate_schema' to update."
         exit 1
       else
         puts "✅ OpenAPI schema is up to date."
       end
     end
+
+    desc 'Validate API endpoints against OpenAPI specification'
+    task validate_endpoints: :environment do
+      # This task validates that all API routes have corresponding OpenAPI specs
+      puts "🔍 Validating API endpoints against specification..."
+      
+      api_routes = Rails.application.routes.routes.select do |route|
+        route.path.spec.to_s.start_with?('/api/') && 
+        !route.path.spec.to_s.include?('api-docs')
+      end
+      
+      puts "📊 Found #{api_routes.count} API routes:"
+      api_routes.each do |route|
+        method = route.verb.source.gsub(/[\\^\\$]/, '')
+        path = route.path.spec.to_s.gsub(/\\(\\.\\w+\\)/, '') # Remove format specifiers
+        puts "  #{method.ljust(6)} #{path}"
+      end
+      
+      # Check if swagger spec exists
+      schema_path = Rails.root.join('swagger', 'v1', 'swagger.yaml')
+      if schema_path.exist?
+        require 'yaml'
+        spec = YAML.load_file(schema_path)
+        documented_paths = spec['paths']&.keys || []
+        
+        puts "\\n📋 OpenAPI documented paths:"
+        documented_paths.each { |path| puts "  #{path}" }
+        
+        undocumented = api_routes.reject do |route|
+          path = route.path.spec.to_s.gsub(/\\(\\.\\w+\\)/, '').gsub(/:(\\w+)/, '{\\1}')
+          documented_paths.include?(path)
+        end
+        
+        if undocumented.any?
+          puts "\\n⚠️  Undocumented API routes found:"
+          undocumented.each do |route|
+            method = route.verb.source.gsub(/[\\^\\$]/, '')
+            path = route.path.spec.to_s.gsub(/\\(\\.\\w+\\)/, '')
+            puts "  #{method.ljust(6)} #{path}"
+          end
+          puts "\\n💡 Add RSpec request specs for these routes to generate documentation."
+        else
+          puts "\\n✅ All API routes are documented in OpenAPI specification."
+        end
+      else
+        puts "\\n⚠️  OpenAPI schema not found. Run 'rake api:generate_schema' after adding request specs."
+        puts "📝 Create RSpec request specs in spec/requests/api/ to generate documentation."
+      end
+    end
   end
 RUBY
-
-# Add rswag mount to routes
-route "mount Rswag::Ui::Engine => '/api-docs'"
-route "mount Rswag::Api::Engine => '/api-docs'"
 
 say "✅ API module installed successfully!"
 say ""
 say "The API module provides:"
 say "  - JSON:API compliant base controller and response helpers"
-say "  - OpenAPI/Swagger documentation with rswag"
-say "  - Example workspace API with full CRUD operations"
-say "  - Comprehensive test suite with API specs"
+say "  - Automatic error handling with proper JSON:API error format"
+say "  - Pagination support with JSON:API meta and links"
+say "  - OpenAPI/Swagger documentation generation with rswag"
+say "  - Request/response validation and testing infrastructure"
 say ""
 say "Next steps:"
-say "  1. Run migrations: rails db:migrate"
-say "  2. Generate API documentation: rake api:generate_schema"
-say "  3. Visit API docs at: http://localhost:3000/api-docs"
-say "  4. Run API tests: bundle exec rspec spec/requests/api/"
+say "  1. Create API controllers inheriting from Api::BaseController"
+say "  2. Create serializers inheriting from ApplicationSerializer"
+say "  3. Write RSpec request specs for OpenAPI documentation"
+say "  4. Generate API documentation: rake api:generate_schema"
+say "  5. Visit API docs at: http://localhost:3000/api-docs"
+say "  6. Validate endpoints: rake api:validate_endpoints"
