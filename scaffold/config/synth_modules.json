@@ -5,11 +5,6 @@
       "installed_at": "2025-07-26T18:18:57+0000",
       "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/auth"
     },
-    "admin": {
-      "version": "1.0.0",
-      "installed_at": "2025-07-26T18:29:39+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/admin"
-    },
     "ai": {
       "version": "1.0.0",
       "installed_at": "2025-07-26T20:14:45+0000",
@@ -24,6 +19,11 @@
       "version": "1.0.0",
       "installed_at": "2025-07-27T07:14:46+0000",
       "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/api"
+    },
+    "admin": {
+      "version": "1.0.0",
+      "installed_at": "2025-07-27T08:56:01+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/admin"
     }
   }
 }
