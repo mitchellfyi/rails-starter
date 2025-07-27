@@ -6,9 +6,6 @@ A comprehensive theming framework for customizing colors, fonts, logos, and bran
 
 - **CSS Custom Properties**: Easy color, font, and spacing customization
 - **Light/Dark Mode**: Built-in theme switching with system preference detection
-- **Persistent Storage**: Theme preferences stored in localStorage, session, and optionally database
-- **Server Sync**: Automatic synchronization of theme preferences across devices/sessions
-- **Fallback Support**: Graceful degradation when server sync is unavailable
 - **Brand Assets**: Logo and icon management system
 - **Typography**: Custom font loading and typographic scales
 - **Component Themes**: Consistent styling across all UI components
@@ -73,36 +70,8 @@ Rails.application.configure do
   config.theme.allow_user_preference = true
   config.theme.brand_name = "Your App"
   config.theme.custom_css_enabled = true
-  
-  # Server-side persistence settings
-  config.theme.enable_server_sync = true
-  config.theme.enable_database_persistence = true
 end
 ```
-
-### Persistence Options
-
-The theme module supports multiple storage options with automatic fallback:
-
-1. **Database**: For authenticated users (requires migration)
-2. **Session**: For anonymous users and backup storage
-3. **localStorage**: Client-side fallback when server is unavailable
-
-### Database Setup (Optional)
-
-To enable database persistence for authenticated users:
-
-1. Run the migration: `rails db:migrate`
-2. The `theme_preference` column will be added to your users table
-3. Theme preferences will automatically sync for logged-in users
-
-### Session-Only Mode
-
-If you prefer not to use database storage:
-
-1. Set `config.theme.enable_database_persistence = false`
-2. Theme preferences will be stored in session only
-3. localStorage provides client-side backup
 
 ## Components
 
@@ -166,11 +135,7 @@ Define complete color systems:
 - `app/assets/stylesheets/_theme_variables.css` - Core theme variables
 - `app/views/shared/_theme_switcher.html.erb` - Theme toggle component
 - `app/views/shared/_brand_logo.html.erb` - Brand logo component
-- `app/controllers/theme_preferences_controller.rb` - Server-side theme management
-- `app/javascript/controllers/theme_switcher_controller.js` - Enhanced Stimulus controller
 - `config/initializers/theme.rb` - Theme configuration
-- `config/routes.rb` - Theme preference routes (added)
-- `db/migrate/*_add_theme_preference_to_users.rb` - Optional database migration
 - `app/assets/images/brand/` - Brand asset directory
 
 ## Browser Support
@@ -178,5 +143,4 @@ Define complete color systems:
 - CSS Custom Properties (IE 11+ with polyfill)
 - CSS Grid and Flexbox
 - `prefers-color-scheme` media query
-- Fetch API for server synchronization
-- Local storage and session storage for persistence
+- Local storage for theme persistence
