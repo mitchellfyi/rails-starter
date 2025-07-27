@@ -1,0 +1,72 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/yarn-error.log
+
+# Ignore all logfiles and tempfiles.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+
+# Ignore pidfiles, but keep the directory.
+/tmp/pids/*
+!/tmp/pids/
+!/tmp/pids/.keep
+
+# Ignore uploaded files in development.
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/
+!/tmp/storage/.keep
+
+# Ignore master key for decrypting credentials and more.
+/config/master.key
+/config/credentials/*.key
+
+# Ignore application configuration
+/config/application.yml
+/config/database.yml
+
+# Ignore environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore RailsPlan specific files
+.railsplan.log
+.railsplanrc
+
+# Ignore coverage reports
+/coverage/
+
+# Ignore bundle config
+/.bundle
+
+# Ignore all cached files
+/.sass-cache
+/coverage/
+InstalledFiles
+yarn-error.log
+
+# Ignore macOS files
+.DS_Store
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore test files
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Ignore if you build and use docker-compose
+.docker-sync/ 
