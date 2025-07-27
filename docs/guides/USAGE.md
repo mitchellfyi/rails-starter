@@ -6,7 +6,7 @@
 
 ```bash
 # Create a new Rails SaaS application using the template
-rails new myapp --dev -d postgresql -m https://raw.githubusercontent.com/mitchellfyi/rails-starter/main/scaffold/template.rb
+rails new myapp --dev -d postgresql -m https://raw.githubusercontent.com/mitchellfyi/railsplan/main/scaffold/template.rb
 
 # Navigate to your new application
 cd myapp

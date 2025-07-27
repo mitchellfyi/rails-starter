@@ -38,7 +38,7 @@ This module adds a comprehensive admin panel to your Rails SaaS application with
 Run the following command from your application root to install the admin module:
 
 ```bash
-bin/synth add admin
+bin/railsplan add admin
 ```
 
 This command will:
@@ -156,7 +156,7 @@ UserActivity.log_user_activity(
 Run the admin module tests:
 
 ```bash
-bin/synth test admin
+bin/railsplan test admin
 ```
 
 ## Customization

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # TestWithHyphens module removal script for the Rails SaaS starter template.
-# This script is executed by the bin/synth CLI when removing the test-with-hyphens module.
+# This script is executed by the bin/railsplan CLI when removing the test-with-hyphens module.
 
 say_status :test-with-hyphens, "Removing TestWithHyphens module"
 

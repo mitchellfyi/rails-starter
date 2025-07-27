@@ -11,7 +11,7 @@ class DoctorFunctionalityTest < Minitest::Test
     Dir.mktmpdir do |temp_dir|
       Dir.chdir(temp_dir) do
         # Run the doctor command and capture output
-        output = `#{File.join(__dir__, '..', 'bin', 'synth')} doctor 2>&1`
+        output = `#{File.join(__dir__, '..', 'bin', 'railsplan')} doctor 2>&1`
         
         # Check that all expected sections are present
         assert_includes output, '🏥 Running system diagnostics...'
@@ -31,11 +31,11 @@ class DoctorFunctionalityTest < Minitest::Test
     Dir.mktmpdir do |temp_dir|
       Dir.chdir(temp_dir) do
         # Run without required env vars
-        output = `#{File.join(__dir__, '..', 'bin', 'synth')} doctor 2>&1`
+        output = `#{File.join(__dir__, '..', 'bin', 'railsplan')} doctor 2>&1`
         assert_includes output, 'Missing critical environment variables'
         
         # Run with required env vars set
-        env_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test #{File.join(__dir__, '..', 'bin', 'synth')} doctor 2>&1`
+        env_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test #{File.join(__dir__, '..', 'bin', 'railsplan')} doctor 2>&1`
         assert_includes env_output, 'Critical environment variables are set'
       end
     end
@@ -46,11 +46,11 @@ class DoctorFunctionalityTest < Minitest::Test
     Dir.mktmpdir do |temp_dir|
       Dir.chdir(temp_dir) do
         # Test with valid API key formats
-        valid_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test OPENAI_API_KEY=sk-test STRIPE_SECRET_KEY=sk_test GITHUB_TOKEN=ghp_test #{File.join(__dir__, '..', 'bin', 'synth')} doctor 2>&1`
+        valid_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test OPENAI_API_KEY=sk-test STRIPE_SECRET_KEY=sk_test GITHUB_TOKEN=ghp_test #{File.join(__dir__, '..', 'bin', 'railsplan')} doctor 2>&1`
         assert_includes valid_output, 'API key formats appear valid'
         
         # Test with invalid API key formats
-        invalid_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test OPENAI_API_KEY=invalid STRIPE_SECRET_KEY=invalid GITHUB_TOKEN=invalid #{File.join(__dir__, '..', 'bin', 'synth')} doctor 2>&1`
+        invalid_output = `SECRET_KEY_BASE=test DATABASE_URL=test REDIS_URL=test OPENAI_API_KEY=invalid STRIPE_SECRET_KEY=invalid GITHUB_TOKEN=invalid #{File.join(__dir__, '..', 'bin', 'railsplan')} doctor 2>&1`
         assert_includes invalid_output, 'API key format appears invalid'
       end
     end

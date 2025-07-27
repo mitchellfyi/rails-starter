@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Synth AI module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the AI module.
+# RailsPlan AI module installer for the Rails SaaS starter template.
+# This install script is executed by the bin/railsplan CLI when adding the AI module.
 
 say_status :railsplan_ai, "Installing AI module with PromptTemplate versioning"
 

@@ -13,7 +13,7 @@ This module provides comprehensive authentication features including user regist
 ## Installation
 
 ```bash
-bin/synth add auth
+bin/railsplan add auth
 ```
 
 This installs:
@@ -98,7 +98,7 @@ Users can link multiple OAuth providers to their account via the Identity model.
 ## Testing
 
 ```bash
-bin/synth test auth
+bin/railsplan test auth
 ```
 
 ## Version

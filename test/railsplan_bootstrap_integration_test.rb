@@ -1,19 +1,19 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Integration test for the synth CLI bootstrap command
+# Integration test for the railsplan CLI bootstrap command
 
 require 'fileutils'
 require 'tempfile'
 
-class SynthBootstrapIntegrationTest
+class RailsPlanBootstrapIntegrationTest
   def initialize
     @original_dir = Dir.pwd
-    @test_dir = Dir.mktmpdir('synth_bootstrap_integration')
+    @test_dir = Dir.mktmpdir('railsplan_bootstrap_integration')
   end
 
   def run
-    puts "🧪 Testing Synth CLI Bootstrap Integration..."
+    puts "🧪 Testing RailsPlan CLI Bootstrap Integration..."
     
     begin
       setup_test_environment
@@ -36,9 +36,9 @@ class SynthBootstrapIntegrationTest
     Dir.chdir(@test_dir)
     
     # Copy the CLI file to test location
-    cli_source = File.join(@original_dir, 'lib', 'synth', 'cli.rb')
-    FileUtils.mkdir_p('lib/synth')
-    FileUtils.cp(cli_source, 'lib/synth/cli.rb')
+    cli_source = File.join(@original_dir, 'lib', 'railsplan', 'cli.rb')
+    FileUtils.mkdir_p('lib/railsplan')
+    FileUtils.cp(cli_source, 'lib/railsplan/cli.rb')
     
     # Create minimal required directories
     FileUtils.mkdir_p(['scaffold/lib/templates', 'scaffold/config'])
@@ -52,7 +52,7 @@ class SynthBootstrapIntegrationTest
   end
 
   def test_bootstrap_command_help
-    cli_content = File.read('lib/synth/cli.rb')
+    cli_content = File.read('lib/railsplan/cli.rb')
     
     # Verify bootstrap command is properly defined
     unless cli_content.match(/desc\s+['"]bootstrap['"]/)
@@ -72,7 +72,7 @@ class SynthBootstrapIntegrationTest
   end
 
   def test_cli_structure_integrity
-    cli_content = File.read('lib/synth/cli.rb')
+    cli_content = File.read('lib/railsplan/cli.rb')
     
     # Verify all original commands are still present
     original_commands = %w[list add remove upgrade test doctor info scaffold]
@@ -108,8 +108,8 @@ class SynthBootstrapIntegrationTest
     end
     
     # Verify module structure is intact
-    unless cli_content.match(/module\s+Synth/)
-      raise "Synth module structure damaged"
+    unless cli_content.match(/module\s+RailsPlan/)
+      raise "RailsPlan module structure damaged"
     end
     
     puts "✅ CLI structure integrity maintained"
@@ -118,5 +118,5 @@ end
 
 # Run the test if this file is executed directly
 if __FILE__ == $0
-  SynthBootstrapIntegrationTest.new.run
+  RailsPlanBootstrapIntegrationTest.new.run
 end

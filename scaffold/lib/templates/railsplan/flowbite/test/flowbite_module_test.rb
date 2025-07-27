@@ -10,16 +10,16 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_flowbite_module_structure
-    assert Dir.exist?('scaffold/lib/templates/synth/flowbite'), 
+    assert Dir.exist?('scaffold/lib/templates/railsplan/flowbite'), 
            "Flowbite module directory should exist"
     
-    assert File.exist?('scaffold/lib/templates/synth/flowbite/README.md'),
+    assert File.exist?('scaffold/lib/templates/railsplan/flowbite/README.md'),
            "Flowbite README should exist"
            
-    assert File.exist?('scaffold/lib/templates/synth/flowbite/VERSION'),
+    assert File.exist?('scaffold/lib/templates/railsplan/flowbite/VERSION'),
            "Flowbite VERSION file should exist"
            
-    assert File.exist?('scaffold/lib/templates/synth/flowbite/install.rb'),
+    assert File.exist?('scaffold/lib/templates/railsplan/flowbite/install.rb'),
            "Flowbite install script should exist"
   end
   
@@ -86,7 +86,7 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_install_script_syntax
-    install_script = File.read('scaffold/lib/templates/synth/flowbite/install.rb')
+    install_script = File.read('scaffold/lib/templates/railsplan/flowbite/install.rb')
     
     # Check for Ruby syntax validity by attempting to parse it
     begin
@@ -98,7 +98,7 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_javascript_files_syntax
-    js_files = Dir.glob('scaffold/lib/templates/synth/flowbite/**/*.js')
+    js_files = Dir.glob('scaffold/lib/templates/railsplan/flowbite/**/*.js')
     
     js_files.each do |file|
       content = File.read(file)
@@ -111,7 +111,7 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_css_files_syntax
-    css_files = Dir.glob('scaffold/lib/templates/synth/flowbite/**/*.css')
+    css_files = Dir.glob('scaffold/lib/templates/railsplan/flowbite/**/*.css')
     
     css_files.each do |file|
       content = File.read(file)
@@ -125,7 +125,7 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_erb_templates_syntax
-    erb_files = Dir.glob('scaffold/lib/templates/synth/flowbite/**/*.erb')
+    erb_files = Dir.glob('scaffold/lib/templates/railsplan/flowbite/**/*.erb')
     
     erb_files.each do |file|
       content = File.read(file)
@@ -140,18 +140,18 @@ class FlowbiteModuleTest < Minitest::Test
   end
   
   def test_readme_content
-    readme = File.read('scaffold/lib/templates/synth/flowbite/README.md')
+    readme = File.read('scaffold/lib/templates/railsplan/flowbite/README.md')
     
     assert_includes readme, '# Flowbite UI Components Module'
     assert_includes readme, '## Installation'
     assert_includes readme, '## Usage'
-    assert_includes readme, 'bin/synth add flowbite'
+    assert_includes readme, 'bin/railsplan add flowbite'
     assert_includes readme, 'flowbite_button'
     assert_includes readme, 'flowbite_modal'
   end
   
   def test_version_format
-    version = File.read('scaffold/lib/templates/synth/flowbite/VERSION').strip
+    version = File.read('scaffold/lib/templates/railsplan/flowbite/VERSION').strip
     
     assert_match(/^\d+\.\d+\.\d+$/, version, 
                 "Version should follow semantic versioning (x.y.z)")

@@ -6,7 +6,7 @@
 puts "🎨 Testing Theme Module Integration..."
 
 # Test 1: Verify theme module exists in the expected location
-theme_module_path = File.expand_path('../scaffold/lib/templates/synth/theme', __dir__)
+theme_module_path = File.expand_path('../scaffold/lib/templates/railsplan/theme', __dir__)
 puts "✅ Theme module directory exists" if Dir.exist?(theme_module_path)
 
 # Test 2: Verify required files exist
@@ -42,7 +42,7 @@ end
 # Test 4: Verify template.rb includes theme module
 template_path = File.expand_path('../scaffold/template.rb', __dir__)
 template_content = File.read(template_path)
-if template_content.include?("run 'bin/synth add theme'")
+if template_content.include?("run 'bin/railsplan add theme'")
   puts "✅ Theme module included in main template"
 else
   puts "❌ Theme module not included in main template"
@@ -129,7 +129,7 @@ puts "🎉 All theme module integration tests passed!"
 puts "📝 Enhanced theme customization framework with server-side persistence is ready for use"
 puts ""
 puts "Next steps:"
-puts "- Add theme module to generated apps with: bin/synth add theme"
+puts "- Add theme module to generated apps with: bin/railsplan add theme"
 puts "- Run migration: rails db:migrate (optional, for database persistence)"
 puts "- Customize colors in app/assets/stylesheets/theme.css"
 puts "- Add brand logos to app/assets/images/brand/"

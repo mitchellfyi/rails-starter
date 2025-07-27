@@ -63,7 +63,7 @@ This creates:
 
 ### Adding Modules
 
-Install domain modules using the Synth CLI:
+Install domain modules using the RailsPlan CLI:
 
 ```bash
 bin/railsplan add auth        # Adds authentication domain

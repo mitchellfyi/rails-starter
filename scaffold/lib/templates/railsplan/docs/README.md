@@ -6,7 +6,7 @@ This module provides comprehensive documentation generation and management tools
 
 - **Automated Documentation Generation**: Generate docs from code and modules
 - **API Documentation**: OpenAPI specification generation
-- **Module Documentation**: Aggregate documentation from all Synth modules  
+- **Module Documentation**: Aggregate documentation from all RailsPlan modules  
 - **Setup & Deployment Guides**: Comprehensive guides for getting started
 - **Documentation Server**: Local server for browsing documentation
 - **YARD Integration**: Code documentation from Ruby comments
@@ -54,11 +54,11 @@ yard doc
 Comprehensive setup instructions including:
 - Prerequisites and installation
 - Environment configuration
-- Module installation with Synth CLI
+- Module installation with RailsPlan CLI
 - Testing and development workflow
 
 ### 2. Module Documentation (`docs/modules/`)
-Auto-generated from each Synth module's README:
+Auto-generated from each RailsPlan module's README:
 - Feature descriptions
 - Installation instructions
 - Usage examples
@@ -240,7 +240,7 @@ end
 ```
 
 ### Module Documentation
-Each Synth module should include:
+Each RailsPlan module should include:
 - Clear feature description
 - Installation instructions
 - Configuration examples

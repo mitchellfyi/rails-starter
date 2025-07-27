@@ -9,7 +9,7 @@ require 'json'
 
 class BootstrapCliTest
   def initialize
-    @cli_path = File.expand_path('../lib/synth/cli.rb', __dir__)
+    @cli_path = File.expand_path('../lib/railsplan/cli.rb', __dir__)
     @test_dir = Dir.mktmpdir('bootstrap_test')
     @original_dir = Dir.pwd
   end

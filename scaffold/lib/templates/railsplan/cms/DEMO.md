@@ -7,7 +7,7 @@ This document demonstrates the CMS/blog engine functionality that would be avail
 In a Rails application with the starter template:
 
 ```bash
-bin/synth add cms
+bin/railsplan add cms
 rails db:migrate
 ```
 

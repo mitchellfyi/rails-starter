@@ -4,24 +4,13 @@
 # Provides reusable, testable UI components
 
 if defined?(ViewComponent)
-  ViewComponent::Base.configure do |config|
-    # Use Tailwind CSS classes for styling
-    config.default_preview_layout = 'component_preview'
-    
-    # Enable preview functionality in development
-    config.preview_controller = 'ComponentPreviewController' if Rails.env.development?
-    
-    # Configure component path
-    config.preview_paths << Rails.root.join('spec/components/previews') if Rails.env.development?
-    
-    # Enable instrumentation for performance monitoring
-    config.instrumentation_enabled = true
-    
-    # Configure view component generator
-    config.generate_sidecar = true
-    config.generate_stimulus_controller = true
-    config.generate_preview = true if Rails.env.development?
-  end
+  # Configure ViewComponent using the correct API
+  Rails.application.config.view_component.preview_paths << Rails.root.join('spec/components/previews') if Rails.env.development?
+  Rails.application.config.view_component.preview_controller = 'ComponentPreviewController' if Rails.env.development?
+  Rails.application.config.view_component.default_preview_layout = 'component_preview'
+  Rails.application.config.view_component.generate_sidecar = true
+  Rails.application.config.view_component.generate_stimulus_controller = true
+  Rails.application.config.view_component.generate_preview = true if Rails.env.development?
   
   Rails.logger.info '🧩 ViewComponent configured for component-based UI'
 end

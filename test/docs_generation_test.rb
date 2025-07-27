@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Test for the docs generation functionality in bin/synth
+# Test for the docs generation functionality in bin/railsplan
 
 class DocsGenerationTest
   def self.run_tests
@@ -34,7 +34,7 @@ class DocsGenerationTest
   private
   
   def self.test_docs_command_in_help
-    output = `cd #{Dir.pwd} && ./bin/synth help`
+    output = `cd #{Dir.pwd} && ./bin/railsplan help`
     
     unless output.include?("docs")
       return "docs command not found in help output"
@@ -53,7 +53,7 @@ class DocsGenerationTest
     docs_path = File.join(Dir.pwd, 'docs')
     
     # Run docs generation
-    output = `cd #{Dir.pwd} && ./bin/synth docs 2>&1`
+    output = `cd #{Dir.pwd} && ./bin/railsplan docs 2>&1`
     
     unless File.exist?(File.join(docs_path, 'README.md'))
       return "Main README.md not generated"
@@ -83,7 +83,7 @@ class DocsGenerationTest
     File.delete(main_readme) if File.exist?(main_readme)
     
     # Run upgrade which should regenerate docs
-    output = `cd #{Dir.pwd} && ./bin/synth upgrade --yes --no-backup 2>&1`
+    output = `cd #{Dir.pwd} && ./bin/railsplan upgrade --yes --no-backup 2>&1`
     
     unless output.include?("Regenerating documentation after upgrade")
       return "Upgrade does not mention doc regeneration"

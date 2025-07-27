@@ -48,18 +48,18 @@ after_bundle do
   # Install core modules using bin/railsplan
   say "🔧 Installing core modules..."
   run 'bin/railsplan add auth'
-  run 'bin/railsplan add workspace'
-  run 'bin/railsplan add onboarding'
-  run 'bin/railsplan add api'
-  run 'bin/railsplan add deploy'
-  run 'bin/railsplan add ai'
-  run 'bin/railsplan add billing'
-  run 'bin/railsplan add cms'
-  run 'bin/railsplan add i18n'
-  run 'bin/railsplan add admin'
-  run 'bin/railsplan add docs'
-  run 'bin/railsplan add testing'
-  run 'bin/railsplan add theme'
+run 'bin/railsplan add workspace'
+run 'bin/railsplan add onboarding'
+run 'bin/railsplan add api'
+run 'bin/railsplan add deploy'
+run 'bin/railsplan add ai'
+run 'bin/railsplan add billing'
+run 'bin/railsplan add cms'
+run 'bin/railsplan add i18n'
+run 'bin/railsplan add admin'
+run 'bin/railsplan add docs'
+run 'bin/railsplan add testing'
+run 'bin/railsplan add theme'
 
   load_template_file 'setup/environment_config.rb'
   load_template_file 'setup/api_serializers.rb'
@@ -162,7 +162,7 @@ after_bundle do
 
     ## 🧩 Extend Your Application with Modules
 
-    This template is designed to be modular. You can add powerful features using the `bin/synth` CLI tool.
+    This template is designed to be modular. You can add powerful features using the `bin/railsplan` CLI tool.
 
     **Available Modules:**
 
@@ -180,16 +180,16 @@ after_bundle do
     **To install a module:**
 
     ```bash
-    bin/synth add <module_name>
-    # Example: bin/synth add auth
-    # Example: bin/synth add billing
+    bin/railsplan add <module_name>
+# Example: bin/railsplan add auth
+# Example: bin/railsplan add billing
     ```
 
     After installing a module, remember to run `rails db:migrate` if new migrations were added.
 
     ## 🎯 Next Steps
 
-    1. Explore the available modules using `bin/synth list`.
+    1. Explore the available modules using `bin/railsplan list`.
     2. Install modules relevant to your application's needs.
     3. Customize the installed modules and core foundation.
     4. Set up monitoring and error tracking.

@@ -13,7 +13,7 @@ This module provides a flexible context provider system for enriching AI prompts
 ## Installation
 
 ```bash
-bin/synth add mcp
+bin/railsplan add mcp
 ```
 
 This installs:
@@ -160,7 +160,7 @@ end
 ## Testing
 
 ```bash
-bin/synth test mcp
+bin/railsplan test mcp
 ```
 
 ## Version

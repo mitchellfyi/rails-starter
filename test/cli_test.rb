@@ -1,15 +1,15 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Test script for the synth CLI functionality
+# Test script for the railsplan CLI functionality
 
 class CliTest
   def initialize
-    @cli_path = File.expand_path('../scaffold/lib/synth/cli.rb', __dir__)
+    @cli_path = File.expand_path('../scaffold/lib/railsplan/cli.rb', __dir__)
   end
 
   def run
-    puts "🧪 Testing Synth CLI functionality..."
+    puts "🧪 Testing RailsPlan CLI functionality..."
     
     begin
       test_cli_file_exists
@@ -35,7 +35,7 @@ class CliTest
     
     required_elements = [
       'require \'thor\'',
-      'module Synth',
+      'module RailsPlan',
       'class CLI < Thor',
       'desc \'list\'',
       'def list',

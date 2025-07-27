@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Synth AI Multitenant module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the AI multitenant module.
+# RailsPlan AI Multitenant module installer for the Rails SaaS starter template.
+# This install script is executed by the bin/railsplan CLI when adding the AI multitenant module.
 
 say_status :railsplan_ai_multitenant, "Installing AI Multitenant module with complete workspace isolation"
 

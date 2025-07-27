@@ -69,7 +69,7 @@ module HomeHelper
     [
       { name: 'Home', path: '/', current: request.path == '/' },
       { name: 'Documentation', path: '/docs', current: request.path.start_with?('/docs') },
-      { name: 'GitHub', path: 'https://github.com/mitchellfyi/rails-starter', external: true }
+      { name: 'GitHub', path: 'https://github.com/mitchellfyi/railsplan', external: true }
     ]
   end
 

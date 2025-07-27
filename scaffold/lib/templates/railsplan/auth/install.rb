@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Synth Auth module installer for the Rails SaaS starter template.
+# RailsPlan Auth module installer for the Rails SaaS starter template.
 # This module sets up comprehensive authentication with Devise, OmniAuth, and 2FA.
 
 say_status :auth, "Installing authentication module with Devise and OmniAuth"

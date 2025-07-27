@@ -37,7 +37,7 @@ This module provides a comprehensive multi-tenant AI system with workspace-scope
 Run the following command from your application root:
 
 ```bash
-bin/synth add ai-multitenant
+bin/railsplan add ai-multitenant
 ```
 
 This installs:
@@ -131,5 +131,5 @@ Comprehensive test coverage includes:
 
 Run tests with:
 ```bash
-bin/synth test ai-multitenant
+bin/railsplan test ai-multitenant
 ```

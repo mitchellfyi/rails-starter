@@ -12,7 +12,7 @@ class Admin::ModulesController < ApplicationController
   before_action :ensure_admin
   
   def index
-    @modules_data = SynthManifest.new.ui_modules_data
+    @modules_data = RailsPlanManifest.new.ui_modules_data
     @categories = @modules_data.group_by { |mod| mod[:category] }
   end
   
@@ -163,7 +163,7 @@ end
 # app/controllers/admin/modules_controller.rb
 class Admin::ModulesController < ApplicationController
   def status
-    manifest_manager = SynthManifest.new
+    manifest_manager = RailsPlanManifest.new
     module_info = manifest_manager.module_info(params[:id])
     
     render json: {
@@ -189,7 +189,7 @@ class Admin::ModulesController < ApplicationController
   end
   
   def health_check
-    manifest_manager = SynthManifest.new
+    manifest_manager = RailsPlanManifest.new
     health_status = manifest_manager.module_healthy?(params[:id])
     
     render json: {

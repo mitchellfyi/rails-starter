@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - None
 
 ### Fixed
-- CLI path issues in bin/synth
+- CLI path issues in bin/railsplan
 
 ### Security
 - None
@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Workspace/team management with role-based permissions
 - AI module with prompt templates and LLM job system
 - Multi-Context Provider (MCP) for dynamic prompt enrichment
-- CLI tool (`bin/synth`) for managing feature modules
+- CLI tool (`bin/railsplan`) for managing feature modules
 - Basic module system with installation/removal capabilities
 - Template script for `rails new` integration
 - Core gems and dependencies setup
@@ -63,7 +63,7 @@ This template follows semantic versioning:
 - **Patch** (0.0.X): Bug fixes and documentation improvements
 
 ### Module Versioning
-Individual modules may have their own version numbers. Use `bin/synth list` to see installed module versions.
+Individual modules may have their own version numbers. Use `bin/railsplan list` to see installed module versions.
 
 ### Migration Guide
 When upgrading between major versions, check the migration guide in `docs/` for breaking changes and upgrade instructions.

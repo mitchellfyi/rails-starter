@@ -85,7 +85,7 @@ end
 
 # Copy enhanced model files
 say 'Copying enhanced model files...'
-template_dir = File.expand_path('lib/templates/synth/notifications', Rails.root)
+template_dir = File.expand_path('lib/templates/railsplan/notifications', Rails.root)
 
 copy_file File.join(template_dir, 'app/models/notification.rb'), 'app/models/notification.rb', force: true
 copy_file File.join(template_dir, 'app/models/notification_preference.rb'), 'app/models/notification_preference.rb', force: true

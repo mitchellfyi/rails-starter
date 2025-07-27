@@ -8,7 +8,7 @@ require 'test/unit'
 
 class NotificationsModuleTest < Test::Unit::TestCase
   def setup
-    @module_path = File.expand_path('../scaffold/lib/templates/synth/notifications', __dir__)
+    @module_path = File.expand_path('../scaffold/lib/templates/railsplan/notifications', __dir__)
   end
 
   def test_module_directory_exists

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # TestWithHyphens module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the test-with-hyphens module.
+# This install script is executed by the bin/railsplan CLI when adding the test-with-hyphens module.
 
 say_status :test-with-hyphens, "Installing TestWithHyphens module"
 

@@ -13,7 +13,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-26T18:18:57+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/auth",
+      "template_path": "./scaffold/lib/templates/railsplan/auth",
       "description": "This module provides comprehensive authentication features including user registration, login, OAuth integration, and two-factor authentication.",
       "category": "core",
       "dependencies": [
@@ -84,7 +84,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-26T20:14:45+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai",
+      "template_path": "./scaffold/lib/templates/railsplan/ai",
       "description": "This module adds first‑class AI integration to your Rails app with **per-workspace AI configuration**, **versioned prompt templates**, variable interpolation, comprehensive audit history, preview functionality, and a management interface with safety features.",
       "category": "feature",
       "dependencies": [
@@ -163,7 +163,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T08:57:34+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/api",
+      "template_path": "./scaffold/lib/templates/railsplan/api",
       "description": "Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.",
       "category": "feature",
       "dependencies": [
@@ -227,7 +227,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T08:56:01+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/admin",
+      "template_path": "./scaffold/lib/templates/railsplan/admin",
       "description": "This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for user management, system monitoring, feature control, and user activity tracking.",
       "category": "feature",
       "dependencies": [
@@ -291,7 +291,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T08:59:44+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/mcp",
+      "template_path": "./scaffold/lib/templates/railsplan/mcp",
       "description": "This module provides a flexible context provider system for enriching AI prompts with dynamic data from databases, APIs, files, and other sources.",
       "category": "feature",
       "dependencies": [
@@ -357,7 +357,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T09:01:02+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/deploy",
+      "template_path": "./scaffold/lib/templates/railsplan/deploy",
       "description": "This module provides deployment configurations and CI/CD setups for three popular platforms:",
       "category": "tooling",
       "dependencies": [
@@ -422,7 +422,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T09:14:00+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/theme",
+      "template_path": "./scaffold/lib/templates/railsplan/theme",
       "description": "A comprehensive theming framework for customizing colors, fonts, logos, and branding elements in your Rails SaaS application. Provides built-in light and dark mode support with easy CSS custom property overrides.",
       "category": "ui",
       "dependencies": [
@@ -486,7 +486,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T13:40:03+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai-multitenant",
+      "template_path": "./scaffold/lib/templates/railsplan/ai-multitenant",
       "description": "This module provides a comprehensive multi-tenant AI system with workspace-scoped AI configurations, an AI playground interface, provider routing, credential security, and usage analytics.",
       "category": "feature",
       "dependencies": [
@@ -564,7 +564,7 @@
       "version": "1.0.0",
       "status": "installed",
       "installed_at": "2025-07-27T13:47:47+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/docs",
+      "template_path": "./scaffold/lib/templates/railsplan/docs",
       "description": "This module provides comprehensive documentation generation and management tools for your Rails SaaS application, including API documentation, setup guides, and module documentation.",
       "category": "tooling",
       "dependencies": [

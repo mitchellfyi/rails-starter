@@ -10,7 +10,7 @@ require 'fileutils'
 
 class DeployModuleTest < Minitest::Test
   def setup
-    @template_path = File.expand_path('../scaffold/lib/templates/synth/deploy', __dir__)
+    @template_path = File.expand_path('../scaffold/lib/templates/railsplan/deploy', __dir__)
   end
 
   def test_deploy_module_exists
@@ -22,7 +22,7 @@ class DeployModuleTest < Minitest::Test
     assert File.exist?(install_path), "Install script should exist"
     
     content = File.read(install_path)
-    assert_includes content, "synth_deploy", "Install script should use synth_deploy status"
+    assert_includes content, "railsplan_deploy", "Install script should use railsplan_deploy status"
     assert_includes content, "Deploy module", "Install script should mention deploy module"
   end
 

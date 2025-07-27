@@ -16,7 +16,7 @@ A comprehensive theming framework for customizing colors, fonts, logos, and bran
 The theme module is automatically installed with the base template. To reinstall or upgrade:
 
 ```bash
-bin/synth add theme
+bin/railsplan add theme
 ```
 
 ## Usage

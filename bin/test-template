@@ -10,7 +10,7 @@ require 'tmpdir'
 class TemplateTestRunner
   def initialize
     @template_path = File.expand_path('../scaffold/template.rb', __dir__)
-    @test_dir = Dir.mktmpdir('rails-starter-test')
+    @test_dir = Dir.mktmpdir('railsplan-test')
     @app_dir = File.join(@test_dir, 'test_app')
   end
 
@@ -68,8 +68,8 @@ class TemplateTestRunner
       
       # Test CLI functionality
       puts "\n🔧 Testing CLI functionality..."
-      system('bin/synth list') or raise "CLI list command failed"
-      system('bin/synth doctor') or raise "CLI doctor command failed"
+      system('bin/railsplan list') or raise "CLI list command failed"
+      system('bin/railsplan doctor') or raise "CLI doctor command failed"
     end
   end
 

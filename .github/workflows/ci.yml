@@ -13,12 +13,11 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
+  test-ubuntu:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        ruby-version: ['3.2', '3.3']
+        ruby-version: ['3.3', '3.4']
         
     services:
       postgres:
@@ -45,6 +44,12 @@ jobs:
         ports:
           - 6379:6379
 
+  test-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        ruby-version: ['3.3', '3.4']
+
     steps:
     - uses: actions/checkout@v4
     
@@ -62,14 +67,7 @@ jobs:
     - name: Unfreeze Bundler
       run: bundle config set frozen false
         
-    - name: Install system dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y postgresql-client libpq-dev
-        
     - name: Install system dependencies (macOS)
-      if: matrix.os == 'macos-latest'
       run: |
         brew install postgresql
         
@@ -79,10 +77,6 @@ jobs:
         gem install rails -v "7.2.2" --no-document
         
     - name: Create test Rails app from template
-      env:
-        RAILS_ENV: test
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-        REDIS_URL: redis://localhost:6379/0
       run: |
         bundle config set frozen false
         mkdir -p /tmp/test_app
@@ -92,14 +86,43 @@ jobs:
         bundle config set frozen false
         
     - name: Set up test database
-      env:
-        RAILS_ENV: test
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
-        REDIS_URL: redis://localhost:6379/0
       run: |
         cd /tmp/test_app/myapp
         bundle config set frozen false
         cp .env.example .env
+        bin/rails db:create
+        bin/rails db:migrate
+        
+    - name: Run tests on generated app
+      run: |
+        cd /tmp/test_app/myapp
+        bin/rails test
+        
+    - name: Test railsplan CLI and install all modules
+      run: |
+        cd /tmp/test_app/myapp
+        
+        # Test basic CLI functionality
+        echo "Testing basic railsplan CLI commands..."
+        bin/railsplan help
+        bin/railsplan list
+        bin/railsplan doctor
+        
+        # Get list of all available modules that aren't already installed by template
+        echo "Discovering available modules..."
+        AVAILABLE_MODULES=$(bin/railsplan list | grep -E "^\s*[a-z_]+" | grep -v "✅" | awk '{print $1}' | grep -v "Available" | grep -v "Installed" | grep -v "^$" | head -10)
+        
+        # Install additional available modules (with error handling)
+        for module in $AVAILABLE_MODULES; do
+          if [[ -n "$module" && "$module" != "modules:" && "$module" != "(none)" ]]; then
+            echo "Testing installation of module: $module"
+            bin/railsplan add "$module" || echo "Note: Module $module installation failed or already installed"
+          fi
+        done
+        
+        # List final state
+        echo "Final module state:"
+        bin/railsplan list
         echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/test" >> .env
         echo "REDIS_URL=redis://localhost:6379/0" >> .env
         bin/rails db:create
@@ -114,7 +137,7 @@ jobs:
         cd /tmp/test_app/myapp
         bin/rails test
         
-    - name: Test synth CLI and install all modules
+    - name: Test railsplan CLI and install all modules
       env:
         RAILS_ENV: test
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
@@ -123,14 +146,14 @@ jobs:
         cd /tmp/test_app/myapp
         
         # Test basic CLI functionality
-        echo "Testing basic synth CLI commands..."
-        bin/synth help
-        bin/synth list
-        bin/synth doctor
+        echo "Testing basic railsplan CLI commands..."
+        bin/railsplan help
+        bin/railsplan list
+        bin/railsplan doctor
         
         # Get list of all available modules that aren't already installed by template
         echo "Discovering available modules..."
-        AVAILABLE_MODULES=$(bin/synth list | grep -E "^\s*[a-z_]+" | grep -v "✅" | awk '{print $1}' | grep -v "Available" | grep -v "Installed" | grep -v "^$" | head -10)
+        AVAILABLE_MODULES=$(bin/railsplan list | grep -E "^\s*[a-z_]+" | grep -v "✅" | awk '{print $1}' | grep -v "Available" | grep -v "Installed" | grep -v "^$" | head -10)
         
         # Also test some modules that might be available but not showing in list format
         KNOWN_MODULES="mcp notifications theme user_settings flowbite"
@@ -141,12 +164,12 @@ jobs:
         for module in $ALL_MODULES; do
           if [[ -n "$module" && "$module" != "modules:" && "$module" != "(none)" ]]; then
             echo "Attempting to install module: $module"
-            bin/synth add "$module" 2>&1 | tee /tmp/install_${module}.log || echo "Note: Module $module installation failed, continuing..."
+            bin/railsplan add "$module" 2>&1 | tee /tmp/install_${module}.log || echo "Note: Module $module installation failed, continuing..."
             
             # Check if module was installed successfully
-            if bin/synth list | grep -q "$module.*✅"; then
+            if bin/railsplan list | grep -q "$module.*✅"; then
               echo "✅ Successfully installed: $module"
-            elif bin/synth list | grep -q "$module"; then
+            elif bin/railsplan list | grep -q "$module"; then
               echo "⚠️ Module $module present but installation status unclear"
             else
               echo "ℹ️ Module $module not found or not applicable"
@@ -156,12 +179,12 @@ jobs:
         
         # Test module-specific functionality
         echo "Testing installed modules..."
-        bin/synth list
+        bin/railsplan list
         
         # Test ai module specifically if available
-        if bin/synth list | grep -q "ai.*✅"; then
+        if bin/railsplan list | grep -q "ai.*✅"; then
           echo "Testing AI module functionality..."
-          bin/synth test ai || echo "AI module tests not available"
+          bin/railsplan test ai || echo "AI module tests not available"
         fi
         
     - name: Run comprehensive test suite with all modules
@@ -196,7 +219,7 @@ jobs:
         echo "Running final validation checks..."
         
         # Check that key files exist
-        test -f "bin/synth" || (echo "❌ bin/synth not found" && exit 1)
+        test -f "bin/railsplan" || (echo "❌ bin/railsplan not found" && exit 1)
         test -f "Gemfile" || (echo "❌ Gemfile not found" && exit 1)
         test -f "config/application.rb" || (echo "❌ Rails app not properly configured" && exit 1)
         
@@ -205,7 +228,7 @@ jobs:
         
         # Validate that modules are properly integrated
         echo "Validating module integration..."
-        MODULE_COUNT=$(bin/synth list | grep "✅" | wc -l)
+        MODULE_COUNT=$(bin/railsplan list | grep "✅" | wc -l)
         echo "Total modules installed: $MODULE_COUNT"
         
         if [ "$MODULE_COUNT" -lt 5 ]; then
@@ -241,7 +264,7 @@ jobs:
         
   validate-configs:
     runs-on: ubuntu-latest
-    needs: [test]
+    needs: [test-ubuntu, test-macos]
     if: success()
     steps:
     - uses: actions/checkout@v4
@@ -272,7 +295,7 @@ jobs:
         rails new myapp --dev -m ${{ github.workspace }}/scaffold/template.rb --skip-git --database=postgresql
         cd myapp
         bundle config set frozen false
-        bin/synth add deploy
+        bin/railsplan add deploy
         
     - name: Validate Fly.io configuration
       run: |
@@ -294,7 +317,7 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: [test, lint, validate-configs]
+    needs: [test-ubuntu, test-macos, lint, validate-configs]
     if: github.event_name == 'release'
     permissions:
       contents: read
@@ -339,7 +362,7 @@ jobs:
         rails new myapp --dev -m ${{ github.workspace }}/scaffold/template.rb --skip-git --database=postgresql
         cd myapp
         bundle config set frozen false
-        bin/synth add deploy
+        bin/railsplan add deploy
         
     - name: Build and push Docker image
       uses: docker/build-push-action@v5

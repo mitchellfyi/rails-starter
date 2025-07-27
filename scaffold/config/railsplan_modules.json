@@ -3,47 +3,47 @@
     "auth": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T18:29:44+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/auth"
+      "template_path": "./scaffold/lib/templates/railsplan/auth"
     },
     "ai": {
       "version": "1.0.0",
       "installed_at": "2025-07-26T20:14:45+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai"
+      "template_path": "./scaffold/lib/templates/railsplan/ai"
     },
     "api": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T08:57:34+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/api"
+      "template_path": "./scaffold/lib/templates/railsplan/api"
     },
     "admin": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T08:56:01+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/admin"
+      "template_path": "./scaffold/lib/templates/railsplan/admin"
     },
     "mcp": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T08:59:44+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/mcp"
+      "template_path": "./scaffold/lib/templates/railsplan/mcp"
     },
     "deploy": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T09:01:02+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/deploy"
+      "template_path": "./scaffold/lib/templates/railsplan/deploy"
     },
     "theme": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T09:14:00+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/theme"
+      "template_path": "./scaffold/lib/templates/railsplan/theme"
     },
     "ai-multitenant": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T13:40:03+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai-multitenant"
+      "template_path": "./scaffold/lib/templates/railsplan/ai-multitenant"
     },
     "docs": {
       "version": "1.0.0",
       "installed_at": "2025-07-27T13:47:47+0000",
-      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/docs"
+      "template_path": "./scaffold/lib/templates/railsplan/docs"
     }
   }
 }

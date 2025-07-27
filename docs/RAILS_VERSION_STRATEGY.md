@@ -113,7 +113,7 @@ gem 'rails', '~> 8.0.0'
 The template automatically configures Rails edge by default, but provides an interactive choice during setup:
 
 ```bash
-rails new myapp --dev -m https://github.com/your-username/rails-starter/raw/main/scaffold/template.rb
+rails new myapp --dev -m https://github.com/mitchellfyi/railsplan/raw/main/scaffold/template.rb
 ```
 
 You'll be prompted to choose between:

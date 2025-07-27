@@ -2,9 +2,9 @@
 
 require 'rspec'
 require 'tmpdir'
-require_relative '../lib/synth/cli'
+require_relative '../lib/railsplan/cli'
 
-RSpec.describe Synth::CLI do
+RSpec.describe RailsPlan::CLI do
   let(:cli) { described_class.new }
   let(:tmpdir) { Dir.mktmpdir }
   
@@ -26,8 +26,8 @@ RSpec.describe Synth::CLI do
       expect(Dir.exist?('app/models')).to be true
       expect(Dir.exist?('app/controllers')).to be true
       expect(Dir.exist?('config')).to be true
-      expect(Dir.exist?('lib/templates/synth')).to be true
-      expect(File.exist?('config/synth_modules.json')).to be true
+      expect(Dir.exist?('lib/templates/railsplan')).to be true
+      expect(File.exist?('config/railsplan_modules.json')).to be true
       expect(File.exist?('.env.example')).to be true
     end
   end
@@ -53,12 +53,12 @@ RSpec.describe Synth::CLI do
 
     it 'installs a module successfully' do
       # Mock the modules_path to point to our test modules
-      allow(cli).to receive(:modules_path).and_return(File.expand_path('../lib/templates/synth', __dir__))
+      allow(cli).to receive(:modules_path).and_return(File.expand_path('../lib/templates/railsplan', __dir__))
       
       expect { cli.add('ai') }.to output(/Module 'ai' installed successfully/).to_stdout
       
       # Check that module is tracked as installed
-      installed = JSON.parse(File.read('config/synth_modules.json'))
+      installed = JSON.parse(File.read('config/railsplan_modules.json'))
       expect(installed['installed']['ai']).to be_a(Hash)
       expect(installed['installed']['ai']['version']).to eq('1.0.0')
     end
@@ -87,7 +87,7 @@ RSpec.describe Synth::CLI do
       cli.new
       # Mock AI module as installed
       modules_data = { 'installed' => { 'ai' => { 'version' => '1.0.0' } } }
-      File.write('config/synth_modules.json', JSON.generate(modules_data))
+      File.write('config/railsplan_modules.json', JSON.generate(modules_data))
     end
 
     it 'scaffolds an agent successfully' do
@@ -99,7 +99,7 @@ RSpec.describe Synth::CLI do
     end
 
     it 'requires AI module to be installed' do
-      File.write('config/synth_modules.json', JSON.generate({ 'installed' => {} }))
+      File.write('config/railsplan_modules.json', JSON.generate({ 'installed' => {} }))
       
       expect { cli.scaffold('agent', 'testbot') }.to output(/AI module is not installed/).to_stdout
     end
@@ -110,13 +110,13 @@ RSpec.describe Synth::CLI do
       cli.new
     end
 
-    it 'logs operations to synth.log' do
-      allow(cli).to receive(:modules_path).and_return(File.expand_path('../lib/templates/synth', __dir__))
+    it 'logs operations to railsplan.log' do
+      allow(cli).to receive(:modules_path).and_return(File.expand_path('../lib/templates/railsplan', __dir__))
       
       cli.add('ai')
       
-      expect(File.exist?('log/synth.log')).to be true
-      log_content = File.read('log/synth.log')
+      expect(File.exist?('log/railsplan.log')).to be true
+      log_content = File.read('log/railsplan.log')
       expect(log_content).to include('add_start')
       expect(log_content).to include('add_complete')
     end

@@ -174,43 +174,43 @@ jobs:
           bin/rails test
         fi
 
-    - name: Test all synth modules functionality
+    - name: Test all railsplan modules functionality
       working-directory: /tmp/test_app/myapp
       run: |
-        # Test the synth CLI tool comprehensive functionality
-        echo "Testing comprehensive synth CLI functionality..."
-        bin/synth help
-        bin/synth list
-        bin/synth doctor
+        # Test the railsplan CLI tool comprehensive functionality
+echo "Testing comprehensive railsplan CLI functionality..."
+bin/railsplan help
+bin/railsplan list
+bin/railsplan doctor
         
         # Get list of available modules that aren't already installed
         echo "Testing additional module installation..."
-        AVAILABLE_MODULES=$(bin/synth list | grep -E "^\s*[a-z_]+" | grep -v "✅" | awk '{print $1}' | grep -v "Available" | grep -v "Installed" | head -8)
+        AVAILABLE_MODULES=$(bin/railsplan list | grep -E "^\s*[a-z_]+" | grep -v "✅" | awk '{print $1}' | grep -v "Available" | grep -v "Installed" | head -8)
         
         # Install additional available modules (with error handling)
         for module in $AVAILABLE_MODULES; do
           if [[ -n "$module" && "$module" != "modules:" && "$module" != "(none)" ]]; then
             echo "Testing installation of module: $module"
-            bin/synth add "$module" || echo "Note: Module $module installation failed or already installed"
+            bin/railsplan add "$module" || echo "Note: Module $module installation failed or already installed"
           fi
         done
         
         # List final state
         echo "Final module state:"
-        bin/synth list
+        bin/railsplan list
         
         # Test AI functionality if available
-        if bin/synth list | grep -q "ai"; then
+        if bin/railsplan list | grep -q "ai"; then
           echo "Testing AI module..."
-          bin/synth test ai || echo "AI tests not available"
+          bin/railsplan test ai || echo "AI tests not available"
         fi
         
         # Test other modules if available
-        if bin/synth list | grep -q "billing"; then
+        if bin/railsplan list | grep -q "billing"; then
           echo "Billing module detected"
         fi
         
-        if bin/synth list | grep -q "admin"; then
+        if bin/railsplan list | grep -q "admin"; then
           echo "Admin module detected"  
         fi
 

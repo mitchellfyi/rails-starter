@@ -155,7 +155,7 @@ After running the bootstrap wizard:
 
 ## Integration with Existing CLI
 
-The bootstrap command integrates seamlessly with the existing Synth CLI:
+The bootstrap command integrates seamlessly with the existing RailsPlan CLI:
 
 - Uses the same module system for installing features
 - Leverages existing templates and configurations

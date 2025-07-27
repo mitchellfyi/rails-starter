@@ -166,8 +166,8 @@ When you create a release (git tag), the CI pipeline:
 
 Images are available at:
 ```
-ghcr.io/your-username/your-app:latest
-ghcr.io/your-username/your-app:v1.0.0
+ghcr.io/mitchellfyi/your-app:latest
+ghcr.io/mitchellfyi/your-app:v1.0.0
 ```
 
 ## Health Checks

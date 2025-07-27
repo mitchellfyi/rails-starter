@@ -6,6 +6,8 @@
 # This script provides a comprehensive CLI tool for generating
 # full-stack, AI-native, production-ready Rails SaaS applications.
 
+# Load the gem from the local lib directory for development
+$LOAD_PATH.unshift(File.expand_path("../lib", __FILE__))
 require "railsplan"
 
 # Start the CLI

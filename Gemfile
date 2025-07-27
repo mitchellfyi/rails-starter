@@ -12,7 +12,7 @@ gem 'rails', github: 'rails/rails', branch: 'main'
 gem 'sprockets-rails', '>= 3.4.0'
 
 # Use sqlite3 as the database for Active Record
-gem 'sqlite3', '~> 1.4'
+gem 'sqlite3', '~> 2.1'
 
 # Use the Puma web server [https://github.com/puma/puma]
 gem 'puma', '~> 6.0'
@@ -49,7 +49,7 @@ gem 'noticed', '~> 2.0'
 gem 'view_component', '~> 3.0'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-gem 'tzinfo-data', platforms: %i[ mingw mswin x64_mingw jruby ]
+gem 'tzinfo-data', platforms: %i[ windows jruby ]
 
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
@@ -62,7 +62,7 @@ gem 'bootsnap', require: false
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem 'debug', platforms: %i[ mri mingw x64_mingw ]
+  gem 'debug', platforms: %i[ mri windows ]
   
   # Accessibility testing
   gem 'axe-core-rspec'
@@ -72,7 +72,7 @@ group :development, :test do
   gem 'rotp', '~> 6.3'
   
   # N+1 query detection for performance optimization
-  gem 'bullet'
+  # gem 'bullet'  # Temporarily disabled due to Rails edge compatibility
   
   # Code quality and style checking
   gem 'rubocop', require: false
@@ -97,8 +97,12 @@ group :development do
 
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem 'spring'
-  
-  # gem development dependencies
+end
+
+# RailsPlan gem development dependencies (for CLI development)
+# These are also defined in railsplan.gemspec for the gem itself
+group :development do
+  # CLI framework and TTY gems for RailsPlan CLI
   gem 'thor', '~> 1.3'
   gem 'tty-prompt', '~> 0.23'
   gem 'pastel', '~> 0.8'
@@ -124,3 +128,4 @@ group :development do
   gem 'tty-platform', '~> 0.3'
   gem 'tty-option', '~> 0.2'
 end
+gem "rspec-rails", "~> 8.0", groups: [:development, :test]

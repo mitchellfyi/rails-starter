@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # TestFeature module installer for the Rails SaaS starter template.
-# This install script is executed by the bin/synth CLI when adding the test_feature module.
+# This install script is executed by the bin/railsplan CLI when adding the test_feature module.
 
 say_status :test_feature, "Installing TestFeature module"
 

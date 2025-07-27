@@ -16,7 +16,7 @@ Provides JSON:API compliant endpoints and automatic OpenAPI schema generation fo
 Install this module via:
 
 ```sh
-bin/synth add api
+bin/railsplan add api
 ```
 
 This will add the necessary controllers, serializers, specs, policies, routes, and configuration files.

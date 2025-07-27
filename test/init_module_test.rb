@@ -9,7 +9,7 @@ require 'stringio'
 class InitModuleTest < Minitest::Test
   def setup
     @original_dir = Dir.pwd
-    @test_dir = Dir.mktmpdir('synth_init_module_test')
+    @test_dir = Dir.mktmpdir('railsplan_init_module_test')
     Dir.chdir(@test_dir)
     
     # Create test structure
@@ -22,25 +22,25 @@ class InitModuleTest < Minitest::Test
   end
 
   def test_init_module_command_requires_module_name
-    output = capture_output { run_synth_command(['init-module']) }
+    output = capture_output { run_railsplan_command(['init-module']) }
     
-    assert_includes output, '❌ Module name required. Usage: bin/synth init-module MODULE_NAME'
+    assert_includes output, '❌ Module name required. Usage: bin/railsplan init-module MODULE_NAME'
   end
 
   def test_init_module_validates_module_name
-    output = capture_output { run_synth_command(['init-module', 'Invalid-Name']) }
+    output = capture_output { run_railsplan_command(['init-module', 'Invalid-Name']) }
     
     assert_includes output, '❌ Invalid module name \'Invalid-Name\''
     assert_includes output, 'Module names must be lowercase, alphanumeric, and may contain underscores or hyphens'
   end
 
   def test_init_module_creates_complete_module_structure
-    output = capture_output { run_synth_command(['init-module', 'my_feature']) }
+    output = capture_output { run_railsplan_command(['init-module', 'my_feature']) }
     
     assert_includes output, '🚀 Generating new module: my_feature'
     assert_includes output, '✅ Successfully generated module template'
     
-    module_path = File.join('scaffold', 'lib', 'templates', 'synth', 'my_feature')
+    module_path = File.join('scaffold', 'lib', 'templates', 'railsplan', 'my_feature')
     
     # Check basic files
     assert File.exist?(File.join(module_path, 'README.md'))
@@ -87,9 +87,9 @@ class InitModuleTest < Minitest::Test
   end
 
   def test_init_module_creates_valid_content
-    capture_output { run_synth_command(['init-module', 'test_module']) }
+    capture_output { run_railsplan_command(['init-module', 'test_module']) }
     
-    module_path = File.join('scaffold', 'lib', 'templates', 'synth', 'test_module')
+    module_path = File.join('scaffold', 'lib', 'templates', 'railsplan', 'test_module')
     
     # Check VERSION file
     version_content = File.read(File.join(module_path, 'VERSION'))
@@ -98,7 +98,7 @@ class InitModuleTest < Minitest::Test
     # Check README content
     readme_content = File.read(File.join(module_path, 'README.md'))
     assert_includes readme_content, '# TestModule Module'
-    assert_includes readme_content, 'bin/synth add test_module'
+    assert_includes readme_content, 'bin/railsplan add test_module'
     
     # Check install script content
     install_content = File.read(File.join(module_path, 'install.rb'))
@@ -126,10 +126,10 @@ class InitModuleTest < Minitest::Test
 
   def test_init_module_prevents_overwrite_without_force
     # Create initial module
-    capture_output { run_synth_command(['init-module', 'existing_module']) }
+    capture_output { run_railsplan_command(['init-module', 'existing_module']) }
     
     # Try to create again without force
-    output = capture_output { run_synth_command(['init-module', 'existing_module']) }
+    output = capture_output { run_railsplan_command(['init-module', 'existing_module']) }
     
     assert_includes output, '❌ Module \'existing_module\' already exists'
     assert_includes output, 'Use --force to overwrite existing module'
@@ -137,9 +137,9 @@ class InitModuleTest < Minitest::Test
 
   def test_init_module_allows_overwrite_with_force
     # Create initial module
-    capture_output { run_synth_command(['init-module', 'overwrite_test']) }
+    capture_output { run_railsplan_command(['init-module', 'overwrite_test']) }
     
-    module_path = File.join('scaffold', 'lib', 'templates', 'synth', 'overwrite_test')
+    module_path = File.join('scaffold', 'lib', 'templates', 'railsplan', 'overwrite_test')
     
     # Modify a file to test overwrite
     File.write(File.join(module_path, 'VERSION'), "0.5.0\n")
@@ -148,7 +148,7 @@ class InitModuleTest < Minitest::Test
     original_argv = ARGV.dup
     ARGV.replace(['init-module', 'overwrite_test', '--force'])
     
-    output = capture_output { run_synth_command(['init-module', 'overwrite_test', '--force']) }
+    output = capture_output { run_railsplan_command(['init-module', 'overwrite_test', '--force']) }
     
     ARGV.replace(original_argv)
     
@@ -160,9 +160,9 @@ class InitModuleTest < Minitest::Test
   end
 
   def test_init_module_handles_hyphenated_names
-    capture_output { run_synth_command(['init-module', 'my-feature']) }
+    capture_output { run_railsplan_command(['init-module', 'my-feature']) }
     
-    module_path = File.join('scaffold', 'lib', 'templates', 'synth', 'my-feature')
+    module_path = File.join('scaffold', 'lib', 'templates', 'railsplan', 'my-feature')
     
     # Check that files are created
     assert File.exist?(File.join(module_path, 'README.md'))
@@ -177,9 +177,9 @@ class InitModuleTest < Minitest::Test
   end
 
   def test_init_module_handles_underscored_names
-    capture_output { run_synth_command(['init-module', 'my_feature_test']) }
+    capture_output { run_railsplan_command(['init-module', 'my_feature_test']) }
     
-    module_path = File.join('scaffold', 'lib', 'templates', 'synth', 'my_feature_test')
+    module_path = File.join('scaffold', 'lib', 'templates', 'railsplan', 'my_feature_test')
     
     # Check that files are created
     assert File.exist?(File.join(module_path, 'README.md'))
@@ -195,10 +195,10 @@ class InitModuleTest < Minitest::Test
 
   def test_module_appears_in_list_after_creation
     # Create module
-    capture_output { run_synth_command(['init-module', 'list_test']) }
+    capture_output { run_railsplan_command(['init-module', 'list_test']) }
     
     # Check it appears in list
-    output = capture_output { run_synth_command(['list']) }
+    output = capture_output { run_railsplan_command(['list']) }
     
     assert_includes output, 'list_test'
     assert_includes output, 'v1.0.0'
@@ -208,42 +208,42 @@ class InitModuleTest < Minitest::Test
 
   def create_test_structure
     # Create the scaffold directory structure
-    FileUtils.mkdir_p('scaffold/lib/templates/synth')
+    FileUtils.mkdir_p('scaffold/lib/templates/railsplan')
     FileUtils.mkdir_p('scaffold/config')
     
     # Create a simple registry file
     registry = { 'installed' => {} }
-    File.write('scaffold/config/synth_modules.json', JSON.pretty_generate(registry))
+    File.write('scaffold/config/railsplan_modules.json', JSON.pretty_generate(registry))
     
     # Create a simple module for testing
-    test_module_path = 'scaffold/lib/templates/synth/existing_test_module'
+    test_module_path = 'scaffold/lib/templates/railsplan/existing_test_module'
     FileUtils.mkdir_p(test_module_path)
     File.write(File.join(test_module_path, 'README.md'), "# Test Module\n")
     File.write(File.join(test_module_path, 'VERSION'), "1.0.0\n")
   end
 
-  def run_synth_command(args)
+  def run_railsplan_command(args)
     # Create a custom CLI class for each test to avoid constant redefinition issues
     cli_code = create_test_cli_class
     eval(cli_code)
     
-    TestSynthCLI.start(args)
+    TestRailsPlanCLI.start(args)
   end
 
   def create_test_cli_class
-    template_path = File.expand_path('scaffold/lib/templates/synth')
-    registry_path = File.expand_path('scaffold/config/synth_modules.json')
+    template_path = File.expand_path('scaffold/lib/templates/railsplan')
+    registry_path = File.expand_path('scaffold/config/railsplan_modules.json')
     
     # Load the original CLI code and modify it for testing
-    synth_cli_file = File.read(File.expand_path('../bin/synth', __dir__))
+    railsplan_cli_file = File.read(File.expand_path('../bin/railsplan', __dir__))
     
     # Remove the auto-start line and replace class name and constants
-    cli_code = synth_cli_file
+    cli_code = railsplan_cli_file
       .gsub(/^# Start the CLI.*$/m, '')
-      .gsub('class SynthCLI', 'class TestSynthCLI')
-      .gsub("TEMPLATE_PATH = File.expand_path('../scaffold/lib/templates/synth', __dir__)", 
+      .gsub('class RailsPlanCLI', 'class TestRailsPlanCLI')
+      .gsub("TEMPLATE_PATH = File.expand_path('../scaffold/lib/templates/railsplan', __dir__)", 
             "TEMPLATE_PATH = '#{template_path}'")
-      .gsub("REGISTRY_PATH = File.expand_path('../scaffold/config/synth_modules.json', __dir__)", 
+      .gsub("REGISTRY_PATH = File.expand_path('../scaffold/config/railsplan_modules.json', __dir__)", 
             "REGISTRY_PATH = '#{registry_path}'")
     
     cli_code

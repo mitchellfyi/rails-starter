@@ -194,7 +194,7 @@ module RailsPlan
       def install_module_quick(module_name)
         return false unless module_available?(module_name)
         
-        add_command = Synth::Commands::AddCommand.new(verbose: false)
+        add_command = RailsPlan::Commands::AddCommand.new(verbose: false)
         add_command.execute(module_name, force: true)
       end
 
@@ -350,7 +350,7 @@ module RailsPlan
         puts "📚 For more information:"
         puts "   - Documentation: docs/README.md"
         puts "   - Module docs: docs/modules/"
-        puts "   - CLI help: bin/synth help"
+        puts "   - CLI help: bin/railsplan help"
       end
     end
   end

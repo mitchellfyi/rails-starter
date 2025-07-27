@@ -30,7 +30,7 @@ def test_domain_install_scripts_architecture
   domain_modules = %w[auth billing ai cms workspace notifications admin onboarding]
   
   domain_modules.each do |domain|
-    install_script = File.join(__dir__, "../scaffold/lib/templates/synth/#{domain}/install.rb")
+    install_script = File.join(__dir__, "../scaffold/lib/templates/railsplan/#{domain}/install.rb")
     next unless File.exist?(install_script)
     
     content = File.read(install_script)
@@ -71,7 +71,7 @@ def test_domain_directory_structure
   expected_domains = %w[auth billing ai cms workspace notifications]
   
   expected_domains.each do |domain|
-    install_script = File.join(__dir__, "../scaffold/lib/templates/synth/#{domain}/install.rb")
+    install_script = File.join(__dir__, "../scaffold/lib/templates/railsplan/#{domain}/install.rb")
     next unless File.exist?(install_script)
     
     content = File.read(install_script)
@@ -123,7 +123,7 @@ end
 
 def test_theme_and_testing_modules_appropriately_structured
   # Theme module should not have domain logic (only assets/JS)
-  theme_install = File.join(__dir__, '../scaffold/lib/templates/synth/theme/install.rb')
+  theme_install = File.join(__dir__, '../scaffold/lib/templates/railsplan/theme/install.rb')
   if File.exist?(theme_install)
     content = File.read(theme_install)
     if content.match?(/app\/domains.*controllers/)
@@ -136,7 +136,7 @@ def test_theme_and_testing_modules_appropriately_structured
   end
   
   # Testing module should organize test utilities in domains but not business logic
-  testing_install = File.join(__dir__, '../scaffold/lib/templates/synth/testing/install.rb')
+  testing_install = File.join(__dir__, '../scaffold/lib/templates/railsplan/testing/install.rb')
   if File.exist?(testing_install)
     content = File.read(testing_install)
     unless content.match?(/spec\/domains\/testing/)

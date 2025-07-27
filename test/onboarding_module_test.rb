@@ -9,7 +9,7 @@ require 'yaml'
 
 class OnboardingModuleTest
   def initialize
-    @module_path = File.expand_path('../scaffold/lib/templates/synth/onboarding', __dir__)
+    @module_path = File.expand_path('../scaffold/lib/templates/railsplan/onboarding', __dir__)
     @errors = []
   end
 
@@ -31,7 +31,7 @@ class OnboardingModuleTest
       puts "📝 Onboarding module is ready for use"
       puts ""
       puts "Next steps:"
-      puts "- Add onboarding module to generated apps with: bin/synth add onboarding"
+      puts "- Add onboarding module to generated apps with: bin/railsplan add onboarding"
       puts "- Run rails db:migrate after installation"
       puts "- Add onboarding links to your user registration flow"
       puts "- Customize onboarding steps for your specific needs"

@@ -63,7 +63,7 @@ class TemplateIntegrationTest
   end
 
   def test_ai_module_structure
-    ai_module_path = File.join(@scaffold_path, 'lib/templates/synth/ai')
+    ai_module_path = File.join(@scaffold_path, 'lib/templates/railsplan/ai')
     raise "AI module directory not found: #{ai_module_path}" unless Dir.exist?(ai_module_path)
     
     required_files = ['install.rb', 'README.md']
@@ -89,7 +89,7 @@ class TemplateIntegrationTest
   end
 
   def test_cli_structure
-    cli_path = File.join(@scaffold_path, 'lib/synth/cli.rb')
+    cli_path = File.join(@scaffold_path, 'lib/railsplan/cli.rb')
     raise "CLI file not found: #{cli_path}" unless File.exist?(cli_path)
     
     cli_content = File.read(cli_path)
@@ -104,9 +104,9 @@ class TemplateIntegrationTest
       raise "CLI missing command: #{command}" unless cli_content.include?(command)
     end
     
-    # Check bin/synth file
-    bin_synth_path = File.join(@scaffold_path, 'bin/synth')
-    raise "bin/synth file not found: #{bin_synth_path}" unless File.exist?(bin_synth_path)
+    # Check bin/railsplan file
+    bin_railsplan_path = File.join(@scaffold_path, 'bin/railsplan')
+    raise "bin/railsplan file not found: #{bin_railsplan_path}" unless File.exist?(bin_railsplan_path)
     
     puts "✅ CLI structure is complete"
   end

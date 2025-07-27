@@ -1,4 +1,4 @@
-# Rails SaaS Starter Template
+# RailsPlan
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ruby](https://img.shields.io/badge/ruby-3.4.2-red.svg)](https://ruby-lang.org)
@@ -10,7 +10,17 @@ A **Rails application generator** that creates production-ready SaaS application
 
 ## 🎯 What This Actually Is
 
-This is a **Rails template** - a script that generates a new Rails application with all the SaaS features you need already built-in. It's like having a team of developers set up your entire application architecture for you.
+This project provides **two ways** to generate Rails SaaS applications:
+
+### **1. RailsPlan Gem (Global CLI) - RECOMMENDED**
+A **global CLI tool** that provides an enhanced experience for generating Rails SaaS applications with interactive prompts, automatic Ruby/Rails setup, and modular feature management.
+
+### **2. Rails Template**
+A **Rails template** - a script that generates a new Rails application with all the SaaS features you need already built-in. It's like having a team of developers set up your entire application architecture for you.
+
+**Choose your method:**
+- **Recommended**: `railsplan new myapp` (globally installed gem)
+- **Alternative**: `rails new myapp --dev -m https://github.com/mitchellfyi/railsplan/raw/main/scaffold/template.rb`
 
 ### How It Works
 1. **Generate** a new Rails app with this template
@@ -18,13 +28,82 @@ This is a **Rails template** - a script that generates a new Rails application w
 3. **Customize** by adding/removing modules as needed
 4. **Deploy** to your preferred platform
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Recommended: RailsPlan Gem)
+
+### Step 1: Install the RailsPlan Gem
+```bash
+gem install railsplan
+```
+
+### Step 2: Generate Your Application
+```bash
+# Basic generation
+railsplan new my-saas-app
+
+# Generate with specific modules
+railsplan new my-saas-app --ai --billing --admin
+
+# Interactive guided setup
+railsplan new my-saas-app --guided
+```
+
+**What the gem provides:**
+- ✅ **Automatic Ruby Setup** - Detects and installs compatible Ruby versions
+- ✅ **Rails Installation** - Installs Rails edge or specific versions
+- ✅ **Interactive Prompts** - Guided setup with TTY prompts
+- ✅ **Module Management** - Easy add/remove of features
+- ✅ **Health Checks** - `railsplan doctor` for diagnostics
+- ✅ **Progress Feedback** - Real-time status updates
+
+### Step 3: Set Up Your Environment
+```bash
+cd my-saas-app
+
+# Copy environment variables and configure
+cp .env.example .env
+# Edit .env with your actual API keys and settings
+
+# Set up the database
+bin/rails db:create db:migrate db:seed
+
+# Start the development server
+bin/rails server
+```
+
+Visit `http://localhost:3000` and you'll have a working SaaS application!
+
+### RailsPlan Commands
+```bash
+# Generate new app
+railsplan new myapp
+
+# Add modules to existing app
+railsplan add ai
+railsplan add billing
+
+# Remove modules
+railsplan remove cms
+
+# Check app health
+railsplan doctor
+
+# List available modules
+railsplan list
+
+# Rails CLI passthrough (no need for 'rails' prefix)
+railsplan server
+railsplan console
+railsplan routes
+```
+
+## 🔄 Alternative: Using the Rails Template
+
+If you prefer to use the Rails template directly:
 
 ### Step 1: Generate Your Application
-
 ```bash
 # Create a new Rails app using this template
-rails new my-saas-app --dev -m https://github.com/mitchellfyi/rails-starter/raw/main/scaffold/template.rb
+rails new my-saas-app --dev -m https://github.com/mitchellfyi/railsplan/raw/main/scaffold/template.rb
 ```
 
 **What happens:**
@@ -36,7 +115,6 @@ rails new my-saas-app --dev -m https://github.com/mitchellfyi/rails-starter/raw/
 - Creates your first commit
 
 ### Step 2: Set Up Your Environment
-
 ```bash
 cd my-saas-app
 
@@ -237,15 +315,16 @@ The template recommends Ruby 3.4.2 for optimal compatibility and performance. It
 
 ## 🎉 Next Steps
 
-1. **Generate your app** using the template
-2. **Explore the code** - Look at `app/domains/` to see how features are organized
-3. **Install modules** you need with `bin/railsplan add`
-4. **Customize** the styling and branding
-5. **Deploy** when ready!
+1. **Install the RailsPlan gem**: `gem install railsplan`
+2. **Generate your app**: `railsplan new myapp`
+3. **Explore the code** - Look at `app/domains/` to see how features are organized
+4. **Install modules** you need with `railsplan add`
+5. **Customize** the styling and branding
+6. **Deploy** when ready!
 
 ---
 
-**Ready to build your SaaS?** Start with `rails new myapp --dev -m [template-url]`! 🚀
+**Ready to build your SaaS?** Install the RailsPlan gem and get started! 🚀
 
 ## ❤️ Support This Project
 

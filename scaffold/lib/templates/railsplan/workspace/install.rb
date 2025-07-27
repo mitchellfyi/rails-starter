@@ -90,7 +90,7 @@ end
 
 # Copy enhanced model files
 say 'Copying enhanced model files...'
-template_dir = File.expand_path('lib/templates/synth/workspace', Rails.root)
+template_dir = File.expand_path('lib/templates/railsplan/workspace', Rails.root)
 
 copy_file File.join(template_dir, 'app/models/workspace.rb'), 'app/models/workspace.rb', force: true
 copy_file File.join(template_dir, 'app/models/membership.rb'), 'app/models/membership.rb', force: true  

@@ -72,7 +72,7 @@ This module adds a comprehensive asynchronous LLM job system to your Rails app w
 Run the following command from your application root:
 
 ```bash
-bin/synth add ai
+bin/railsplan add ai
 ```
 
 This command will:
@@ -461,7 +461,7 @@ bin/rails test test/controllers/llm_outputs_controller_test.rb
 bin/rails test test/integration/llm_job_system_test.rb
 
 # Run specific test module
-bin/synth test ai
+bin/railsplan test ai
 ```
 
 ### Test Helpers

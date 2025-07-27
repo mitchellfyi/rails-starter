@@ -46,7 +46,6 @@ WEB_CONCURRENCY=1
 RAILS_MAX_THREADS=5
 
 # Development tools
-BULLET_ENABLE=true
 RACK_MINI_PROFILER=true
 ```
 

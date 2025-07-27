@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Synth MCP (Multi-Context Provider) module installer.
+# RailsPlan MCP (Multi-Context Provider) module installer.
 # This module creates a flexible context provider system for AI prompts.
 
 say_status :mcp, "Installing Multi-Context Provider system"
@@ -169,7 +169,7 @@ after_bundle do
 
         def build_headers
           default_headers = {
-            'User-Agent' => 'Synth-MCP/1.0',
+            'User-Agent' => 'RailsPlan-MCP/1.0',
             'Accept' => 'application/json'
           }
           
@@ -298,12 +298,12 @@ after_bundle do
   say_status :mcp, "1. Run rails db:migrate"
   say_status :mcp, "2. Add MCP routes"
   say_status :mcp, "3. Configure context providers"
-  say_status :mcp, "4. Test with bin/synth test mcp"
+  say_status :mcp, "4. Test with bin/railsplan test mcp"
 end
 
   say_status :mcp, "MCP module installed. Next steps:"
   say_status :mcp, "1. Run rails db:migrate"
   say_status :mcp, "2. Add MCP routes"
   say_status :mcp, "3. Configure context providers"
-  say_status :mcp, "4. Test with bin/synth test mcp"
+  say_status :mcp, "4. Test with bin/railsplan test mcp"
 end

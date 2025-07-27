@@ -9,7 +9,7 @@ This module provides deployment configurations and CI/CD setups for three popula
 ## Installation
 
 ```bash
-bin/synth add deploy
+bin/railsplan add deploy
 ```
 
 This will create:

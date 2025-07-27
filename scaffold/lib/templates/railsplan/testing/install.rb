@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Synth Testing module installer for the Rails SaaS starter template.
+# RailsPlan Testing module installer for the Rails SaaS starter template.
 # This module sets up comprehensive testing infrastructure with factories and mocks.
 
 say_status :testing, "Installing testing module with RSpec, factories, and mocks"

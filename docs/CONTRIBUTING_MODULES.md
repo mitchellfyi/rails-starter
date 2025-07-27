@@ -1,6 +1,6 @@
-# Contributing New Modules
+# Contributing to RailsPlan Modules
 
-This guide explains how to create new feature modules for the Rails SaaS Starter Template using the Synth CLI system.
+This guide explains how to create new feature modules for the RailsPlan project using the RailsPlan CLI system.
 
 ## Module Structure
 
@@ -398,108 +398,43 @@ end
 - Specify version constraints
 - Document any system requirements
 
-## Integration with Synth CLI
+## Integration with RailsPlan CLI
 
-### Registering Your Module
+To integrate your module with the RailsPlan CLI system:
 
-The CLI automatically discovers modules in `lib/templates/railsplan/`. No registration required.
+### 1. Register the Module
 
-### CLI Command Integration
-
-Your module can extend the CLI with custom commands:
+Add your module to the CLI command registry:
 
 ```ruby
-# lib/railsplan/commands/your_module.rb
-module Synth
+# lib/railsplan/commands/your_module_command.rb
+module RailsPlan
   module Commands
-    class YourModule < Thor
-      desc 'configure', 'Configure Your Module settings'
-      def configure
-        # Configuration logic
+    class YourModuleCommand < BaseCommand
+      desc "your_module COMMAND", "Your Module commands"
+      
+      def install
+        # Installation logic
       end
       
-      desc 'status', 'Show Your Module status'
-      def status
-        # Status logic
+      def remove
+        # Removal logic
       end
     end
   end
 end
 ```
 
-Register in the main CLI:
+### 2. Update CLI Registration
+
+Register your command in the main CLI:
 
 ```ruby
 # lib/railsplan/cli.rb
-require_relative 'commands/your_module'
-
-class CLI < Thor
-  register(Synth::Commands::YourModule, 'your_module', 'your_module COMMAND', 'Your Module commands')
-end
+register(RailsPlan::Commands::YourModuleCommand, 'your_module', 'your_module COMMAND', 'Your Module commands')
 ```
 
 ## Testing Your Module
 
 ### Local Testing
-```bash
-# Test installation
-bin/railsplan add your_module
-
-# Test functionality
-bin/railsplan test your_module
-
-# Test removal
-bin/railsplan remove your_module
 ```
-
-### Integration Testing
-```bash
-# Test with fresh Rails app
-rails new test_app --dev -m template.rb
-cd test_app
-bin/railsplan add your_module
-bin/rails test
-```
-
-## Publishing Guidelines
-
-### Version Management
-- Follow semantic versioning
-- Tag releases in Git
-- Update CHANGELOG.md
-- Document breaking changes
-
-### Quality Checklist
-Before submitting your module:
-
-- [ ] Installation script works correctly
-- [ ] All tests pass
-- [ ] Documentation is complete
-- [ ] Follows established patterns
-- [ ] No security vulnerabilities
-- [ ] Performance is acceptable
-- [ ] Removal script works (if provided)
-
-### Contribution Process
-1. Fork the repository
-2. Create a feature branch
-3. Implement your module
-4. Add comprehensive tests
-5. Update documentation
-6. Submit a pull request
-
-## Example Modules
-
-Study existing modules for patterns:
-
-- **AI Module**: Complex service integration with jobs
-- **Billing Module**: External API integration with webhooks  
-- **CMS Module**: Content management with rich text
-- **Admin Module**: UI components and authorization
-
-## Getting Help
-
-- Review existing modules for patterns
-- Check the main [AGENTS.md](../AGENTS.md) for general guidelines
-- Open an issue for questions or support
-- Join community discussions for feedback
