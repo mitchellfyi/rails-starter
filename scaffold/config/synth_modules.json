@@ -39,6 +39,11 @@
       "version": "1.0.0",
       "installed_at": "2025-07-27T13:40:03+0000",
       "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/ai-multitenant"
+    },
+    "docs": {
+      "version": "1.0.0",
+      "installed_at": "2025-07-27T13:47:47+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/synth/docs"
     }
   }
 }
