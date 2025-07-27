@@ -132,7 +132,7 @@ class SystemPrompt
   def clone!(new_name = nil, target_workspace = nil)
     cloned_name = new_name || "#{name} (Copy)"
     
-    self.class.create!(
+    cloned_prompt = self.class.create!(
       attributes.except('id', 'created_at', 'updated_at', 'slug', 'name', 'workspace_id')
                 .merge(
                   name: cloned_name,
@@ -141,6 +141,10 @@ class SystemPrompt
                   status: 'draft'
                 )
     )
+    
+    # Set the workspace relationship
+    cloned_prompt.workspace = target_workspace if target_workspace
+    cloned_prompt
   end
 
   def attributes
