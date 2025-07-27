@@ -9,14 +9,14 @@
 # To use Rails 8 stable instead, edit the Gemfile and comment out the edge line.
 #
 # Requirements:
-#   - Ruby >= 3.3.0 (supports Ruby 3.3.x, 3.4.x, etc.)
+#   - Ruby 3.4.2 (recommended for optimal compatibility)
 #   - Rails edge (main branch) or Rails 8.0+
 #
 # This script will guide you through setting up the base stack for the
 # Rails SaaS Starter Template. It appends necessary gems to your
 # Gemfile, runs generators for authentication, background jobs, and
 # Tailwind/Hotwire, and scaffolds workspace/team models. It also
-# installs a command line interface (`bin/synth`) and a default AI
+# installs a command line interface (`bin/railsplan`) and a default AI
 # module skeleton. Feel free to customise this script to suit your
 # project's needs.
 
@@ -28,7 +28,7 @@ end
 say "🔧 Setting up Rails SaaS Starter Template..."
 
 # Show Ruby version information
-say_status :ruby, "Ruby #{RUBY_VERSION} detected"
+say_status :ruby, "Ruby #{RUBY_VERSION} detected (recommended: 3.4.2)"
 
 # Configure Rails version (edge vs stable)
 load_template_file 'setup/rails_version.rb'
@@ -43,23 +43,23 @@ after_bundle do
   end
 
   load_template_file 'setup/initial_rails_setup.rb'
-  load_template_file 'setup/synth_cli_setup.rb'
+  load_template_file 'setup/railsplan_cli_setup.rb'
 
-  # Install core modules using bin/synth
+  # Install core modules using bin/railsplan
   say "🔧 Installing core modules..."
-  run 'bin/synth add auth'
-  run 'bin/synth add workspace'
-  run 'bin/synth add onboarding'
-  run 'bin/synth add api'
-  run 'bin/synth add deploy'
-  run 'bin/synth add ai'
-  run 'bin/synth add billing'
-  run 'bin/synth add cms'
-  run 'bin/synth add i18n'
-  run 'bin/synth add admin'
-  run 'bin/synth add docs'
-  run 'bin/synth add testing'
-  run 'bin/synth add theme'
+  run 'bin/railsplan add auth'
+  run 'bin/railsplan add workspace'
+  run 'bin/railsplan add onboarding'
+  run 'bin/railsplan add api'
+  run 'bin/railsplan add deploy'
+  run 'bin/railsplan add ai'
+  run 'bin/railsplan add billing'
+  run 'bin/railsplan add cms'
+  run 'bin/railsplan add i18n'
+  run 'bin/railsplan add admin'
+  run 'bin/railsplan add docs'
+  run 'bin/railsplan add testing'
+  run 'bin/railsplan add theme'
 
   load_template_file 'setup/environment_config.rb'
   load_template_file 'setup/api_serializers.rb'

@@ -45,10 +45,10 @@ bundle exec rspec spec/requests
 bundle exec rspec spec/system
 
 # AI module tests
-bin/synth test ai
+bin/railsplan test ai
 
 # Authentication tests
-bin/synth test auth
+bin/railsplan test auth
 ```
 
 ### Test Coverage

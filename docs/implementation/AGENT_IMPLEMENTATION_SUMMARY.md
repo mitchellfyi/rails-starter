@@ -19,7 +19,7 @@ This implementation provides a comprehensive Developer API for spinning up AI ag
 - **External webhook handlers** for systems like Slack
 
 ### ✅ Documentation
-- **Auto-generated docs** via `bin/synth docs agents`
+- **Auto-generated docs** via `bin/railsplan docs agents`
 - **Comprehensive API reference** with usage examples
 - **Integration guides** for different use cases
 - **Best practices** and security considerations
@@ -146,7 +146,7 @@ const reader = response.body.getReader();
 ## 📚 Documentation
 
 ### Auto-Generated Documentation
-Run `bin/synth docs` to generate comprehensive documentation at:
+Run `bin/railsplan docs` to generate comprehensive documentation at:
 - `docs/agents.md` - Complete agent API documentation
 - `docs/README.md` - Updated main documentation
 - `docs/modules/` - Individual module documentation

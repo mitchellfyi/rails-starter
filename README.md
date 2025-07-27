@@ -1,7 +1,7 @@
 # Rails SaaS Starter Template
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.3.0-red.svg)](https://ruby-lang.org)
+[![Ruby](https://img.shields.io/badge/ruby-3.4.2-red.svg)](https://ruby-lang.org)
 [![Rails](https://img.shields.io/badge/rails-edge%20%7C%208.0+-green.svg)](https://rubyonrails.org)
 
 A **Rails application generator** that creates production-ready SaaS applications with AI capabilities, billing, admin panels, and more. Think of it as a "Rails new" command that gives you a complete SaaS foundation.
@@ -32,7 +32,7 @@ rails new my-saas-app --dev -m https://github.com/mitchellfyi/rails-starter/raw/
 - Works with Ruby >= 3.3.0 (supports Ruby 3.3.x, 3.4.x, etc.)
 - Installs all necessary gems (PostgreSQL, Redis, Devise, etc.)
 - Sets up authentication, multi-tenancy, and core features
-- Installs the `bin/synth` CLI for managing modules
+- Installs the `bin/railsplan` CLI for managing modules
 - Creates your first commit
 
 ### Step 2: Set Up Your Environment
@@ -73,25 +73,25 @@ Visit `http://localhost:3000` and you'll have a working SaaS application!
 
 ## 🔧 Managing Your Application
 
-### The `bin/synth` CLI
+### The `bin/railsplan` CLI
 
 This is your main tool for managing the application:
 
 ```bash
 # See what's available
-bin/synth list
+bin/railsplan list
 
 # Install a module
-bin/synth add billing
+bin/railsplan add billing
 
 # Remove a module
-bin/synth remove cms
+bin/railsplan remove cms
 
 # Check your setup
-bin/synth doctor
+bin/railsplan doctor
 
 # Run tests
-bin/synth test
+bin/railsplan test
 ```
 
 ### Available Modules
@@ -138,7 +138,7 @@ Each domain is self-contained with its own:
 
 1. **Install the module:**
    ```bash
-   bin/synth add billing
+   bin/railsplan add billing
    ```
 
 2. **Configure it:**
@@ -156,7 +156,7 @@ Each domain is self-contained with its own:
 ### Removing a Feature
 
 ```bash
-bin/synth remove cms
+bin/railsplan remove cms
 # This removes the CMS module and all its files
 ```
 
@@ -166,7 +166,7 @@ bin/synth remove cms
 
 ```bash
 # Install deployment module
-bin/synth add deploy
+bin/railsplan add deploy
 
 # Deploy
 fly deploy
@@ -184,10 +184,10 @@ fly deploy
 bin/rails test
 
 # Test a specific module
-bin/synth test billing
+bin/railsplan test billing
 
 # Check system health
-bin/synth doctor
+bin/railsplan doctor
 ```
 
 ## 📖 Documentation
@@ -226,12 +226,12 @@ gem 'rails', '~> 8.0.0'
 Then run `bundle update rails` to switch versions.
 
 ### "What Ruby version do I need?"
-The template requires Ruby >= 3.3.0 but supports any Ruby version from 3.3.x onwards (3.3.x, 3.4.x, etc.). Use whatever Ruby version you prefer as long as it meets the minimum requirement.
+The template recommends Ruby 3.4.2 for optimal compatibility and performance. It supports Ruby >= 3.4.0, but Ruby 3.4.2 is the recommended version for the best experience.
 
 ## 🆘 Getting Help
 
 1. **Check the docs** - Start with the module documentation
-2. **Run `bin/synth doctor`** - Diagnose common issues
+2. **Run `bin/railsplan doctor`** - Diagnose common issues
 3. **Look at the tests** - They show how features are supposed to work
 4. **Check the example apps** - See how features are used in practice
 
@@ -239,7 +239,7 @@ The template requires Ruby >= 3.3.0 but supports any Ruby version from 3.3.x onw
 
 1. **Generate your app** using the template
 2. **Explore the code** - Look at `app/domains/` to see how features are organized
-3. **Install modules** you need with `bin/synth add`
+3. **Install modules** you need with `bin/railsplan add`
 4. **Customize** the styling and branding
 5. **Deploy** when ready!
 

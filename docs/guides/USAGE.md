@@ -114,17 +114,17 @@ curl -X POST -H "Content-Type: application/json" \
 ### CLI Commands
 ```bash
 # List installed modules
-bin/synth list
+bin/railsplan list
 
 # Validate setup
-bin/synth doctor
+bin/railsplan doctor
 
 # Run tests
-bin/synth test
+bin/railsplan test
 
 # Future: Add new modules
-bin/synth add billing    # (coming soon)
-bin/synth add ai         # (coming soon)
+bin/railsplan add billing    # (coming soon)
+bin/railsplan add ai         # (coming soon)
 ```
 
 ### Database Management

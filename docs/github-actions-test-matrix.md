@@ -47,7 +47,7 @@ For each matrix combination, the workflow:
 
 4. **Test Execution**
    - Runs the complete test suite (RSpec or Rails test)
-   - Tests AI module functionality via `bin/synth test ai`
+   - Tests AI module functionality via `bin/railsplan test ai`
    - Validates deployment configurations in dry-run mode
    - Checks for deprecation warnings
 
@@ -80,9 +80,9 @@ The workflow validates three deployment platforms:
 The workflow includes specialized testing for the AI module:
 
 1. **CLI Tool Testing**
-   - Tests `bin/synth list` command
-   - Runs `bin/synth doctor` diagnostics
-   - Executes `bin/synth test ai` if AI module is installed
+   - Tests `bin/railsplan list` command
+   - Runs `bin/railsplan doctor` diagnostics
+   - Executes `bin/railsplan test ai` if AI module is installed
 
 2. **Stub Validation**
    - Verifies prompt template stubs

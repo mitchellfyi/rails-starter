@@ -5,14 +5,18 @@
 
 def check_ruby_version
   ruby_version = Gem::Version.new(RUBY_VERSION)
-  minimum_version = Gem::Version.new('3.3.0')
-  
-  if ruby_version < minimum_version
-    say_status :error, "Ruby #{RUBY_VERSION} is not supported. Please use Ruby >= 3.3.0"
+  recommended_version = Gem::Version.new('3.4.2')
+
+  if ruby_version < Gem::Version.new('3.4.0')
+    say_status :error, "Ruby #{RUBY_VERSION} is not supported. Please use Ruby >= 3.4.0"
     exit 1
   end
-  
-  say_status :ruby_version, "Using Ruby #{RUBY_VERSION} (minimum: 3.3.0)"
+
+  if ruby_version < recommended_version
+    say_status :warning, "Ruby #{RUBY_VERSION} detected. Ruby 3.4.2 is recommended for optimal compatibility."
+  else
+    say_status :ruby_version, "Using Ruby #{RUBY_VERSION} (recommended: 3.4.2)"
+  end
 end
 
 def configure_rails_version

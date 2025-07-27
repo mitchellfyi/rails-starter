@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '>= 3.3.0'
+ruby '3.4.2'
 
 # Use Rails edge (main branch) by default, with Rails 8 as fallback
 # To use Rails 8 stable instead, comment out the edge line and uncomment the stable line

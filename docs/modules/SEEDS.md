@@ -150,7 +150,7 @@ end
 ## Development Workflow
 
 1. **Generate app** with template
-2. **Add modules** you need: `bin/synth add ai billing cms`
+2. **Add modules** you need: `bin/railsplan add ai billing cms`
 3. **Run migrations**: `rails db:migrate`
 4. **Seed database**: `rails db:seed`
 5. **Start developing** with realistic demo data

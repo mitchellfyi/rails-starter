@@ -4,10 +4,10 @@ This guide explains how to create new feature modules for the Rails SaaS Starter
 
 ## Module Structure
 
-Every module follows a consistent structure under `lib/templates/synth/`:
+Every module follows a consistent structure under `lib/templates/railsplan/`:
 
 ```
-lib/templates/synth/your_module/
+lib/templates/railsplan/your_module/
 ├── install.rb          # Installation script
 ├── remove.rb           # Removal script (optional)
 ├── README.md           # Module documentation
@@ -32,21 +32,21 @@ lib/templates/synth/your_module/
 
 ```bash
 # Create basic structure
-mkdir -p lib/templates/synth/your_module/{app/{models,controllers,services,jobs,views},config/{initializers},migrations,spec,test,lib}
+mkdir -p lib/templates/railsplan/your_module/{app/{models,controllers,services,jobs,views},config/{initializers},migrations,spec,test,lib}
 
 # Create core files
-touch lib/templates/synth/your_module/{install.rb,remove.rb,README.md}
+touch lib/templates/railsplan/your_module/{install.rb,remove.rb,README.md}
 ```
 
 ### 2. Write the Installation Script
 
-The `install.rb` file is executed when users run `bin/synth add your_module`:
+The `install.rb` file is executed when users run `bin/railsplan add your_module`:
 
 ```ruby
-# lib/templates/synth/your_module/install.rb
+# lib/templates/railsplan/your_module/install.rb
 # frozen_string_literal: true
 
-say_status :synth_your_module, "Installing Your Module"
+say_status :railsplan_your_module, "Installing Your Module"
 
 # Add gems to Gemfile
 gem 'your_required_gem', '~> 1.0'
@@ -96,7 +96,7 @@ after_bundle do
     end
   RUBY
   
-  say_status :synth_your_module, "Your Module installed successfully!"
+  say_status :railsplan_your_module, "Your Module installed successfully!"
   say_status :next_steps, "Configure your module settings in config/initializers/your_module.rb"
 end
 ```
@@ -119,7 +119,7 @@ Brief description of what this module provides and why it's useful.
 ## Installation
 
 ```bash
-bin/synth add your_module
+bin/railsplan add your_module
 ```
 
 ## Configuration
@@ -150,7 +150,7 @@ Document any API endpoints provided:
 ## Testing
 
 ```bash
-bin/synth test your_module
+bin/railsplan test your_module
 ```
 
 ## Customization
@@ -164,7 +164,7 @@ Common issues and solutions
 ## Removal
 
 ```bash
-bin/synth remove your_module
+bin/railsplan remove your_module
 ```
 ```
 
@@ -342,7 +342,7 @@ end
 # remove.rb
 # frozen_string_literal: true
 
-say_status :synth_your_module, "Removing Your Module"
+say_status :railsplan_your_module, "Removing Your Module"
 
 # Warning about data loss
 if yes?("This will remove all Your Module data. Continue? (y/N)")
@@ -363,7 +363,7 @@ if yes?("This will remove all Your Module data. Continue? (y/N)")
   # Remove from Gemfile
   gsub_file "Gemfile", /^gem 'your_required_gem'.*\n/, ""
   
-  say_status :synth_your_module, "Your Module removed successfully!"
+  say_status :railsplan_your_module, "Your Module removed successfully!"
   say_status :warning, "Database tables and data preserved for safety"
   
 else
@@ -402,14 +402,14 @@ end
 
 ### Registering Your Module
 
-The CLI automatically discovers modules in `lib/templates/synth/`. No registration required.
+The CLI automatically discovers modules in `lib/templates/railsplan/`. No registration required.
 
 ### CLI Command Integration
 
 Your module can extend the CLI with custom commands:
 
 ```ruby
-# lib/synth/commands/your_module.rb
+# lib/railsplan/commands/your_module.rb
 module Synth
   module Commands
     class YourModule < Thor
@@ -430,7 +430,7 @@ end
 Register in the main CLI:
 
 ```ruby
-# lib/synth/cli.rb
+# lib/railsplan/cli.rb
 require_relative 'commands/your_module'
 
 class CLI < Thor
@@ -443,13 +443,13 @@ end
 ### Local Testing
 ```bash
 # Test installation
-bin/synth add your_module
+bin/railsplan add your_module
 
 # Test functionality
-bin/synth test your_module
+bin/railsplan test your_module
 
 # Test removal
-bin/synth remove your_module
+bin/railsplan remove your_module
 ```
 
 ### Integration Testing
@@ -457,7 +457,7 @@ bin/synth remove your_module
 # Test with fresh Rails app
 rails new test_app --dev -m template.rb
 cd test_app
-bin/synth add your_module
+bin/railsplan add your_module
 bin/rails test
 ```
 

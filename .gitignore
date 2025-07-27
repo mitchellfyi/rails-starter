@@ -78,8 +78,8 @@ config/deploy.yml
 # Kamal deployment files
 .kamal/
 
-# Synth module registry (auto-generated)
-config/synth_modules.json
+# RailsPlan module registry (auto-generated)
+config/railsplan_modules.json
 
 # Auto-generated package files (if using npm/yarn)
 package-lock.json

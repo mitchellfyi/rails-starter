@@ -81,7 +81,7 @@ lib/tasks/api.rake                             # Schema generation tasks
 Users can install the API module in their generated Rails app with:
 
 ```bash
-bin/synth add api
+bin/railsplan add api
 ```
 
 This will:

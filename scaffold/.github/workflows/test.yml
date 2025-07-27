@@ -140,7 +140,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: '3.4.2'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -177,8 +177,8 @@ jobs:
           bundle exec rspec --format progress
           
           # Test CLI functionality
-          bin/synth list
-          bin/synth doctor
+          bin/railsplan list
+          bin/railsplan doctor
 
   lint:
     runs-on: ubuntu-latest
@@ -190,7 +190,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.3'
+          ruby-version: '3.4.2'
           bundler-cache: true
 
       - name: Run RuboCop on template files

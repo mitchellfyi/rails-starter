@@ -48,7 +48,7 @@ puts "🔍 Validating API Module Structure..."
 puts
 
 base_path = Pathname.new(__dir__)
-api_path = base_path / 'lib' / 'templates' / 'synth' / 'api'
+api_path = base_path / 'lib' / 'templates' / 'railsplan' / 'api'
 
 all_valid = true
 
@@ -57,10 +57,10 @@ all_valid &= validate_file(api_path / 'install.rb', 'API module installer')
 all_valid &= validate_file(api_path / 'README.md', 'API module documentation', check_syntax: false)
 
 # Check CLI integration
-all_valid &= validate_file(base_path / 'lib' / 'synth' / 'cli.rb', 'Synth CLI')
+all_valid &= validate_file(base_path / 'lib' / 'railsplan' / 'cli.rb', 'RailsPlan CLI')
 
 # Check template structure
-all_valid &= validate_directory(base_path / 'lib' / 'templates' / 'synth', 'Synth templates directory')
+all_valid &= validate_directory(base_path / 'lib' / 'templates' / 'railsplan', 'RailsPlan templates directory')
 all_valid &= validate_directory(api_path, 'API module directory')
 
 puts
@@ -68,7 +68,7 @@ if all_valid
   puts "🎉 All API module files are valid!"
   puts
   puts "Available modules:"
-  Dir.glob(base_path / 'lib' / 'templates' / 'synth' / '*').each do |module_dir|
+  Dir.glob(base_path / 'lib' / 'templates' / 'railsplan' / '*').each do |module_dir|
     if File.directory?(module_dir)
       module_name = File.basename(module_dir)
       readme_path = File.join(module_dir, 'README.md')
@@ -84,7 +84,7 @@ if all_valid
   
   puts
   puts "To use the API module in a Rails app:"
-  puts "  bin/synth add api"
+  puts "  bin/railsplan add api"
   
   exit 0
 else

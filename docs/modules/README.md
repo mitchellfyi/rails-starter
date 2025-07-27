@@ -5,7 +5,7 @@ This directory contains documentation for individual modules in the Rails SaaS S
 ## Available Modules
 
 ### Core Modules
-- **[AI Module](../scaffold/lib/templates/synth/ai/README.md)** - AI integration with prompt templates and LLM jobs
+- **[AI Module](../scaffold/lib/templates/railsplan/ai/README.md)** - AI integration with prompt templates and LLM jobs
 - **Billing Module** - Stripe integration and subscription management *(Coming soon)*
 - **CMS Module** - Content management system with blog engine *(Coming soon)*
 - **Admin Module** - Administrative interface and tools *(Coming soon)*
@@ -20,7 +20,7 @@ This directory contains documentation for individual modules in the Rails SaaS S
 Each module follows a consistent structure:
 
 ```
-lib/templates/synth/module_name/
+lib/templates/railsplan/module_name/
 ├── README.md          # Module documentation
 ├── install.rb         # Installation script
 ├── remove.rb          # Removal script (optional)
@@ -33,11 +33,11 @@ lib/templates/synth/module_name/
 
 ## Creating Module Documentation
 
-When creating a new module, use the [AI Module README](../scaffold/lib/templates/synth/ai/README.md) as a template. Include:
+When creating a new module, use the [AI Module README](../scaffold/lib/templates/railsplan/ai/README.md) as a template. Include:
 
 1. **Overview** - What the module provides
 2. **Features** - Key capabilities and benefits
-3. **Installation** - How to install via `bin/synth add`
+3. **Installation** - How to install via `bin/railsplan add`
 4. **Configuration** - Required settings and environment variables
 5. **Usage** - Code examples and common patterns
 6. **API Endpoints** - REST API documentation (if applicable)

@@ -33,7 +33,7 @@ Successfully implemented an interactive Bootstrap CLI wizard that walks develope
 
 ### Command Structure
 ```bash
-./bin/synth bootstrap [OPTIONS]
+./bin/railsplan bootstrap [OPTIONS]
 ```
 
 **Options**:
@@ -56,11 +56,11 @@ Successfully implemented an interactive Bootstrap CLI wizard that walks develope
 ## 📁 Files Added/Modified
 
 ### Core Implementation
-- `lib/synth/cli.rb`: Enhanced with bootstrap command and helper methods
+- `lib/railsplan/cli.rb`: Enhanced with bootstrap command and helper methods
 
 ### Testing
 - `test/bootstrap_cli_test.rb`: Comprehensive unit tests for bootstrap functionality
-- `test/synth_bootstrap_integration_test.rb`: Integration tests ensuring CLI compatibility
+- `test/railsplan_bootstrap_integration_test.rb`: Integration tests ensuring CLI compatibility
 
 ### Documentation & Examples
 - `BOOTSTRAP_CLI.md`: Complete documentation with usage examples
@@ -107,4 +107,4 @@ The Interactive Bootstrap CLI is now ready for developers to use. It provides:
 4. **Seamless integration** with the existing Rails SaaS Starter ecosystem
 5. **Comprehensive documentation** for easy adoption
 
-Developers can now run `./bin/synth bootstrap` and have a fully configured Rails SaaS application ready for development in minutes, not hours.
+Developers can now run `./bin/railsplan bootstrap` and have a fully configured Rails SaaS application ready for development in minutes, not hours.

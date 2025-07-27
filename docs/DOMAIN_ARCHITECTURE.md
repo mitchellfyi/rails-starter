@@ -66,9 +66,9 @@ This creates:
 Install domain modules using the Synth CLI:
 
 ```bash
-bin/synth add auth        # Adds authentication domain
-bin/synth add billing     # Adds billing domain
-bin/synth add workspace   # Adds workspace domain
+bin/railsplan add auth        # Adds authentication domain
+bin/railsplan add billing     # Adds billing domain
+bin/railsplan add workspace   # Adds workspace domain
 ```
 
 ### Domain Boundaries

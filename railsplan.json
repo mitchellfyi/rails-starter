@@ -1,0 +1,642 @@
+{
+  "manifest_version": "1.0.0",
+  "generated_at": "2025-07-27T17:50:42Z",
+  "railsplan_cli_version": "1.0.0",
+  "application": {
+    "name": "RailsStarter",
+    "ruby_version": "3.2.3",
+    "rails_version": "7.1.0+",
+    "railsplan_path": "./scaffold"
+  },
+  "modules": {
+    "auth": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-26T18:18:57+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/auth",
+      "description": "This module provides comprehensive authentication features including user registration, login, OAuth integration, and two-factor authentication.",
+      "category": "core",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+            "devise",
+            "omniauth",
+            "omniauth-google-oauth2",
+            "omniauth-github",
+            "omniauth-rails_csrf_protection",
+            "rotp",
+            "rqrcode"
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate"
+          ],
+          "files_created": [
+            "app/models/user.rb",
+            "app/controllers/application_controller.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Auth",
+        "icon": "shield-check",
+        "color": "blue",
+        "required": true,
+        "toggleable": false,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    },
+    "ai": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-26T20:14:45+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai",
+      "description": "This module adds first‑class AI integration to your Rails app with **per-workspace AI configuration**, **versioned prompt templates**, variable interpolation, comprehensive audit history, preview functionality, and a management interface with safety features.",
+      "category": "feature",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+          "config/initializers/mcp.rb",
+          "config/initializers/sidekiq.rb"
+        ],
+        "routes": true,
+        "migrations": [
+          "create_llm_outputs",
+          "create_prompt_templates",
+          "create_prompt_executions",
+          "create_versions",
+          "add_prompt_execution_to_llm_outputs",
+          "create_ai_providers",
+          "create_ai_credentials",
+          "add_workspace_and_credential_to_llm_outputs",
+          "add_environment_and_external_sync_to_ai_credentials",
+          "add_fallback_support_to_ai_credentials",
+          "create_vector_embeddings"
+        ],
+        "seeds": [
+          "db/seeds/ai_providers.rb",
+          "db/seeds/prompt_templates.rb"
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+            "ruby-openai",
+            "paper_trail"
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate",
+            "rails db:seed"
+          ],
+          "files_created": [
+            "app/models/prompt_template.rb",
+            "app/controllers/prompt_templates_controller.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Ai",
+        "icon": "cpu-chip",
+        "color": "purple",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": false,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": null
+      }
+    },
+    "api": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T08:57:34+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/api",
+      "description": "Provides JSON:API compliant endpoints and automatic OpenAPI schema generation for Rails SaaS Starter applications.",
+      "category": "feature",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+
+          ],
+          "files_created": [
+            "app/controllers/api_controller.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Api",
+        "icon": "code-bracket",
+        "color": "green",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    },
+    "admin": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T08:56:01+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/admin",
+      "description": "This module adds a comprehensive admin panel to your Rails SaaS application with advanced administrative features for user management, system monitoring, feature control, and user activity tracking.",
+      "category": "feature",
+      "dependencies": [
+        "auth"
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate"
+          ],
+          "files_created": [
+            "app/controllers/admin_controller.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Admin",
+        "icon": "cog-6-tooth",
+        "color": "red",
+        "required": false,
+        "toggleable": true,
+        "admin_only": true
+      },
+      "health_checks": {
+        "config_files_exist": false,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    },
+    "mcp": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T08:59:44+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/mcp",
+      "description": "This module provides a flexible context provider system for enriching AI prompts with dynamic data from databases, APIs, files, and other sources.",
+      "category": "feature",
+      "dependencies": [
+        "ai"
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+            "httparty",
+            "faraday",
+            "redis"
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate"
+          ],
+          "files_created": [
+            "app/models/mcp/fetcher.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Mcp",
+        "icon": "squares-2x2",
+        "color": "indigo",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": false,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": null
+      }
+    },
+    "deploy": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T09:01:02+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/deploy",
+      "description": "This module provides deployment configurations and CI/CD setups for three popular platforms:",
+      "category": "tooling",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+
+          ],
+          "files_created": [
+            "config/deploy.rb",
+            "Dockerfile"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Deploy",
+        "icon": "rocket-launch",
+        "color": "orange",
+        "required": false,
+        "toggleable": true,
+        "admin_only": true
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    },
+    "theme": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T09:14:00+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/theme",
+      "description": "A comprehensive theming framework for customizing colors, fonts, logos, and branding elements in your Rails SaaS application. Provides built-in light and dark mode support with easy CSS custom property overrides.",
+      "category": "ui",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate"
+          ],
+          "files_created": [
+            "app/assets/stylesheets/theme.css"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Theme",
+        "icon": "paint-brush",
+        "color": "pink",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    },
+    "ai-multitenant": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T13:40:03+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/ai-multitenant",
+      "description": "This module provides a comprehensive multi-tenant AI system with workspace-scoped AI configurations, an AI playground interface, provider routing, credential security, and usage analytics.",
+      "category": "feature",
+      "dependencies": [
+        "ai"
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+          "create_ai_providers",
+          "create_ai_credentials",
+          "create_prompt_templates",
+          "create_prompt_executions",
+          "create_llm_outputs",
+          "create_ai_usage_summaries",
+          "create_versions",
+          "create_ai_credential_tests"
+        ],
+        "seeds": [
+          "db/seeds/ai_multitenant.rb"
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+            "ruby-openai",
+            "anthropic",
+            "paper_trail",
+            "whenever",
+            "chartkick",
+            "groupdate"
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate",
+            "rails db:seed"
+          ],
+          "files_created": [
+            "app/models/ai_provider.rb",
+            "app/models/ai_credential.rb"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Ai Multitenant",
+        "icon": "building-office",
+        "color": "teal",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": null
+      }
+    },
+    "docs": {
+      "version": "1.0.0",
+      "status": "installed",
+      "installed_at": "2025-07-27T13:47:47+0000",
+      "template_path": "/home/runner/work/rails-starter/rails-starter/scaffold/lib/templates/railsplan/docs",
+      "description": "This module provides comprehensive documentation generation and management tools for your Rails SaaS application, including API documentation, setup guides, and module documentation.",
+      "category": "tooling",
+      "dependencies": [
+
+      ],
+      "configurations": {
+        "initializers": [
+
+        ],
+        "routes": false,
+        "migrations": [
+
+        ],
+        "seeds": [
+
+        ]
+      },
+      "hooks": {
+        "install": {
+          "gems": [
+            "yard",
+            "redcarpet",
+            "rouge"
+          ],
+          "before_install": [
+
+          ],
+          "after_install": [
+            "rails db:migrate",
+            "rails db:seed",
+            "yarn install"
+          ],
+          "files_created": [
+            "docs/README.md"
+          ]
+        },
+        "remove": {
+          "before_remove": [
+
+          ],
+          "after_remove": [
+
+          ],
+          "files_removed": [
+
+          ]
+        }
+      },
+      "ui_metadata": {
+        "display_name": "Docs",
+        "icon": "document-text",
+        "color": "gray",
+        "required": false,
+        "toggleable": true,
+        "admin_only": false
+      },
+      "health_checks": {
+        "config_files_exist": true,
+        "migrations_applied": true,
+        "dependencies_met": true,
+        "api_keys_configured": true
+      }
+    }
+  },
+  "registry_metadata": {
+    "total_modules": 9,
+    "installed_modules": 9,
+    "core_modules": 1,
+    "feature_modules": 5,
+    "ui_modules": 1,
+    "tooling_modules": 2,
+    "last_validated": "2025-07-27T17:50:42Z",
+    "validation_status": "healthy"
+  }
+}

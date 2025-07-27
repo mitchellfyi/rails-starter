@@ -1,10 +1,10 @@
 # Example: Future UI-based Module Management
 
-This file demonstrates how the synth.json manifest enables a future web-based module management interface.
+This file demonstrates how the railsplan.json manifest enables a future web-based module management interface.
 
 ## UI Data Structure
 
-The `bin/synth manifest ui-data` command outputs structured data that can be consumed by a web interface:
+The `bin/railsplan manifest ui-data` command outputs structured data that can be consumed by a web interface:
 
 ```ruby
 # Example controller for module management interface
@@ -19,9 +19,9 @@ class Admin::ModulesController < ApplicationController
   def toggle
     module_name = params[:id]
     if params[:enable] == 'true'
-      system("bin/synth add #{module_name}")
+      system("bin/railsplan add #{module_name}")
     else
-      system("bin/synth remove #{module_name}")
+      system("bin/railsplan remove #{module_name}")
     end
     
     redirect_to admin_modules_path, notice: "Module #{module_name} updated"
@@ -175,14 +175,14 @@ class Admin::ModulesController < ApplicationController
   end
   
   def install
-    system("bin/synth add #{params[:id]}")
+    system("bin/railsplan add #{params[:id]}")
     render json: { success: true, message: "Module #{params[:id]} installed" }
   rescue => e
     render json: { success: false, error: e.message }, status: 422
   end
   
   def remove
-    system("bin/synth remove #{params[:id]} --force")
+    system("bin/railsplan remove #{params[:id]} --force")
     render json: { success: true, message: "Module #{params[:id]} removed" }
   rescue => e
     render json: { success: false, error: e.message }, status: 422

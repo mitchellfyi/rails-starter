@@ -5,9 +5,9 @@ This directory contains the core scaffolding files for the Rails SaaS Starter Te
 ## Files Overview
 
 - `template.rb` - Main Rails template script for bootstrapping new applications
-- `lib/synth/cli.rb` - Command-line interface for managing modules
-- `lib/templates/synth/` - Directory containing installable modules
-- `bin/synth` - CLI entry point
+- `lib/railsplan/cli.rb` - Command-line interface for managing modules
+- `lib/templates/railsplan/` - Directory containing installable modules
+- `bin/railsplan` - CLI entry point
 
 ## Using the Template
 
@@ -36,12 +36,12 @@ The template script will:
 5. **Setup Authentication** - Generate Devise User model
 6. **Configure Background Jobs** - Set Sidekiq as the Active Job adapter
 7. **Create Models** - Generate Workspace and Membership models for multi-tenancy
-8. **Install CLI** - Create `bin/synth` command-line tool
+8. **Install CLI** - Create `bin/railsplan` command-line tool
 9. **Initialize Git** - Create initial commit
 
 ## Module System
 
-The template includes a modular architecture where features are organized as separate modules under `lib/templates/synth/`.
+The template includes a modular architecture where features are organized as separate modules under `lib/templates/railsplan/`.
 
 ### Available Modules
 
@@ -49,27 +49,27 @@ The template includes a modular architecture where features are organized as sep
 
 ### Installing Modules
 
-After creating your application, use the `bin/synth` CLI to manage modules:
+After creating your application, use the `bin/railsplan` CLI to manage modules:
 
 ```bash
 # List available modules
-bin/synth list
+bin/railsplan list
 
 # Install the AI module
-bin/synth add ai
+bin/railsplan add ai
 
 # Run tests for a specific module
-bin/synth test ai
+bin/railsplan test ai
 
 # Check your setup
-bin/synth doctor
+bin/railsplan doctor
 ```
 
 ## Creating New Modules
 
 To create a new module:
 
-1. Create a directory: `lib/templates/synth/my_module/`
+1. Create a directory: `lib/templates/railsplan/my_module/`
 2. Add an `install.rb` file with installation logic
 3. Add a `README.md` file with documentation
 4. Optional: Add tests, seeds, and other supporting files
@@ -77,7 +77,7 @@ To create a new module:
 ### Module Structure
 
 ```
-lib/templates/synth/my_module/
+lib/templates/railsplan/my_module/
 ├── install.rb          # Installation script (required)
 ├── README.md           # Documentation (recommended)
 ├── seeds/              # Seed data files
@@ -117,7 +117,7 @@ end
 
 ## CLI Extension
 
-The `bin/synth` CLI can be extended by modifying `lib/synth/cli.rb`. It's built on Thor, so you can add new commands easily:
+The `bin/railsplan` CLI can be extended by modifying `lib/railsplan/cli.rb`. It's built on Thor, so you can add new commands easily:
 
 ```ruby
 desc 'my_command', 'Description of my command'

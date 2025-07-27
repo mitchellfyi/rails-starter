@@ -52,8 +52,8 @@ gem 'rails', '~> 8.0.0'
 ## 📋 Version Requirements
 
 ### Ruby Version
-- **Minimum**: Ruby >= 3.3.0
-- **Supported**: Ruby 3.3.x, 3.4.x, and future versions
+- **Recommended**: Ruby 3.4.2
+- **Supported**: Ruby 3.4.x and future versions
 - **Recommended**: Latest stable Ruby version (3.4.x or newer)
 
 ### Rails Versions

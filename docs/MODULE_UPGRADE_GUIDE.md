@@ -4,7 +4,7 @@ This guide explains how to use the robust self-update mechanism for Rails SaaS S
 
 ## Overview
 
-The `bin/synth upgrade` command provides a comprehensive system for updating template modules to their latest versions while preserving your local customizations and handling database migrations, configuration changes, and seed data.
+The `bin/railsplan upgrade` command provides a comprehensive system for updating template modules to their latest versions while preserving your local customizations and handling database migrations, configuration changes, and seed data.
 
 ## Version Management
 
@@ -14,7 +14,7 @@ Each module includes a `VERSION` file that follows semantic versioning (e.g., `1
 
 ```bash
 # Check what versions are installed vs available
-bin/synth list
+bin/railsplan list
 ```
 
 ### Version Comparison
@@ -30,29 +30,29 @@ The system uses semantic versioning rules:
 
 ```bash
 # Basic upgrade with interactive conflict resolution
-bin/synth upgrade ai
+bin/railsplan upgrade ai
 
 # Non-interactive upgrade (auto-accepts template versions)
-bin/synth upgrade ai --yes
+bin/railsplan upgrade ai --yes
 
 # Upgrade without creating backup
-bin/synth upgrade ai --no-backup
+bin/railsplan upgrade ai --no-backup
 
 # Verbose output showing all operations
-bin/synth upgrade ai --verbose
+bin/railsplan upgrade ai --verbose
 ```
 
 ### Upgrade All Modules
 
 ```bash
 # Check and upgrade all modules (interactive)
-bin/synth upgrade
+bin/railsplan upgrade
 
 # Upgrade all modules without prompts
-bin/synth upgrade --yes
+bin/railsplan upgrade --yes
 
 # Upgrade all without backups (faster)
-bin/synth upgrade --yes --no-backup
+bin/railsplan upgrade --yes --no-backup
 ```
 
 ## Backup System
@@ -62,7 +62,7 @@ bin/synth upgrade --yes --no-backup
 By default, the upgrade system creates comprehensive backups before making any changes:
 
 ```
-backups/synth_modules/
+backups/railsplan_modules/
 ├── ai_v1.0.0_20240126_143022/
 │   ├── app_domains/          # Your module files
 │   ├── spec_domains/         # Your test files
@@ -72,7 +72,7 @@ backups/synth_modules/
 
 ### Backup Location
 
-Backups are stored in `backups/synth_modules/` with the naming pattern:
+Backups are stored in `backups/railsplan_modules/` with the naming pattern:
 `{module_name}_v{version}_{timestamp}/`
 
 ### Disabling Backups
@@ -80,7 +80,7 @@ Backups are stored in `backups/synth_modules/` with the naming pattern:
 For CI environments or when you're confident in your changes:
 
 ```bash
-bin/synth upgrade --no-backup
+bin/railsplan upgrade --no-backup
 ```
 
 **⚠️ Warning:** Only disable backups if you have alternative version control or backup systems in place.
@@ -219,7 +219,7 @@ bin/rails runner "load 'db/seeds/ai_seeds.rb'"
 For automated environments, use the `--yes` flag to skip all prompts:
 
 ```bash
-bin/synth upgrade --yes --no-backup
+bin/railsplan upgrade --yes --no-backup
 ```
 
 ### CI Pipeline Example
@@ -243,7 +243,7 @@ jobs:
           bundler-cache: true
       - name: Upgrade modules
         run: |
-          bin/synth upgrade --yes --verbose
+          bin/railsplan upgrade --yes --verbose
           bin/rails db:migrate
       - name: Run tests
         run: |
@@ -258,7 +258,7 @@ jobs:
 
 ```dockerfile
 # In your Dockerfile
-RUN bin/synth upgrade --yes --no-backup
+RUN bin/railsplan upgrade --yes --no-backup
 RUN bin/rails db:migrate
 ```
 
@@ -299,10 +299,10 @@ RUN bin/rails db:migrate
 **Solution**: Reset registry or restore from backup:
 ```bash
 # Reset registry
-echo '{"installed":{}}' > scaffold/config/synth_modules.json
+echo '{"installed":{}}' > scaffold/config/railsplan_modules.json
 
 # Or restore from backup
-cp backups/synth_modules/*/registry.json scaffold/config/synth_modules.json
+cp backups/railsplan_modules/*/registry.json scaffold/config/railsplan_modules.json
 ```
 
 #### Migration Conflicts
@@ -316,19 +316,19 @@ cp backups/synth_modules/*/registry.json scaffold/config/synth_modules.json
 #### Restore from Backup
 ```bash
 # List available backups
-ls backups/synth_modules/
+ls backups/railsplan_modules/
 
 # Restore specific module
-cp -r backups/synth_modules/ai_v1.0.0_20240126_143022/app_domains/* app/domains/ai/
+cp -r backups/railsplan_modules/ai_v1.0.0_20240126_143022/app_domains/* app/domains/ai/
 
 # Restore registry entry
-# (manually edit scaffold/config/synth_modules.json)
+# (manually edit scaffold/config/railsplan_modules.json)
 ```
 
 #### Force Clean Reinstall
 ```bash
-bin/synth remove ai --force
-bin/synth add ai
+bin/railsplan remove ai --force
+bin/railsplan add ai
 ```
 
 ## Module Development
@@ -399,8 +399,8 @@ end
 
 ### Getting Help
 
-1. **Check logs**: Review `log/synth.log` for detailed operation logs
-2. **Run diagnostics**: Use `bin/synth doctor` to validate your setup
+1. **Check logs**: Review `log/railsplan.log` for detailed operation logs
+2. **Run diagnostics**: Use `bin/railsplan doctor` to validate your setup
 3. **Community support**: Create issues on the template repository
 
 ### Reporting Issues
@@ -410,4 +410,4 @@ When reporting upgrade issues, include:
 - Module name and versions (current and target)
 - Full error output with `--verbose` flag
 - Your operating system and Ruby version
-- Relevant log entries from `log/synth.log`
+- Relevant log entries from `log/railsplan.log`

@@ -7,7 +7,7 @@ The Rails SaaS Starter now includes an interactive Bootstrap CLI wizard that wal
 Run the interactive bootstrap wizard:
 
 ```bash
-./bin/synth bootstrap
+./bin/railsplan bootstrap
 ```
 
 ### Command Options
@@ -67,7 +67,7 @@ Generates seed data including:
 ## Example Usage
 
 ```bash
-$ ./bin/synth bootstrap
+$ ./bin/railsplan bootstrap
 
 🚀 Welcome to Rails SaaS Starter Bootstrap Wizard!
 ============================================================
