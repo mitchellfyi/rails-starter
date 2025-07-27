@@ -65,8 +65,16 @@ after_bundle do
 
     bundle install
 
-    # Install or update JavaScript dependencies
-    yarn install --frozen-lockfile || npm install
+    # Install or update JavaScript dependencies if needed
+    if [ -f "yarn.lock" ]; then
+      yarn install --frozen-lockfile
+    elif [ -f "package-lock.json" ]; then
+      npm ci
+    elif [ -f "package.json" ]; then
+      npm install
+    else
+      echo "No JavaScript package manager files found, using Rails asset pipeline"
+    fi
 
     # Copy environment variables if .env doesn't exist
     if [ ! -f .env ]; then
