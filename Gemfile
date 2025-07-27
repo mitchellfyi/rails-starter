@@ -27,8 +27,8 @@ gem 'stimulus-rails'
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem 'jbuilder'
 
-# Use Redis adapter to run Action Cable in production
-# gem 'redis', '~> 4.0'
+# Use Redis adapter to run Action Cable in production and caching
+gem 'redis', '~> 5.0'
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem 'kredis'
@@ -39,6 +39,12 @@ gem 'bcrypt', '~> 3.1.7'
 # Security gems for paranoid mode
 gem 'secure_headers', '~> 6.5'
 gem 'attr_encrypted', '~> 4.0'
+
+# Notification system for enhanced UX
+gem 'noticed', '~> 2.0'
+
+# View components for better UI organization
+gem 'view_component', '~> 3.0'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[ mingw mswin x64_mingw jruby ]
@@ -62,6 +68,14 @@ group :development, :test do
   # Testing for 2FA (when paranoid mode is enabled)
   gem 'rqrcode', '~> 2.2'
   gem 'rotp', '~> 6.3'
+  
+  # N+1 query detection for performance optimization
+  gem 'bullet'
+  
+  # Code quality and style checking
+  gem 'rubocop', require: false
+  gem 'rubocop-rails', require: false
+  gem 'rubocop-performance', require: false
 end
 
 group :development do
