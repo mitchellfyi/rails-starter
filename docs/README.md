@@ -88,4 +88,4 @@ bin/synth docs
 
 ---
 
-*Documentation generated on 2025-07-27 09:50:42 by `bin/synth docs`*
+*Documentation generated on 2025-07-27 09:52:36 by `bin/synth docs`*
