@@ -1,0 +1,22 @@
+# Test fixtures for DemoFeatureItem
+
+one:
+  user: one
+  name: "First DemoFeature Item"
+  description: "This is the first test demo_feature item"
+  active: true
+  metadata: {}
+
+two:
+  user: two
+  name: "Second DemoFeature Item"
+  description: "This is the second test demo_feature item"
+  active: true
+  metadata: {}
+
+inactive:
+  user: one
+  name: "Inactive DemoFeature Item"
+  description: "This is an inactive test demo_feature item"
+  active: false
+  metadata: {}

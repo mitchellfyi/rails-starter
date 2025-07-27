@@ -1,0 +1,38 @@
+<% content_for :title, @demo_feature_item.display_name %>
+
+<div class="demo_feature-show">
+  <div class="header-section">
+    <h1 class="text-2xl font-bold text-gray-900"><%= @demo_feature_item.display_name %></h1>
+    
+    <div class="actions mt-2">
+      <%= link_to "Edit", edit_demo_feature_path(@demo_feature_item), 
+          class: "btn btn-outline" %>
+      <%= link_to "Back to DemoFeature", demo_feature_index_path, 
+          class: "btn btn-outline" %>
+    </div>
+  </div>
+
+  <div class="content-section mt-6">
+    <div class="card">
+      <div class="field">
+        <label class="label">Name</label>
+        <p><%= @demo_feature_item.name %></p>
+      </div>
+
+      <div class="field mt-4">
+        <label class="label">Description</label>
+        <p><%= @demo_feature_item.description.presence || "No description provided" %></p>
+      </div>
+
+      <div class="field mt-4">
+        <label class="label">Created</label>
+        <p><%= @demo_feature_item.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+      </div>
+
+      <div class="field mt-4">
+        <label class="label">Last Updated</label>
+        <p><%= @demo_feature_item.updated_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+      </div>
+    </div>
+  </div>
+</div>

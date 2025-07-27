@@ -1,0 +1,22 @@
+# Test fixtures for TestWithHyphensItem
+
+one:
+  user: one
+  name: "First TestWithHyphens Item"
+  description: "This is the first test test-with-hyphens item"
+  active: true
+  metadata: {}
+
+two:
+  user: two
+  name: "Second TestWithHyphens Item"
+  description: "This is the second test test-with-hyphens item"
+  active: true
+  metadata: {}
+
+inactive:
+  user: one
+  name: "Inactive TestWithHyphens Item"
+  description: "This is an inactive test test-with-hyphens item"
+  active: false
+  metadata: {}
