@@ -59,6 +59,7 @@ after_bundle do
   # Copy core models with enhanced multitenant features
   copy_file File.join(__dir__, 'app/models/ai_provider.rb'), 'app/models/ai_provider.rb'
   copy_file File.join(__dir__, 'app/models/ai_credential.rb'), 'app/models/ai_credential.rb'
+  copy_file File.join(__dir__, 'app/models/ai_credential_test.rb'), 'app/models/ai_credential_test.rb'
   copy_file File.join(__dir__, 'app/models/ai_usage_summary.rb'), 'app/models/ai_usage_summary.rb'
   copy_file File.join(__dir__, 'app/models/prompt_template.rb'), 'app/models/prompt_template.rb'
   copy_file File.join(__dir__, 'app/models/prompt_execution.rb'), 'app/models/prompt_execution.rb'
@@ -71,7 +72,6 @@ after_bundle do
   # Copy services
   copy_file File.join(__dir__, 'app/services/ai_provider_test_service.rb'), 'app/services/ai_provider_test_service.rb'
   copy_file File.join(__dir__, 'app/services/workspace_llm_job_runner.rb'), 'app/services/workspace_llm_job_runner.rb'
-  copy_file File.join(__dir__, 'app/services/ai_usage_analytics_service.rb'), 'app/services/ai_usage_analytics_service.rb'
 
   # Copy migrations
   copy_file File.join(__dir__, 'db/migrate/001_create_ai_providers.rb'), 'db/migrate/001_create_ai_providers.rb'
@@ -81,6 +81,7 @@ after_bundle do
   copy_file File.join(__dir__, 'db/migrate/005_create_llm_outputs.rb'), 'db/migrate/005_create_llm_outputs.rb'
   copy_file File.join(__dir__, 'db/migrate/006_create_ai_usage_summaries.rb'), 'db/migrate/006_create_ai_usage_summaries.rb'
   copy_file File.join(__dir__, 'db/migrate/007_create_versions.rb'), 'db/migrate/007_create_versions.rb'
+  copy_file File.join(__dir__, 'db/migrate/008_create_ai_credential_tests.rb'), 'db/migrate/008_create_ai_credential_tests.rb'
 
   # Copy controllers for AI management and playground
   copy_file File.join(__dir__, 'app/controllers/ai/base_controller.rb'), 'app/controllers/ai/base_controller.rb'
@@ -126,8 +127,6 @@ after_bundle do
   run 'mkdir -p app/views/ai/playground app/views/ai/analytics app/views/ai/credentials'
   copy_file File.join(__dir__, 'app/views/ai/playground/index.html.erb'), 'app/views/ai/playground/index.html.erb'
   copy_file File.join(__dir__, 'app/views/ai/analytics/index.html.erb'), 'app/views/ai/analytics/index.html.erb'
-  copy_file File.join(__dir__, 'app/views/ai/credentials/index.html.erb'), 'app/views/ai/credentials/index.html.erb'
-  copy_file File.join(__dir__, 'app/views/ai/credentials/_form.html.erb'), 'app/views/ai/credentials/_form.html.erb'
 
   # Copy seed data with default OpenAI provider
   copy_file File.join(__dir__, 'db/seeds/ai_multitenant.rb'), 'db/seeds/ai_multitenant.rb'
@@ -147,8 +146,7 @@ after_bundle do
   copy_file File.join(__dir__, 'test/jobs/ai_usage_summary_job_test.rb'), 'test/jobs/ai_usage_summary_job_test.rb'
   copy_file File.join(__dir__, 'test/services/workspace_llm_job_runner_test.rb'), 'test/services/workspace_llm_job_runner_test.rb'
   copy_file File.join(__dir__, 'test/controllers/ai/playground_controller_test.rb'), 'test/controllers/ai/playground_controller_test.rb'
-  copy_file File.join(__dir__, 'test/controllers/ai/credentials_controller_test.rb'), 'test/controllers/ai/credentials_controller_test.rb'
-  copy_file File.join(__dir__, 'test/support/ai_test_helper.rb'), 'test/support/ai_test_helper.rb'
+  copy_file File.join(__dir__, 'test/controllers/ai/playground_controller_test.rb'), 'test/controllers/ai/playground_controller_test.rb'
 
   # Set up whenever for cron jobs
   if File.exist?('config/schedule.rb')

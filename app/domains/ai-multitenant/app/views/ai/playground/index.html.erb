@@ -1,0 +1,559 @@
+<% content_for :title, "AI Playground" %>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900">AI Playground</h1>
+    <p class="mt-2 text-gray-600">Test and experiment with AI models in your workspace</p>
+  </div>
+
+  <!-- Usage Stats Bar -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="text-center">
+        <div class="text-2xl font-bold text-blue-600"><%= @usage_stats[:total_requests] %></div>
+        <div class="text-sm text-gray-500">Requests (7 days)</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-green-600"><%= number_with_delimiter(@usage_stats[:total_tokens]) %></div>
+        <div class="text-sm text-gray-500">Tokens Used</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-purple-600">$<%= sprintf("%.4f", @usage_stats[:total_cost]) %></div>
+        <div class="text-sm text-gray-500">Estimated Cost</div>
+      </div>
+      <div class="text-center">
+        <div class="text-2xl font-bold text-indigo-600"><%= sprintf("%.1f%%", @usage_stats[:successful_requests].to_f / [@usage_stats[:total_requests], 1].max * 100) %></div>
+        <div class="text-sm text-gray-500">Success Rate</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Main Playground Area -->
+    <div class="lg:col-span-2">
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900">Playground</h2>
+        </div>
+        
+        <div class="p-6">
+          <!-- Template Input -->
+          <div class="mb-6">
+            <label for="template" class="block text-sm font-medium text-gray-700 mb-2">
+              Template
+              <span class="text-gray-500 text-xs ml-2">Use {{variable}} for dynamic content</span>
+            </label>
+            <textarea 
+              id="template" 
+              name="template"
+              rows="6" 
+              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your prompt template here. Use {{variable_name}} for dynamic content.">Write a summary about {{topic}}</textarea>
+          </div>
+
+          <!-- Context Variables -->
+          <div class="mb-6">
+            <label for="context" class="block text-sm font-medium text-gray-700 mb-2">
+              Context Variables
+              <span class="text-gray-500 text-xs ml-2">JSON format or key=value pairs</span>
+            </label>
+            <textarea 
+              id="context" 
+              name="context"
+              rows="3" 
+              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder='{"topic": "Ruby on Rails"} or topic=Ruby on Rails'>{"topic": "Ruby on Rails"}</textarea>
+          </div>
+
+          <!-- Model Selection -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label for="provider" class="block text-sm font-medium text-gray-700 mb-2">Provider</label>
+              <select id="provider" name="provider" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Auto-select</option>
+                <% @available_models.each do |provider, models| %>
+                  <option value="<%= provider %>"><%= provider.humanize %></option>
+                <% end %>
+              </select>
+            </div>
+            
+            <div>
+              <label for="model" class="block text-sm font-medium text-gray-700 mb-2">Model</label>
+              <select id="model" name="model" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Auto-select</option>
+                <% @available_models.each do |provider, models| %>
+                  <optgroup label="<%= provider.humanize %>">
+                    <% models.each do |model| %>
+                      <option value="<%= model %>" data-provider="<%= provider %>"><%= model %></option>
+                    <% end %>
+                  </optgroup>
+                <% end %>
+              </select>
+            </div>
+
+            <div>
+              <label for="format" class="block text-sm font-medium text-gray-700 mb-2">Output Format</label>
+              <select id="format" name="format" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="text">Text</option>
+                <option value="json">JSON</option>
+                <option value="markdown">Markdown</option>
+                <option value="html">HTML</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-wrap gap-3 mb-6">
+            <button 
+              id="execute-btn" 
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <span class="execute-text">Execute</span>
+              <span class="loading-text hidden">Executing...</span>
+            </button>
+            
+            <button 
+              id="estimate-cost-btn" 
+              class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500"
+            >
+              Estimate Cost
+            </button>
+            
+            <button 
+              id="save-template-btn" 
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500"
+            >
+              Save Template
+            </button>
+            
+            <button 
+              id="compare-models-btn" 
+              class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:ring-2 focus:ring-purple-500"
+            >
+              Compare Models
+            </button>
+          </div>
+
+          <!-- Cost Estimate Display -->
+          <div id="cost-estimate" class="hidden mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <h4 class="font-medium text-blue-900 mb-2">Cost Estimate</h4>
+            <div id="cost-details" class="text-sm text-blue-700"></div>
+          </div>
+
+          <!-- Output Area -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Output</label>
+            <div id="output-container" class="border border-gray-300 rounded-md p-4 min-h-[200px] bg-gray-50">
+              <div id="output-placeholder" class="text-gray-500 text-center py-8">
+                Execute a prompt to see the output here
+              </div>
+              <div id="output-content" class="hidden">
+                <div class="mb-4">
+                  <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-medium text-gray-900">Response</h4>
+                    <div id="output-metadata" class="text-xs text-gray-500"></div>
+                  </div>
+                  <div id="output-text" class="bg-white border rounded p-3 whitespace-pre-wrap"></div>
+                </div>
+                <div id="raw-output-container" class="hidden">
+                  <h4 class="font-medium text-gray-900 mb-2">Raw Output</h4>
+                  <div id="raw-output" class="bg-gray-100 border rounded p-3 text-sm font-mono whitespace-pre-wrap"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save to History -->
+          <div class="flex items-center">
+            <input 
+              id="save-to-history" 
+              name="save_to_history" 
+              type="checkbox" 
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              checked
+            >
+            <label for="save-to-history" class="ml-2 block text-sm text-gray-700">
+              Save execution to playground history
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+      <!-- Saved Templates -->
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Saved Templates</h3>
+        </div>
+        <div class="p-6">
+          <% if @saved_templates.any? %>
+            <div class="space-y-2">
+              <% @saved_templates.each do |template| %>
+                <button 
+                  class="w-full text-left p-3 border border-gray-200 rounded hover:bg-gray-50 load-template-btn"
+                  data-template-id="<%= template.id %>"
+                  data-template-name="<%= template.name %>"
+                >
+                  <div class="font-medium text-gray-900"><%= template.name %></div>
+                  <div class="text-sm text-gray-500"><%= template.description.truncate(50) if template.description %></div>
+                </button>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm">No saved templates yet. Save your first template to see it here.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recent Executions -->
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Recent Executions</h3>
+        </div>
+        <div class="p-6">
+          <% if @recent_executions.any? %>
+            <div class="space-y-3">
+              <% @recent_executions.each do |execution| %>
+                <div class="p-3 border border-gray-200 rounded">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="text-sm font-medium text-gray-900">
+                      <%= execution.ai_credential&.ai_provider&.name || 'Unknown' %>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      <%= time_ago_in_words(execution.created_at) %> ago
+                    </div>
+                  </div>
+                  <div class="text-xs text-gray-600">
+                    Model: <%= execution.model_used %>
+                  </div>
+                  <% if execution.tokens_used %>
+                    <div class="text-xs text-gray-600">
+                      Tokens: <%= number_with_delimiter(execution.tokens_used) %>
+                    </div>
+                  <% end %>
+                  <div class="mt-2">
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                      <%= execution.status == 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                      <%= execution.status.humanize %>
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-gray-500 text-sm">No recent executions. Start by running your first prompt!</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Available Models -->
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Available Models</h3>
+        </div>
+        <div class="p-6">
+          <% @available_models.each do |provider, models| %>
+            <div class="mb-4 last:mb-0">
+              <h4 class="font-medium text-gray-900 mb-2"><%= provider.humanize %></h4>
+              <div class="space-y-1">
+                <% models.each do |model| %>
+                  <div class="text-sm text-gray-600 pl-2">• <%= model %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Template Modal -->
+<div id="save-template-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+  <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div class="mt-3">
+      <h3 class="text-lg font-medium text-gray-900 mb-4">Save Template</h3>
+      <form id="save-template-form">
+        <div class="mb-4">
+          <label for="template-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <input type="text" id="template-name" name="name" required class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div class="mb-4">
+          <label for="template-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea id="template-description" name="description" rows="3" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+        </div>
+        <div class="mb-4">
+          <label for="template-tags" class="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+          <input type="text" id="template-tags" name="tags" placeholder="e.g. summary, email, content" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div class="flex justify-end space-x-3">
+          <button type="button" id="cancel-save-template" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const executeBtn = document.getElementById('execute-btn');
+  const estimateCostBtn = document.getElementById('estimate-cost-btn');
+  const saveTemplateBtn = document.getElementById('save-template-btn');
+  const compareModelsBtn = document.getElementById('compare-models-btn');
+  const templateTextarea = document.getElementById('template');
+  const contextTextarea = document.getElementById('context');
+  const providerSelect = document.getElementById('provider');
+  const modelSelect = document.getElementById('model');
+  const formatSelect = document.getElementById('format');
+  const outputContainer = document.getElementById('output-container');
+  const outputPlaceholder = document.getElementById('output-placeholder');
+  const outputContent = document.getElementById('output-content');
+  const costEstimate = document.getElementById('cost-estimate');
+  const saveTemplateModal = document.getElementById('save-template-modal');
+
+  // Execute button
+  executeBtn.addEventListener('click', function() {
+    executePrompt();
+  });
+
+  // Estimate cost button
+  estimateCostBtn.addEventListener('click', function() {
+    estimateCost();
+  });
+
+  // Save template button
+  saveTemplateBtn.addEventListener('click', function() {
+    showSaveTemplateModal();
+  });
+
+  // Load template buttons
+  document.querySelectorAll('.load-template-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      loadTemplate(this.dataset.templateId);
+    });
+  });
+
+  // Provider selection changes model options
+  providerSelect.addEventListener('change', function() {
+    updateModelOptions();
+  });
+
+  // Modal handlers
+  document.getElementById('cancel-save-template').addEventListener('click', function() {
+    hideSaveTemplateModal();
+  });
+
+  document.getElementById('save-template-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    saveTemplate();
+  });
+
+  function executePrompt() {
+    const template = templateTextarea.value.trim();
+    const context = contextTextarea.value.trim();
+    const provider = providerSelect.value;
+    const model = modelSelect.value;
+    const format = formatSelect.value;
+    const saveToHistory = document.getElementById('save-to-history').checked;
+
+    if (!template) {
+      alert('Please enter a template');
+      return;
+    }
+
+    setExecuteLoading(true);
+    showOutput('Executing prompt...', true);
+
+    fetch('<%= ai_playground_execute_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        template: template,
+        context: context,
+        provider: provider,
+        model: model,
+        format: format,
+        save_to_history: saveToHistory
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      setExecuteLoading(false);
+      if (data.success) {
+        showOutput(data.result.output, false, data.result);
+      } else {
+        showOutput('Error: ' + data.error, false, null, true);
+      }
+    })
+    .catch(error => {
+      setExecuteLoading(false);
+      showOutput('Network error: ' + error.message, false, null, true);
+    });
+  }
+
+  function estimateCost() {
+    const template = templateTextarea.value.trim();
+    const context = contextTextarea.value.trim();
+    const provider = providerSelect.value;
+    const model = modelSelect.value;
+
+    if (!template) {
+      alert('Please enter a template');
+      return;
+    }
+
+    // This would make a request to estimate cost
+    // For now, show a placeholder
+    showCostEstimate({
+      estimated_tokens: Math.ceil(template.length / 4),
+      estimated_cost: (template.length / 4) * 0.00003,
+      provider: provider || 'auto-detected',
+      model: model || 'auto-selected'
+    });
+  }
+
+  function showCostEstimate(estimate) {
+    document.getElementById('cost-details').innerHTML = `
+      <div>Estimated tokens: ${estimate.estimated_tokens}</div>
+      <div>Estimated cost: $${estimate.estimated_cost.toFixed(6)}</div>
+      <div>Provider: ${estimate.provider}</div>
+      <div>Model: ${estimate.model}</div>
+    `;
+    costEstimate.classList.remove('hidden');
+  }
+
+  function showOutput(content, isLoading = false, metadata = null, isError = false) {
+    if (isLoading) {
+      outputPlaceholder.textContent = content;
+      outputPlaceholder.classList.remove('hidden');
+      outputContent.classList.add('hidden');
+    } else {
+      outputPlaceholder.classList.add('hidden');
+      outputContent.classList.remove('hidden');
+      
+      const outputText = document.getElementById('output-text');
+      outputText.textContent = content;
+      outputText.className = `bg-white border rounded p-3 whitespace-pre-wrap ${isError ? 'border-red-300 text-red-700' : ''}`;
+
+      if (metadata) {
+        document.getElementById('output-metadata').innerHTML = `
+          Model: ${metadata.model_used} | 
+          Tokens: ${metadata.tokens_used || 'N/A'} | 
+          Time: ${metadata.response_time ? (metadata.response_time * 1000).toFixed(0) + 'ms' : 'N/A'} |
+          Cost: $${metadata.estimated_cost ? metadata.estimated_cost.toFixed(6) : 'N/A'}
+        `;
+
+        if (metadata.raw_output && metadata.raw_output !== content) {
+          document.getElementById('raw-output').textContent = metadata.raw_output;
+          document.getElementById('raw-output-container').classList.remove('hidden');
+        }
+      }
+    }
+  }
+
+  function setExecuteLoading(loading) {
+    executeBtn.disabled = loading;
+    document.querySelector('.execute-text').classList.toggle('hidden', loading);
+    document.querySelector('.loading-text').classList.toggle('hidden', !loading);
+  }
+
+  function showSaveTemplateModal() {
+    document.getElementById('template-name').value = '';
+    document.getElementById('template-description').value = '';
+    document.getElementById('template-tags').value = '';
+    saveTemplateModal.classList.remove('hidden');
+  }
+
+  function hideSaveTemplateModal() {
+    saveTemplateModal.classList.add('hidden');
+  }
+
+  function saveTemplate() {
+    const form = document.getElementById('save-template-form');
+    const formData = new FormData(form);
+    const template = templateTextarea.value.trim();
+
+    if (!template) {
+      alert('Please enter a template to save');
+      return;
+    }
+
+    fetch('<%= ai_playground_path %>/save_template', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        name: formData.get('name'),
+        description: formData.get('description'),
+        tags: formData.get('tags'),
+        template: template
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        hideSaveTemplateModal();
+        alert('Template saved successfully!');
+        // Optionally reload the page to show the new template
+        location.reload();
+      } else {
+        alert('Error saving template: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('Network error: ' + error.message);
+    });
+  }
+
+  function loadTemplate(templateId) {
+    fetch(`<%= ai_playground_path %>/load_template?template_id=${templateId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        templateTextarea.value = data.template.prompt_body;
+        
+        // Set context with variable placeholders if variables are detected
+        if (data.template.variable_names && data.template.variable_names.length > 0) {
+          const contextObj = {};
+          data.template.variable_names.forEach(varName => {
+            contextObj[varName] = `[${varName}_value]`;
+          });
+          contextTextarea.value = JSON.stringify(contextObj, null, 2);
+        }
+      } else {
+        alert('Error loading template: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('Network error: ' + error.message);
+    });
+  }
+
+  function updateModelOptions() {
+    const selectedProvider = providerSelect.value;
+    const modelOptions = modelSelect.querySelectorAll('option');
+    
+    modelOptions.forEach(option => {
+      if (option.value === '') {
+        option.style.display = 'block';
+      } else if (selectedProvider === '') {
+        option.style.display = 'block';
+      } else {
+        const optionProvider = option.dataset.provider;
+        option.style.display = optionProvider === selectedProvider ? 'block' : 'none';
+      }
+    });
+    
+    modelSelect.value = '';
+  }
+});
+</script>
