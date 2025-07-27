@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html class="h-full bg-gray-50" lang="<%= I18n.locale %>">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="turbo-cache-control" content="no-cache" />
+    
+    <title><%= full_title(content_for(:title)) %></title>
+    
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <%= yield :head %>
+    
+    <% if Rails.env.development? %>
+      <script src="http://localhost:35729/livereload.js"></script>
+    <% end %>
+    
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="h-full">
+    <!-- Main Navigation -->
+    <% if user_signed_in? %>
+      <%= render NavigationComponent.new(
+            current_user: current_user,
+            current_workspace: @current_workspace,
+            show_workspace_switcher: defined?(@current_workspace),
+            show_notifications: true
+          ) %>
+    <% end %>
+
+    <!-- Flash Messages -->
+    <%= render_flash_messages %>
+
+    <!-- Breadcrumbs -->
+    <% if content_for?(:breadcrumbs) %>
+      <div class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <%= yield :breadcrumbs %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Main Content Area -->
+    <main class="flex-1">
+      <% if content_for?(:hero) %>
+        <!-- Hero Section -->
+        <div class="bg-white">
+          <%= yield :hero %>
+        </div>
+      <% end %>
+
+      <!-- Page Content -->
+      <div class="<%= content_for?(:full_width) ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' %> py-8">
+        <%= yield %>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center">
+          <div class="text-sm text-gray-500">
+            &copy; <%= Date.current.year %> <%= Rails.application.class.module_parent_name %>. All rights reserved.
+          </div>
+          <div class="flex space-x-6">
+            <%= link_to "Privacy", "#", class: "text-sm text-gray-500 hover:text-gray-900" %>
+            <%= link_to "Terms", "#", class: "text-sm text-gray-500 hover:text-gray-900" %>
+            <%= link_to "Support", "#", class: "text-sm text-gray-500 hover:text-gray-900" %>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Global Modals -->
+    <div id="modal-root">
+      <!-- Modals will be rendered here -->
+    </div>
+
+    <!-- Loading Overlay (hidden by default) -->
+    <div id="global-loading" class="hidden">
+      <%= render LoadingComponent.new(variant: :spinner, overlay: true, text: "Loading...") %>
+    </div>
+
+    <!-- Development Tools -->
+    <% if Rails.env.development? %>
+      <div class="fixed bottom-4 right-4 z-50">
+        <div class="bg-black text-white text-xs px-2 py-1 rounded opacity-75">
+          <%= Rails.env.titleize %> | <%= Time.current.strftime("%H:%M:%S") %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= yield :modals %>
+    <%= yield :javascript %>
+  </body>
+</html>

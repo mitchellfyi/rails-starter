@@ -1,0 +1,125 @@
+<nav class="<%= navigation_classes %>">
+  <div class="<%= container_classes %>">
+    <div class="<%= nav_content_classes %>">
+      
+      <!-- Logo and Brand -->
+      <div class="<%= logo_classes %>">
+        <%= link_to root_path, class: "flex items-center space-x-3" do %>
+          <% if app_logo_url %>
+            <img class="h-8 w-auto" src="<%= app_logo_url %>" alt="<%= app_name %> Logo" />
+          <% else %>
+            <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span class="text-white font-bold text-lg"><%= app_name.first %></span>
+            </div>
+          <% end %>
+          <span class="text-xl font-bold text-gray-900"><%= app_name %></span>
+        <% end %>
+      </div>
+
+      <!-- Desktop Navigation Links -->
+      <div class="<%= nav_links_classes %>">
+        <% nav_links.each do |link| %>
+          <%= link_to link[:path], class: nav_link_classes(link[:path]) do %>
+            <%= link[:name] %>
+          <% end %>
+        <% end %>
+      </div>
+
+      <!-- Right Side: Workspace Switcher, Notifications, User Menu -->
+      <div class="<%= user_menu_classes %>">
+        
+        <!-- Workspace Switcher -->
+        <% if show_workspace_switcher && current_workspace %>
+          <%= render WorkspaceSwitcherComponent.new(
+                current_user: current_user, 
+                current_workspace: current_workspace
+              ) %>
+        <% end %>
+
+        <!-- Notifications -->
+        <% if show_notifications %>
+          <%= render NotificationDropdownComponent.new(user: current_user) %>
+        <% end %>
+
+        <!-- User Menu -->
+        <div class="relative" data-controller="dropdown">
+          <button type="button" 
+                  class="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  data-dropdown-target="trigger"
+                  data-action="click->dropdown#toggle">
+            <!-- User Avatar -->
+            <% if current_user.avatar.present? %>
+              <img class="h-8 w-8 rounded-full" 
+                   src="<%= current_user.avatar %>" 
+                   alt="<%= current_user.name %>" />
+            <% else %>
+              <div class="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                <span class="text-sm font-medium text-gray-700">
+                  <%= current_user.name&.first&.upcase || current_user.email.first.upcase %>
+                </span>
+              </div>
+            <% end %>
+            
+            <!-- Chevron -->
+            <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+
+          <!-- User Dropdown Menu -->
+          <div class="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden"
+               data-dropdown-target="menu">
+            <div class="py-1">
+              <!-- User Info Header -->
+              <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                <p class="text-sm font-medium text-gray-900"><%= current_user.name || current_user.email %></p>
+                <p class="text-xs text-gray-500"><%= current_user.email %></p>
+              </div>
+              
+              <!-- Menu Items -->
+              <% user_dropdown_items.each do |item| %>
+                <% if item[:divider] %>
+                  <div class="border-t border-gray-100 my-1"></div>
+                <% else %>
+                  <%= link_to item[:path], 
+                              class: "flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100",
+                              method: item[:method] do %>
+                    <% if item[:icon] %>
+                      <svg class="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <!-- Icon paths would be here for each icon type -->
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    <% end %>
+                    <%= item[:name] %>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button type="button" 
+                class="<%= mobile_menu_button_classes %>"
+                data-controller="mobile-menu"
+                data-action="click->mobile-menu#toggle">
+          <span class="sr-only">Open main menu</span>
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Navigation Menu -->
+    <div class="<%= mobile_nav_classes %> hidden" data-mobile-menu-target="menu">
+      <div class="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-gray-200">
+        <% nav_links.each do |link| %>
+          <%= link_to link[:name], 
+                      link[:path],
+                      class: "block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</nav>
