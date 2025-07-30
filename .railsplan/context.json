@@ -1,0 +1,680 @@
+{
+  "generated_at": "2025-07-30T18:17:37+00:00",
+  "app_name": "railsplan",
+  "models": [
+    {
+      "file": "app/models/application_record.rb",
+      "class_name": "ApplicationRecord",
+      "associations": [
+
+      ],
+      "validations": [
+
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/audit_log.rb",
+      "class_name": "AuditLog",
+      "associations": [
+        {
+          "type": "belongs_to",
+          "name": "user"
+        }
+      ],
+      "validations": [
+        {
+          "field": "action",
+          "rules": "presence: true"
+        },
+        {
+          "field": "description",
+          "rules": "presence: true"
+        }
+      ],
+      "scopes": [
+        {
+          "name": "recent",
+          "definition": "-> { order(created_at: :desc) }"
+        },
+        {
+          "name": "for_action",
+          "definition": "->(action) { where(action: action) }"
+        },
+        {
+          "name": "for_resource_type",
+          "definition": "->(type) { where(resource_type: type) }"
+        },
+        {
+          "name": "for_user",
+          "definition": "->(user_id) { where(user_id: user_id) }"
+        }
+      ]
+    },
+    {
+      "file": "app/models/concerns/admin_user_extensions.rb",
+      "class_name": "AdminUserExtensions",
+      "associations": [
+        {
+          "type": "has_many",
+          "name": "audit_logs"
+        }
+      ],
+      "validations": [
+
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/feature_flag.rb",
+      "class_name": "FeatureFlag",
+      "associations": [
+        {
+          "type": "has_many",
+          "name": "workspace_feature_flags"
+        }
+      ],
+      "validations": [
+        {
+          "field": "name",
+          "rules": "presence: true, uniqueness: true"
+        },
+        {
+          "field": "description",
+          "rules": "presence: true"
+        }
+      ],
+      "scopes": [
+        {
+          "name": "active",
+          "definition": "-> { where(enabled: true) }"
+        },
+        {
+          "name": "inactive",
+          "definition": "-> { where(enabled: false) }"
+        }
+      ]
+    },
+    {
+      "file": "app/models/mcp_fetcher.rb",
+      "class_name": "McpFetcher",
+      "associations": [
+        {
+          "type": "has_many",
+          "name": "workspace_mcp_fetchers"
+        },
+        {
+          "type": "has_many",
+          "name": "workspaces"
+        }
+      ],
+      "validations": [
+        {
+          "field": "name",
+          "rules": "presence: true, uniqueness: true"
+        },
+        {
+          "field": "provider_type",
+          "rules": "presence: true"
+        },
+        {
+          "field": "description",
+          "rules": "presence: true"
+        },
+        {
+          "field": "configuration_is_valid_json",
+          "rules": "validate :parameters_is_valid_json"
+        }
+      ],
+      "scopes": [
+        {
+          "name": "enabled",
+          "definition": "-> { where(enabled: true) }"
+        },
+        {
+          "name": "disabled",
+          "definition": "-> { where(enabled: false) }"
+        },
+        {
+          "name": "by_provider_type",
+          "definition": "->(type) { where(provider_type: type) }"
+        }
+      ]
+    },
+    {
+      "file": "app/models/mcp_workspace_service.rb",
+      "class_name": "McpWorkspaceService",
+      "associations": [
+
+      ],
+      "validations": [
+
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/notification.rb",
+      "class_name": "Notification",
+      "associations": [
+        {
+          "type": "belongs_to",
+          "name": "recipient"
+        }
+      ],
+      "validations": [
+
+      ],
+      "scopes": [
+        {
+          "name": "unread",
+          "definition": "-> { where(read_at: nil) }"
+        },
+        {
+          "name": "read",
+          "definition": "-> { where.not(read_at: nil) }"
+        },
+        {
+          "name": "recent",
+          "definition": "-> { order(created_at: :desc) }"
+        },
+        {
+          "name": "for_type",
+          "definition": "->(type) { where(type: type) }"
+        }
+      ]
+    },
+    {
+      "file": "app/models/system_prompt.rb",
+      "class_name": "SystemPrompt",
+      "associations": [
+        {
+          "type": "belongs_to",
+          "name": "workspace"
+        },
+        {
+          "type": "belongs_to",
+          "name": "created_by"
+        }
+      ],
+      "validations": [
+        {
+          "field": "name",
+          "rules": "presence: true, uniqueness: { scope: :workspace_id }"
+        },
+        {
+          "field": "slug",
+          "rules": "presence: true, uniqueness: { scope: :workspace_id }, format: { with: /\\A[a-z0-9_-]+\\z/ }"
+        },
+        {
+          "field": "prompt_text",
+          "rules": "presence: true"
+        },
+        {
+          "field": "status",
+          "rules": "presence: true, inclusion: { in: %w[draft active archived] }"
+        },
+        {
+          "field": "version",
+          "rules": "presence: true, format: { with: /\\A\\d+\\.\\d+\\.\\d+\\z/ }"
+        }
+      ],
+      "scopes": [
+        {
+          "name": "active",
+          "definition": "-> { where(status: 'active') }"
+        },
+        {
+          "name": "global",
+          "definition": "-> { where(workspace: nil) }"
+        },
+        {
+          "name": "for_workspace",
+          "definition": "->(workspace) { where(workspace: workspace) }"
+        },
+        {
+          "name": "by_role",
+          "definition": "->(role) { where('? = ANY(associated_roles)', role) }"
+        },
+        {
+          "name": "by_function",
+          "definition": "->(function) { where('? = ANY(associated_functions)', function) }"
+        },
+        {
+          "name": "by_agent",
+          "definition": "->(agent) { where('? = ANY(associated_agents)', agent) }"
+        }
+      ]
+    },
+    {
+      "file": "app/models/user.rb",
+      "class_name": "User",
+      "associations": [
+
+      ],
+      "validations": [
+        {
+          "field": "email",
+          "rules": "presence: true, uniqueness: true"
+        },
+        {
+          "field": "email",
+          "rules": "format: { with: URI::MailTo::EMAIL_REGEXP }"
+        }
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/workspace.rb",
+      "class_name": "Workspace",
+      "associations": [
+        {
+          "type": "has_many",
+          "name": "workspace_feature_flags"
+        },
+        {
+          "type": "has_many",
+          "name": "feature_flags"
+        },
+        {
+          "type": "has_many",
+          "name": "workspace_mcp_fetchers"
+        },
+        {
+          "type": "has_many",
+          "name": "mcp_fetchers"
+        },
+        {
+          "type": "has_many",
+          "name": "ai_routing_policies"
+        },
+        {
+          "type": "has_many",
+          "name": "llm_outputs"
+        },
+        {
+          "type": "has_many",
+          "name": "llm_usage"
+        },
+        {
+          "type": "has_one",
+          "name": "workspace_spending_limit"
+        }
+      ],
+      "validations": [
+        {
+          "field": "name",
+          "rules": "presence: true"
+        },
+        {
+          "field": "monthly_ai_credit",
+          "rules": "numericality: { greater_than_or_equal_to: 0 }"
+        },
+        {
+          "field": "current_month_usage",
+          "rules": "numericality: { greater_than_or_equal_to: 0 }"
+        }
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/workspace_feature_flag.rb",
+      "class_name": "WorkspaceFeatureFlag",
+      "associations": [
+        {
+          "type": "belongs_to",
+          "name": "workspace"
+        },
+        {
+          "type": "belongs_to",
+          "name": "feature_flag"
+        }
+      ],
+      "validations": [
+        {
+          "field": "workspace_id",
+          "rules": "uniqueness: { scope: :feature_flag_id }"
+        }
+      ],
+      "scopes": [
+
+      ]
+    },
+    {
+      "file": "app/models/workspace_mcp_fetcher.rb",
+      "class_name": "WorkspaceMcpFetcher",
+      "associations": [
+        {
+          "type": "belongs_to",
+          "name": "workspace"
+        },
+        {
+          "type": "belongs_to",
+          "name": "mcp_fetcher"
+        }
+      ],
+      "validations": [
+        {
+          "field": "workspace_id",
+          "rules": "uniqueness: { scope: :mcp_fetcher_id }"
+        }
+      ],
+      "scopes": [
+        {
+          "name": "enabled",
+          "definition": "-> { where(enabled: true) }"
+        },
+        {
+          "name": "disabled",
+          "definition": "-> { where(enabled: false) }"
+        }
+      ]
+    }
+  ],
+  "schema": {
+    "audit_logs": {
+      "columns": {
+        "user_id": {
+          "type": "integer",
+          "options": null
+        },
+        "action": {
+          "type": "string",
+          "options": null
+        },
+        "resource_type": {
+          "type": "string",
+          "options": null
+        },
+        "resource_id": {
+          "type": "bigint",
+          "options": null
+        },
+        "description": {
+          "type": "text",
+          "options": null
+        },
+        "metadata": {
+          "type": "json",
+          "options": null
+        },
+        "ip_address": {
+          "type": "string",
+          "options": null
+        },
+        "user_agent": {
+          "type": "text",
+          "options": null
+        },
+        "created_at": {
+          "type": "datetime",
+          "options": null
+        },
+        "updated_at": {
+          "type": "datetime",
+          "options": null
+        }
+      }
+    },
+    "feature_flags": {
+      "columns": {
+        "name": {
+          "type": "string",
+          "options": null
+        },
+        "description": {
+          "type": "text",
+          "options": null
+        },
+        "parameters": {
+          "type": "json",
+          "options": null
+        },
+        "sample_output": {
+          "type": "text",
+          "options": null
+        },
+        "enabled": {
+          "type": "boolean",
+          "options": null
+        },
+        "provider_type": {
+          "type": "string",
+          "options": null
+        },
+        "configuration": {
+          "type": "json",
+          "options": null
+        },
+        "created_at": {
+          "type": "datetime",
+          "options": null
+        },
+        "updated_at": {
+          "type": "datetime",
+          "options": null
+        }
+      }
+    },
+    "system_prompts": {
+      "columns": {
+        "workspace_id": {
+          "type": "integer",
+          "options": null
+        },
+        "mcp_fetcher_id": {
+          "type": "integer",
+          "options": null
+        },
+        "enabled": {
+          "type": "boolean",
+          "options": null
+        },
+        "workspace_configuration": {
+          "type": "json",
+          "options": null
+        },
+        "created_at": {
+          "type": "datetime",
+          "options": null
+        },
+        "updated_at": {
+          "type": "datetime",
+          "options": null
+        }
+      }
+    },
+    "workspaces": {
+      "columns": {
+        "name": {
+          "type": "string",
+          "options": null
+        },
+        "slug": {
+          "type": "string",
+          "options": null
+        },
+        "description": {
+          "type": "text",
+          "options": null
+        },
+        "active": {
+          "type": "boolean",
+          "options": null
+        },
+        "created_at": {
+          "type": "datetime",
+          "options": null
+        },
+        "updated_at": {
+          "type": "datetime",
+          "options": null
+        },
+        "monthly_ai_credit": {
+          "type": "decimal",
+          "options": null
+        },
+        "current_month_usage": {
+          "type": "decimal",
+          "options": null
+        },
+        "usage_reset_date": {
+          "type": "date",
+          "options": null
+        },
+        "overage_billing_enabled": {
+          "type": "boolean",
+          "options": null
+        },
+        "stripe_meter_id": {
+          "type": "string",
+          "options": null
+        }
+      }
+    }
+  },
+  "routes": [
+
+  ],
+  "controllers": [
+    {
+      "file": "app/controllers/admin/audit_controller.rb",
+      "class_name": "AuditController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/admin/base_controller.rb",
+      "class_name": "BaseController",
+      "actions": [
+        "ensure_admin!"
+      ]
+    },
+    {
+      "file": "app/controllers/admin/dashboard_controller.rb",
+      "class_name": "DashboardController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/admin/feature_flags_controller.rb",
+      "class_name": "FeatureFlagsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/admin/mcp_fetchers_controller.rb",
+      "class_name": "McpFetchersController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/admin/schema_controller.rb",
+      "class_name": "SchemaController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/admin/usage_controller.rb",
+      "class_name": "UsageController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/application_controller.rb",
+      "class_name": "ApplicationController",
+      "actions": [
+        "authenticate_user!"
+      ]
+    },
+    {
+      "file": "app/controllers/concerns/paranoid_session_management.rb",
+      "class_name": "ParanoidSessionManagement",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/concerns/paranoid_two_factor_auth.rb",
+      "class_name": "ParanoidTwoFactorAuth",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/dashboard_controller.rb",
+      "class_name": "DashboardController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/home_controller.rb",
+      "class_name": "HomeController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/notifications_controller.rb",
+      "class_name": "NotificationsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/registrations_controller.rb",
+      "class_name": "RegistrationsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/sessions_controller.rb",
+      "class_name": "SessionsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/settings_controller.rb",
+      "class_name": "SettingsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/system_prompts_controller.rb",
+      "class_name": "SystemPromptsController",
+      "actions": [
+
+      ]
+    },
+    {
+      "file": "app/controllers/workspace_usage_controller.rb",
+      "class_name": "WorkspaceUsageController",
+      "actions": [
+
+      ]
+    }
+  ],
+  "modules": [
+
+  ],
+  "hash": "49ad9e4e6ff962a6a90b61d77d4d317caabfe24553e2d2ce59fe52fd7d8398c3"
+}

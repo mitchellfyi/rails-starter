@@ -81,11 +81,14 @@ module RailsPlan
     end
 
     # AI-powered code generation
-    desc "generate INSTRUCTION", "Generate Rails code using AI based on natural language instruction"
+    desc "generate SUBCOMMAND_OR_INSTRUCTION", "Generate Rails code using AI or generate documentation"
     long_desc <<-LONGDESC
-      Generate Rails code using AI based on natural language instructions.
+      Generate Rails code using AI based on natural language instructions, or generate documentation.
       
-      This command will:
+      Subcommands:
+        docs [TYPE]     - Generate comprehensive documentation for the Rails app
+      
+      For AI code generation:
         1. Parse the instruction using an LLM
         2. Generate appropriate models, migrations, associations, controllers, routes, views, tests
         3. Ensure naming and structure match existing codebase
@@ -93,23 +96,49 @@ module RailsPlan
         5. Optionally add AI-generated views (Hotwire/Tailwind)
         6. Log all prompt/response history
         
-      Before using this command, run 'railsplan index' to extract application context.
+      For documentation generation:
+        1. Analyze the Rails application structure
+        2. Generate README.md and docs/ folder with comprehensive documentation
+        3. Support targeting specific documentation types
+        
+      Before using AI generation, run 'railsplan index' to extract application context.
       
       Examples:
         railsplan generate "Add a Project model with title, description, and user association"
         railsplan generate "Create a blog system with posts and comments" --profile=test
-        railsplan generate "Add authentication to the User model" --force
+        railsplan generate docs
+        railsplan generate docs schema --overwrite
+        railsplan generate docs --dry-run
     LONGDESC
     option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
     option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
     option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
-    def generate(instruction)
-      RailsPlan.logger.info("Running generate command with instruction: #{instruction}")
+    option :overwrite, type: :boolean, desc: "Overwrite existing documentation files"
+    option :dry_run, type: :boolean, desc: "Preview changes without writing files"
+    option :silent, type: :boolean, desc: "Suppress output for CI usage"
+    def generate(*args)
+      RailsPlan.logger.info("Running generate command with args: #{args.join(' ')}")
       
-      command = RailsPlan::Commands::GenerateCommand.new(verbose: options[:verbose])
-      success = command.execute(instruction, options)
-      
-      exit(1) unless success
+      # Check if this is a docs subcommand
+      if args.first == "docs"
+        # Handle docs generation
+        require "railsplan/commands/docs_command"
+        
+        # Parse the docs type if specified (e.g., ["docs", "schema"] -> type = "schema")
+        docs_type = args[1] if args.length > 1
+        
+        command = RailsPlan::Commands::DocsCommand.new(verbose: options[:verbose])
+        success = command.execute(docs_type, options)
+        
+        exit(1) unless success
+      else
+        # Handle AI code generation - join all args as the instruction
+        instruction = args.join(' ')
+        command = RailsPlan::Commands::GenerateCommand.new(verbose: options[:verbose])
+        success = command.execute(instruction, options)
+        
+        exit(1) unless success
+      end
     end
 
     # Add modules to existing application
