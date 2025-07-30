@@ -49,6 +49,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency "tty-color", "~> 0.5"
   spec.add_dependency "tty-platform", "~> 0.3"
   spec.add_dependency "tty-option", "~> 0.2"
+  
+  # AI provider dependencies
+  spec.add_dependency "ruby-openai", "~> 6.0"
+  spec.add_dependency "anthropic", "~> 0.1"
 
   # Development dependencies
   spec.add_development_dependency "rspec", "~> 3.12"

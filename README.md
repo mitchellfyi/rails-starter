@@ -73,11 +73,17 @@ bin/rails server
 Visit `http://localhost:3000` and you'll have a working SaaS application!
 
 ### RailsPlan Commands
+
 ```bash
 # Generate new app
 railsplan new myapp
 
-# Add modules to existing app
+# AI-powered development commands
+railsplan index                                    # Extract Rails app context for AI
+railsplan generate "Add a Comment model"           # Generate code with AI
+railsplan generate "..." --profile=test           # Use specific AI profile
+
+# Module management
 railsplan add ai
 railsplan add billing
 
@@ -148,6 +154,138 @@ Visit `http://localhost:3000` and you'll have a working SaaS application!
 - 📝 **CMS/Blog** - Content management with SEO
 - 🌍 **Internationalization** - Multi-language support
 - 🚀 **Deployment** - Configs for Fly.io, Render, Kamal
+
+## 🤖 AI-Powered Development
+
+RailsPlan now includes **AI-native development workflows** that let you build and scaffold your apps using **natural language**, with zero boilerplate, while maintaining Rails best practices.
+
+### Quick Start with AI
+
+```bash
+# 1. Generate your app
+railsplan new myapp
+cd myapp
+
+# 2. Set up AI credentials
+mkdir -p ~/.railsplan
+cat > ~/.railsplan/ai.yml << EOF
+default:
+  provider: openai
+  model: gpt-4o
+  api_key: <%= ENV['OPENAI_API_KEY'] %>
+profiles:
+  test:
+    provider: anthropic
+    model: claude-3-sonnet
+    api_key: <%= ENV['CLAUDE_KEY'] %>
+EOF
+
+# 3. Index your application context
+railsplan index
+
+# 4. Generate code with natural language
+railsplan generate "Add a Project model with title, description, and user association"
+railsplan generate "Create a blog system with posts and comments"
+railsplan generate "Add authentication to the User model"
+```
+
+### How AI Generation Works
+
+1. **`railsplan index`** - Extracts your Rails app context (models, schema, routes, controllers) into `.railsplan/context.json`
+2. **`railsplan generate "description"`** - Uses AI to generate appropriate Rails code based on your instruction and app context
+3. **Preview & Confirm** - Shows you what will be generated before writing any files
+4. **Smart Integration** - Ensures naming and structure match your existing codebase
+
+### AI Provider Configuration
+
+#### Option 1: Global Configuration File
+```yaml
+# ~/.railsplan/ai.yml
+default:
+  provider: openai
+  model: gpt-4o
+  api_key: <%= ENV['OPENAI_API_KEY'] %>
+profiles:
+  claude:
+    provider: anthropic
+    model: claude-3-sonnet
+    api_key: <%= ENV['CLAUDE_KEY'] %>
+  gpt35:
+    provider: openai
+    model: gpt-3.5-turbo
+    api_key: <%= ENV['OPENAI_API_KEY'] %>
+```
+
+#### Option 2: Environment Variables
+```bash
+export OPENAI_API_KEY=your_key_here
+export RAILSPLAN_AI_PROVIDER=openai
+export RAILSPLAN_AI_MODEL=gpt-4o
+```
+
+#### Option 3: Project-Specific Configuration
+```yaml
+# .railsplanrc (in your project root)
+ai:
+  provider: anthropic
+  model: claude-3-sonnet
+  api_key: <%= ENV['CLAUDE_KEY'] %>
+```
+
+### AI Command Examples
+
+```bash
+# Basic model generation
+railsplan generate "Add a Product model with name, price, description, and category"
+
+# Complex associations
+railsplan generate "Create a Blog system with User, Post, Comment, and Tag models with proper associations"
+
+# Controllers and views
+railsplan generate "Add a REST API for Products with JSON responses"
+
+# Authentication features
+railsplan generate "Add password reset functionality to User model"
+
+# Use specific AI profile
+railsplan generate "Add payment processing" --profile=claude
+
+# Creative mode for more exploratory responses
+railsplan generate "Suggest improvements to my User model" --creative
+
+# Force mode (skip confirmation)
+railsplan generate "Add basic CRUD for Products" --force
+```
+
+### What Gets Generated
+
+The AI can generate:
+- **Models** with proper validations, associations, and scopes
+- **Migrations** with appropriate database columns and indexes
+- **Controllers** with RESTful actions
+- **Routes** that follow Rails conventions
+- **Views** using Hotwire and TailwindCSS
+- **Tests** (RSpec or Minitest)
+- **Documentation** and comments
+
+### Context Indexing
+
+The `railsplan index` command extracts:
+- **Models**: Class names, associations, validations, scopes
+- **Database Schema**: Tables, columns, types, indexes
+- **Routes**: HTTP methods, paths, controller actions
+- **Controllers**: Class names, action methods
+- **Installed Modules**: RailsPlan modules currently installed
+
+This context is used to provide the AI with relevant information about your existing codebase, ensuring generated code integrates seamlessly.
+
+### AI Workflow Features
+
+- **Preview Before Writing**: See exactly what files will be created/modified
+- **Interactive Confirmation**: Choose to accept, preview individual files, or modify instructions
+- **Prompt Logging**: All AI interactions are logged to `.railsplan/prompts.log` for debugging
+- **Error Recovery**: Generated code is saved to `.railsplan/last_generated/` for recovery
+- **Fallback Support**: Works without AI (falls back to standard Rails generators)
 
 ## 🔧 Managing Your Application
 
@@ -306,21 +444,44 @@ Then run `bundle update rails` to switch versions.
 ### "What Ruby version do I need?"
 The template recommends Ruby 3.4.2 for optimal compatibility and performance. It supports Ruby >= 3.4.0, but Ruby 3.4.2 is the recommended version for the best experience.
 
+### "The AI generation isn't working"
+1. **Check your API key**: Make sure `OPENAI_API_KEY` or `CLAUDE_KEY` is set
+2. **Verify configuration**: Run `cat ~/.railsplan/ai.yml` to check your config
+3. **Update context**: Run `railsplan index` to refresh your app context
+4. **Check logs**: Look at `.railsplan/prompts.log` for AI interaction details
+5. **Test connection**: Try with a simple instruction first
+
+### "AI generated code doesn't match my style"
+1. **Add style guide**: Include your coding conventions in the project README
+2. **Use custom instructions**: Be more specific about formatting and patterns
+3. **Modify after generation**: The AI provides a starting point - customize as needed
+4. **Configure rubocop**: The AI will try to follow your linting rules if present
+
+### "Context indexing is slow"
+1. **Large codebase**: This is normal for apps with many models/controllers
+2. **Update only when needed**: Context is cached and only updates when files change
+3. **Exclude directories**: You can customize which directories are scanned
+
 ## 🆘 Getting Help
 
 1. **Check the docs** - Start with the module documentation
-2. **Run `bin/railsplan doctor`** - Diagnose common issues
-3. **Look at the tests** - They show how features are supposed to work
-4. **Check the example apps** - See how features are used in practice
+2. **Run `railsplan doctor`** - Diagnose common issues  
+3. **Check AI logs** - Look at `.railsplan/prompts.log` for AI-related issues
+4. **Test with simple examples** - Try basic AI generation first
+5. **Look at the tests** - They show how features are supposed to work
+6. **Check the example apps** - See how features are used in practice
 
 ## 🎉 Next Steps
 
 1. **Install the RailsPlan gem**: `gem install railsplan`
 2. **Generate your app**: `railsplan new myapp`
-3. **Explore the code** - Look at `app/domains/` to see how features are organized
-4. **Install modules** you need with `railsplan add`
-5. **Customize** the styling and branding
-6. **Deploy** when ready!
+3. **Set up AI credentials**: Configure `~/.railsplan/ai.yml` with your API keys
+4. **Index your app context**: `railsplan index`
+5. **Try AI generation**: `railsplan generate "Add a simple blog"`
+6. **Explore the code** - Look at `app/domains/` to see how features are organized
+7. **Install modules** you need with `railsplan add`
+8. **Customize** the styling and branding
+9. **Deploy** when ready!
 
 ---
 

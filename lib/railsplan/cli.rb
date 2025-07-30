@@ -3,6 +3,8 @@
 require "thor"
 require "railsplan/generator"
 require "railsplan/logger"
+require "railsplan/commands/index_command"
+require "railsplan/commands/generate_command"
 
 module RailsPlan
   # Main CLI class using Thor
@@ -50,6 +52,64 @@ module RailsPlan
       
       generator = Generator.new(app_name, options)
       generator.generate
+    end
+
+    # Index application context for AI generation
+    desc "index", "Extract and index Rails application context for AI generation"
+    long_desc <<-LONGDESC
+      Extract and index Rails application context to enable AI-powered code generation.
+      
+      This command will:
+        - Parse db/schema.rb and app/models/**/*.rb to extract model information
+        - Parse routes and controllers to extract known REST endpoints  
+        - Store all indexed metadata in .railsplan/context.json
+        - Include a hash to detect when indexing is stale
+        
+      The context is used by the generate command to provide relevant information
+      to the AI for better code generation.
+      
+      Examples:
+        railsplan index                    # Extract context from current Rails app
+    LONGDESC
+    def index
+      RailsPlan.logger.info("Running index command")
+      
+      command = RailsPlan::Commands::IndexCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
+
+    # AI-powered code generation
+    desc "generate INSTRUCTION", "Generate Rails code using AI based on natural language instruction"
+    long_desc <<-LONGDESC
+      Generate Rails code using AI based on natural language instructions.
+      
+      This command will:
+        1. Parse the instruction using an LLM
+        2. Generate appropriate models, migrations, associations, controllers, routes, views, tests
+        3. Ensure naming and structure match existing codebase
+        4. Prompt user to confirm or modify output before writing
+        5. Optionally add AI-generated views (Hotwire/Tailwind)
+        6. Log all prompt/response history
+        
+      Before using this command, run 'railsplan index' to extract application context.
+      
+      Examples:
+        railsplan generate "Add a Project model with title, description, and user association"
+        railsplan generate "Create a blog system with posts and comments" --profile=test
+        railsplan generate "Add authentication to the User model" --force
+    LONGDESC
+    option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
+    option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    def generate(instruction)
+      RailsPlan.logger.info("Running generate command with instruction: #{instruction}")
+      
+      command = RailsPlan::Commands::GenerateCommand.new(verbose: options[:verbose])
+      success = command.execute(instruction, options)
+      
+      exit(1) unless success
     end
 
     # Add modules to existing application
@@ -361,14 +421,16 @@ module RailsPlan
       say("Version: #{RailsPlan::VERSION}", :blue)
       say("")
       say("Usage:", :yellow)
-      say("  railsplan new APP_NAME     # Generate new Rails app")
-      say("  railsplan add MODULE       # Add module to existing app")
-      say("  railsplan list             # List available modules")
-      say("  railsplan doctor           # Run diagnostics")
-      say("  railsplan server           # Start Rails server (passthrough)")
-      say("  railsplan console          # Start Rails console (passthrough)")
-      say("  railsplan routes           # Show Rails routes (passthrough)")
-      say("  railsplan --help           # Show this help")
+      say("  railsplan new APP_NAME         # Generate new Rails app")
+      say("  railsplan index                # Index Rails app context for AI")
+      say("  railsplan generate \"desc\"      # Generate code with AI")
+      say("  railsplan add MODULE           # Add module to existing app")
+      say("  railsplan list                 # List available modules")
+      say("  railsplan doctor               # Run diagnostics")
+      say("  railsplan server               # Start Rails server (passthrough)")
+      say("  railsplan console              # Start Rails console (passthrough)")
+      say("  railsplan routes               # Show Rails routes (passthrough)")
+      say("  railsplan --help               # Show this help")
       say("")
       super
     end
