@@ -5,6 +5,12 @@ require "railsplan/generator"
 require "railsplan/logger"
 require "railsplan/commands/index_command"
 require "railsplan/commands/generate_command"
+require "railsplan/commands/init_command"
+require "railsplan/commands/upgrade_command"
+require "railsplan/commands/refactor_command"
+require "railsplan/commands/explain_command"
+require "railsplan/commands/fix_command"
+require "railsplan/commands/doctor_command"
 
 module RailsPlan
   # Main CLI class using Thor
@@ -108,6 +114,165 @@ module RailsPlan
       
       command = RailsPlan::Commands::GenerateCommand.new(verbose: options[:verbose])
       success = command.execute(instruction, options)
+      
+      exit(1) unless success
+    end
+
+    # Initialize .railsplan/ for existing Rails projects
+    desc "init", "Initialize RailsPlan for an existing Rails application"
+    long_desc <<-LONGDESC
+      Initialize RailsPlan for an existing Rails application by setting up .railsplan/ directory.
+      
+      This command will:
+        1. Detect Rails and Ruby version, database adapter, installed gems
+        2. Create .railsplan/ directory structure
+        3. Run 'railsplan index' to extract application context
+        4. Create settings.yml with detected application configuration
+        5. Set up prompts.log for AI interaction history
+        
+      After running this, you can use AI-powered commands like:
+        - railsplan upgrade "instruction"
+        - railsplan doctor
+        - railsplan refactor <path>
+        - railsplan explain <path>
+        
+      Examples:
+        railsplan init                    # Initialize for current Rails app
+    LONGDESC
+    def init
+      RailsPlan.logger.info("Running init command")
+      
+      command = RailsPlan::Commands::InitCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
+
+    # AI-powered evolution command
+    desc "evolve INSTRUCTION", "AI-powered evolution for existing Rails applications"
+    long_desc <<-LONGDESC
+      Evolve existing Rails applications using AI-powered analysis and code generation.
+      
+      This command will:
+        1. Load application context from .railsplan/context.json
+        2. Compose a prompt with schema, models, controllers, and detected features
+        3. Send instruction to LLM (OpenAI/Anthropic) for evolution plan
+        4. Parse structured output with suggested diffs and migrations
+        5. Preview → Apply → Discard workflow
+        6. Log prompt and result to .railsplan/prompts.log
+        
+      Before using this command, run 'railsplan init' to set up the project.
+      
+      Examples:
+        railsplan evolve "Replace all enums with Postgres native enums"
+        railsplan evolve "Extract admin UI into ViewComponents"
+        railsplan evolve "Modernize controllers to use Hotwire and Stimulus"
+        railsplan evolve "Add API versioning" --dry-run
+    LONGDESC
+    option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
+    option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    option :dry_run, type: :boolean, desc: "Preview changes without applying them"
+    def evolve(instruction)
+      RailsPlan.logger.info("Running evolve command with instruction: #{instruction}")
+      
+      command = RailsPlan::Commands::UpgradeCommand.new(verbose: options[:verbose])
+      success = command.execute(instruction, options)
+      
+      exit(1) unless success
+    end
+
+    # AI-powered refactoring
+    desc "refactor PATH", "Refactor specific files or directories using AI"
+    long_desc <<-LONGDESC
+      Refactor a specific file or folder using AI assistance.
+      
+      This command will:
+        1. Analyze the target file(s) and load related context
+        2. Send to AI with goals to modernize, simplify, and improve performance
+        3. Generate refactored code with explanations
+        4. Preview changes and prompt for confirmation
+        5. Apply changes with backup of original files
+        
+      Examples:
+        railsplan refactor app/controllers/admin/orders_controller.rb
+        railsplan refactor app/models/user.rb
+        railsplan refactor app/services/ --dry-run
+    LONGDESC
+    option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
+    option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    option :dry_run, type: :boolean, desc: "Preview changes without applying them"
+    option :goals, type: :array, desc: "Specific refactoring goals (modernize, simplify, performance)"
+    def refactor(path)
+      RailsPlan.logger.info("Running refactor command for path: #{path}")
+      
+      command = RailsPlan::Commands::RefactorCommand.new(verbose: options[:verbose])
+      success = command.execute(path, options)
+      
+      exit(1) unless success
+    end
+
+    # AI-powered code explanation
+    desc "explain PATH", "Explain code in plain English using AI"
+    long_desc <<-LONGDESC
+      Explain code to developers in plain English using AI assistance.
+      
+      This command will:
+        1. Analyze the target file(s) and load related context
+        2. Send to AI for detailed explanation generation
+        3. Display explanation with code purpose, components, and relationships
+        4. Optionally save explanation to markdown file
+        
+      Useful for onboarding, debugging, and learning complex codebases.
+      
+      Examples:
+        railsplan explain app/models/payment.rb
+        railsplan explain app/controllers/api/v1/users_controller.rb
+        railsplan explain app/services/ --save=explanation.md
+    LONGDESC
+    option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    option :audience, desc: "Target audience (developer, junior, senior)"
+    option :detail, desc: "Detail level (basic, medium, detailed)"
+    option :save, desc: "Save explanation to file (markdown format)"
+    def explain(path)
+      RailsPlan.logger.info("Running explain command for path: #{path}")
+      
+      command = RailsPlan::Commands::ExplainCommand.new(verbose: options[:verbose])
+      success = command.execute(path, options)
+      
+      exit(1) unless success
+    end
+
+    # AI-powered fix command
+    desc "fix ISSUE_DESCRIPTION", "Apply AI-powered fixes based on issue descriptions"
+    long_desc <<-LONGDESC
+      Apply fixes to specific issues using AI assistance.
+      
+      This command is often used in conjunction with 'railsplan doctor' to fix
+      identified issues, but can also be used standalone for any code issues.
+      
+      This command will:
+        1. Analyze the issue description and load application context
+        2. Generate a fix plan using AI
+        3. Preview the fix and prompt for confirmation  
+        4. Apply changes with backup of original files
+        
+      Examples:
+        railsplan fix "Optimize slow queries in User model"
+        railsplan fix "Add missing CSRF protection"
+        railsplan fix "Remove N+1 queries in PostsController" --dry-run
+    LONGDESC
+    option :profile, desc: "AI provider profile to use (from ~/.railsplan/ai.yml)"
+    option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    option :dry_run, type: :boolean, desc: "Preview changes without applying them"
+    def fix(issue_description)
+      RailsPlan.logger.info("Running fix command for issue: #{issue_description}")
+      
+      command = RailsPlan::Commands::FixCommand.new(verbose: options[:verbose])
+      success = command.execute(issue_description, options)
       
       exit(1) unless success
     end
@@ -332,54 +497,38 @@ module RailsPlan
       end
     end
 
-    # Doctor command for validation and debugging
-    desc "doctor", "Validate setup and configuration"
+    # Enhanced doctor command for validation, debugging, and AI analysis
+    desc "doctor", "Run comprehensive diagnostics including AI-powered analysis"
     long_desc <<-LONGDESC
-      Run diagnostics to validate your RailsPlan setup and configuration.
+      Run comprehensive diagnostics to validate your setup and analyze code quality.
       
       This command checks:
         - Ruby version compatibility
-        - Rails installation
-        - Required dependencies
+        - Rails installation and structure
         - Module installation status
         - Configuration files
+        - Deprecated Rails APIs
+        - Missing tests for critical models/controllers
+        - Unused tables, columns, and routes
+        - N+1 queries and missing indexes
+        - Security issues and best practices
+        - AI-powered code quality analysis (if configured)
         
       Examples:
-        railsplan doctor
+        railsplan doctor                      # Run all diagnostics
+        railsplan doctor --fix                # Fix automatically fixable issues
+        railsplan doctor --report=markdown   # Generate markdown report
+        railsplan doctor --report=json       # Generate JSON report
     LONGDESC
+    option :fix, type: :boolean, desc: "Automatically fix identified issues where possible"
+    option :report, desc: "Generate report in specified format (markdown, json)"
     def doctor
-      RailsPlan.logger.info("Running doctor command")
+      RailsPlan.logger.info("Running enhanced doctor command")
       
-      say("Running RailsPlan diagnostics...", :green)
+      command = RailsPlan::Commands::DoctorCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
       
-      # Check Ruby version
-      ruby_version = RUBY_VERSION
-      ruby_manager = RailsPlan::RubyManager.new
-      
-      if ruby_manager.current_version_supported?
-        say("✓ Ruby version: #{ruby_version} (supported)", :green)
-      else
-        min_version = ruby_manager.minimum_supported_version
-        say("✗ Ruby version: #{ruby_version} (not supported, need >= #{min_version})", :red)
-      end
-      
-      # Check Rails installation
-      begin
-        require "rails"
-        rails_version = Rails.version
-        say("✓ Rails version: #{rails_version}", :green)
-      rescue LoadError
-        say("✗ Rails not installed", :red)
-      end
-      
-      # Check for .railsplanrc
-      if File.exist?(".railsplanrc")
-        say("✓ RailsPlan configuration found", :green)
-      else
-        say("ℹ No RailsPlan configuration found", :yellow)
-      end
-      
-      say("Diagnostics complete!", :green)
+      exit(1) unless success
     end
 
     # Default behavior: pass through to Rails CLI when no command specified
@@ -422,11 +571,16 @@ module RailsPlan
       say("")
       say("Usage:", :yellow)
       say("  railsplan new APP_NAME         # Generate new Rails app")
+      say("  railsplan init                 # Initialize existing Rails app")
       say("  railsplan index                # Index Rails app context for AI")
       say("  railsplan generate \"desc\"      # Generate code with AI")
+      say("  railsplan evolve \"desc\"       # AI-powered application evolution")
+      say("  railsplan refactor <path>      # Refactor files with AI")
+      say("  railsplan explain <path>       # Explain code in plain English")
+      say("  railsplan fix \"issue\"          # Fix issues with AI")
+      say("  railsplan doctor               # Run comprehensive diagnostics")
       say("  railsplan add MODULE           # Add module to existing app")
       say("  railsplan list                 # List available modules")
-      say("  railsplan doctor               # Run diagnostics")
       say("  railsplan server               # Start Rails server (passthrough)")
       say("  railsplan console              # Start Rails console (passthrough)")
       say("  railsplan routes               # Show Rails routes (passthrough)")

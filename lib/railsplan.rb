@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "railsplan/version"
+require "railsplan/string_extensions"
 require "railsplan/cli"
 require "railsplan/generator"
 require "railsplan/ruby_manager"
