@@ -203,7 +203,7 @@ module RailsPlan
           'after_filter' => 'Use after_action instead',
           'find_by_sql' => 'Consider using ActiveRecord query methods',
           'update_attributes' => 'Use update instead',
-          '\.all\(' => 'Use .where() instead of .all(conditions)',
+          'all.*conditions' => 'Use .where() instead of .all(conditions)',
           'RAILS_ENV' => 'Use Rails.env instead',
           'RAILS_ROOT' => 'Use Rails.root instead'
         }
@@ -289,9 +289,9 @@ module RailsPlan
         
         # Check for N+1 query patterns
         n_plus_one_patterns = {
-          '\.each.*\.find\(' => 'Potential N+1 query: use includes() or joins()',
-          '\.map.*\.find\(' => 'Potential N+1 query: use includes() or joins()',
-          '\.each.*\.where\(' => 'Potential N+1 query: use includes() or joins()'
+          'each.*find' => 'Potential N+1 query: use includes() or joins()',
+          'map.*find' => 'Potential N+1 query: use includes() or joins()',
+          'each.*where' => 'Potential N+1 query: use includes() or joins()'
         }
         
         issues_found = scan_for_patterns(n_plus_one_patterns, 'performance')
@@ -321,7 +321,7 @@ module RailsPlan
           'raw\(' => 'Potential XSS: use html_safe or sanitize',
           'eval\(' => 'Security risk: avoid using eval',
           'system\(' => 'Security risk: validate input before system calls',
-          '`.*#{' => 'Command injection risk: validate input in backticks'
+          'command_injection' => 'Command injection risk: validate input in backticks'
         }
         
         issues_found = scan_for_patterns(security_patterns, 'security')
