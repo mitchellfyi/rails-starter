@@ -1,9 +1,0 @@
-{
-  "timestamp": "2025-08-02T10:25:33+0000",
-  "total_verifications": 7,
-  "failed_verifications": 1,
-  "passed_verifications": 6,
-  "status": "failed",
-  "ruby_version": "3.2.3",
-  "railsplan_version": "unknown"
-}

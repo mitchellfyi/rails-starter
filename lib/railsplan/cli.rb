@@ -468,6 +468,7 @@ module RailsPlan
       say("  railsplan generate \"desc\"      # Generate code with AI")
       say("  railsplan add MODULE           # Add module to existing app")
       say("  railsplan list                 # List available modules")
+      say("  railsplan verify               # Verify app integrity")
       say("  railsplan doctor               # Run diagnostics")
       say("  railsplan server               # Start Rails server (passthrough)")
       say("  railsplan console              # Start Rails console (passthrough)")
