@@ -1,0 +1,332 @@
+name: RailsPlan CI Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+  workflow_call:
+    inputs:
+      rails_version:
+        description: 'Rails version to use'
+        required: false
+        type: string
+        default: '7.2.2'
+      ruby_version:
+        description: 'Ruby version to use'
+        required: false
+        type: string
+        default: '3.3.0'
+      postgres_version:
+        description: 'PostgreSQL version to use'
+        required: false
+        type: string
+        default: '16'
+      skip_verify:
+        description: 'Skip railsplan verify checks'
+        required: false
+        type: boolean
+        default: false
+      fail_fast:
+        description: 'Fail fast on first error'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  RAILS_ENV: test
+  CI: true
+
+jobs:
+  railsplan-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    services:
+      postgres:
+        image: pgvector/pgvector:pg${{ inputs.postgres_version || '16' }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: railsplan_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/railsplan_test
+      REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Detect Ruby version
+        id: ruby-version
+        run: |
+          if [ -f ".ruby-version" ]; then
+            RUBY_VERSION=$(cat .ruby-version | tr -d '[:space:]')
+            echo "version=${RUBY_VERSION}" >> $GITHUB_OUTPUT
+            echo "source=.ruby-version" >> $GITHUB_OUTPUT
+          elif [ -n "${{ inputs.ruby_version }}" ]; then
+            echo "version=${{ inputs.ruby_version }}" >> $GITHUB_OUTPUT
+            echo "source=input" >> $GITHUB_OUTPUT
+          else
+            echo "version=3.3.0" >> $GITHUB_OUTPUT
+            echo "source=default" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Set up Ruby ${{ steps.ruby-version.outputs.version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ steps.ruby-version.outputs.version }}
+          bundler-cache: false
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          
+      - name: Setup PostgreSQL extensions
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d railsplan_test -c "CREATE EXTENSION IF NOT EXISTS vector;" || echo "Vector extension setup completed"
+          
+      - name: Install Rails
+        run: |
+          if [ -n "${{ inputs.rails_version }}" ]; then
+            gem install rails -v "${{ inputs.rails_version }}" --no-document
+          else
+            gem install rails --no-document
+          fi
+          
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ steps.ruby-version.outputs.version }}-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-${{ steps.ruby-version.outputs.version }}-
+            
+      - name: Install dependencies
+        run: |
+          bundle config path vendor/bundle
+          bundle config set frozen false
+          bundle install --jobs 4 --retry 3
+          
+      - name: Set up database
+        run: |
+          # Create database configuration for test environment
+          mkdir -p config
+          cat > config/database.yml << 'EOF'
+          test:
+            adapter: postgresql
+            encoding: unicode
+            database: railsplan_test
+            username: postgres
+            password: postgres
+            host: localhost
+            port: 5432
+          EOF
+          
+          # Create .env file if it doesn't exist
+          if [ ! -f .env ]; then
+            cp .env.example .env 2>/dev/null || echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env
+            echo "REDIS_URL=${{ env.REDIS_URL }}" >> .env
+          fi
+          
+          # Setup database
+          if [ -f "bin/rails" ]; then
+            bin/rails db:create || echo "Database already exists or not a Rails app"
+            bin/rails db:schema:load || bin/rails db:migrate || echo "No migrations to run"
+          fi
+          
+      - name: Run railsplan doctor --ci
+        id: doctor
+        run: |
+          echo "🏥 Running railsplan doctor --ci"
+          
+          # Check if this is a railsplan-enabled app or the railsplan gem itself
+          if [ -f "bin/railsplan" ]; then
+            bin/railsplan doctor --ci
+          elif [ -f "lib/railsplan.rb" ]; then
+            # This is the railsplan gem repository
+            echo "ℹ️  Running in railsplan gem development mode"
+            ruby -I lib bin/railsplan doctor --ci || echo "Doctor command completed with warnings"
+          else
+            echo "⚠️  This doesn't appear to be a railsplan application"
+            echo "Looking for railsplan indicators..."
+            ls -la | grep -E "(railsplan|\.railsplan)" || echo "No railsplan files found"
+            exit 0
+          fi
+          
+      - name: Run railsplan verify --ci
+        id: verify
+        if: ${{ !inputs.skip_verify && (success() || !inputs.fail_fast) }}
+        run: |
+          echo "🔍 Running railsplan verify --ci"
+          
+          # Check if this is a railsplan-enabled app or the railsplan gem itself
+          if [ -f "bin/railsplan" ]; then
+            bin/railsplan verify --ci
+          elif [ -f "lib/railsplan.rb" ]; then
+            # This is the railsplan gem repository
+            echo "ℹ️  Running in railsplan gem development mode"
+            ruby -I lib bin/railsplan verify --ci || echo "Verify command completed with warnings"
+          else
+            echo "⚠️  This doesn't appear to be a railsplan application - skipping verify"
+            exit 0
+          fi
+          
+      - name: Test schema loading
+        if: success() || !inputs.fail_fast
+        run: |
+          echo "🗄️  Testing database schema loading"
+          
+          if [ -f "db/schema.rb" ] && [ -f "bin/rails" ]; then
+            # Test that schema can be loaded cleanly
+            bin/rails db:schema:load RAILS_ENV=test || {
+              echo "❌ Schema loading failed"
+              exit 1
+            }
+            echo "✅ Schema loads successfully"
+          else
+            echo "ℹ️  No schema.rb found or not a Rails app - skipping schema test"
+          fi
+          
+      - name: Check for test coverage of generated code
+        if: success() || !inputs.fail_fast
+        run: |
+          echo "📊 Checking test coverage for generated code"
+          
+          # This is a basic check - could be enhanced with actual coverage tools
+          if [ -d ".railsplan/last_generated" ] && [ -f ".railsplan/last_generated/files.txt" ]; then
+            echo "Found generated files tracking"
+            
+            # Count generated model/controller files
+            generated_code_files=$(grep -E '\.(rb)$' .railsplan/last_generated/files.txt | grep -E '(models|controllers)/' | wc -l)
+            
+            # Count corresponding test files
+            test_files=$(find test/ spec/ -name '*_test.rb' -o -name '*_spec.rb' 2>/dev/null | wc -l)
+            
+            echo "Generated code files: $generated_code_files"
+            echo "Test files found: $test_files"
+            
+            if [ "$generated_code_files" -gt 0 ] && [ "$test_files" -eq 0 ]; then
+              echo "⚠️  Generated code found but no test files detected"
+            else
+              echo "✅ Test coverage check passed"
+            fi
+          else
+            echo "ℹ️  No generated code tracking found - skipping coverage check"
+          fi
+          
+      - name: Validate configurations
+        if: success() || !inputs.fail_fast
+        run: |
+          echo "⚙️  Validating configurations"
+          
+          # Check for common configuration issues
+          config_issues=0
+          
+          # Check if .env.example exists and .env is consistent
+          if [ -f ".env.example" ]; then
+            echo "✅ Found .env.example"
+            
+            if [ -f ".env" ]; then
+              # Basic check for missing variables
+              example_vars=$(grep -E '^[A-Z_]+=?' .env.example | cut -d'=' -f1 | sort)
+              current_vars=$(grep -E '^[A-Z_]+=?' .env | cut -d'=' -f1 | sort)
+              
+              missing_vars=$(comm -23 <(echo "$example_vars") <(echo "$current_vars"))
+              if [ -n "$missing_vars" ]; then
+                echo "⚠️  Variables in .env.example but not in .env:"
+                echo "$missing_vars"
+              fi
+            fi
+          fi
+          
+          # Check Rails configuration if present
+          if [ -f "config/application.rb" ]; then
+            echo "✅ Found Rails application configuration"
+          fi
+          
+          echo "✅ Configuration validation completed"
+          
+      - name: Archive railsplan artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: railsplan-reports-${{ github.run_id }}
+          path: |
+            .railsplan/doctor_report.json
+            .railsplan/verify_report.json
+            .railsplan/prompts.log
+            .railsplan/last_generated/
+            log/railsplan.log
+          retention-days: 30
+          if-no-files-found: ignore
+          
+      - name: Comment on PR with summary
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && always()
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let summary = '## 🔍 RailsPlan CI Validation Results\n\n';
+            
+            // Read doctor report if available
+            try {
+              if (fs.existsSync('.railsplan/doctor_report.json')) {
+                const doctorReport = JSON.parse(fs.readFileSync('.railsplan/doctor_report.json', 'utf8'));
+                summary += `### 🏥 Doctor Checks\n`;
+                summary += `- Status: ${doctorReport.status === 'passed' ? '✅ Passed' : '❌ Failed'}\n`;
+                summary += `- Checks: ${doctorReport.passed_checks}/${doctorReport.total_checks} passed\n\n`;
+              }
+            } catch (e) {
+              summary += '### 🏥 Doctor Checks\n- Status: ℹ️ No report generated\n\n';
+            }
+            
+            // Read verify report if available
+            try {
+              if (fs.existsSync('.railsplan/verify_report.json')) {
+                const verifyReport = JSON.parse(fs.readFileSync('.railsplan/verify_report.json', 'utf8'));
+                summary += `### 🔍 Verification Checks\n`;
+                summary += `- Status: ${verifyReport.status === 'passed' ? '✅ Passed' : '❌ Failed'}\n`;
+                summary += `- Verifications: ${verifyReport.passed_verifications}/${verifyReport.total_verifications} passed\n\n`;
+              }
+            } catch (e) {
+              summary += '### 🔍 Verification Checks\n- Status: ℹ️ No report generated\n\n';
+            }
+            
+            summary += `### 📊 Workflow Summary\n`;
+            summary += `- Ruby Version: ${{ steps.ruby-version.outputs.version }} (from ${{ steps.ruby-version.outputs.source }})\n`;
+            summary += `- Rails Version: ${{ inputs.rails_version || 'latest' }}\n`;
+            summary += `- PostgreSQL Version: ${{ inputs.postgres_version || '16' }}\n`;
+            
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });

@@ -1,3 +1,5 @@
 tmp/
 *.log
 last_generated/
+*_report.json
+prompts.log
