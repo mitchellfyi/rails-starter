@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-08-02T10:25:14+0000",
+  "total_checks": 9,
+  "failed_checks": 1,
+  "passed_checks": 8,
+  "status": "failed",
+  "ruby_version": "3.2.3",
+  "railsplan_version": "unknown"
+}

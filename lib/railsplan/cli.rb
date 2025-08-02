@@ -361,6 +361,37 @@ module RailsPlan
       end
     end
 
+    # Verify command for CI validation
+    desc "verify", "Verify railsplan app integrity and generated code"
+    long_desc <<-LONGDESC
+      Verify the integrity of railsplan applications and generated code.
+      
+      This command checks:
+        - Context freshness and consistency
+        - No undocumented diffs in generated files
+        - Prompt logs consistency
+        - Test coverage for generated code
+        - Module configurations validity
+        
+      In CI mode (--ci), additional checks include:
+        - No stale artifacts
+        - Environment consistency
+        
+      Examples:
+        railsplan verify
+        railsplan verify --ci
+    LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
+    def verify
+      RailsPlan.logger.info("Running verify command")
+      
+      require "railsplan/commands/verify_command"
+      command = RailsPlan::Commands::VerifyCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
+
     # Doctor command for validation and debugging
     desc "doctor", "Validate setup and configuration"
     long_desc <<-LONGDESC
@@ -373,42 +404,24 @@ module RailsPlan
         - Module installation status
         - Configuration files
         
+      In CI mode (--ci), additional checks include:
+        - Schema integrity validation
+        - railsplan context validation
+        - Uncommitted changes in .railsplan/ directory
+        
       Examples:
         railsplan doctor
+        railsplan doctor --ci
     LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
     def doctor
       RailsPlan.logger.info("Running doctor command")
       
-      say("Running RailsPlan diagnostics...", :green)
+      require "railsplan/commands/doctor_command"
+      command = RailsPlan::Commands::DoctorCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
       
-      # Check Ruby version
-      ruby_version = RUBY_VERSION
-      ruby_manager = RailsPlan::RubyManager.new
-      
-      if ruby_manager.current_version_supported?
-        say("✓ Ruby version: #{ruby_version} (supported)", :green)
-      else
-        min_version = ruby_manager.minimum_supported_version
-        say("✗ Ruby version: #{ruby_version} (not supported, need >= #{min_version})", :red)
-      end
-      
-      # Check Rails installation
-      begin
-        require "rails"
-        rails_version = Rails.version
-        say("✓ Rails version: #{rails_version}", :green)
-      rescue LoadError
-        say("✗ Rails not installed", :red)
-      end
-      
-      # Check for .railsplanrc
-      if File.exist?(".railsplanrc")
-        say("✓ RailsPlan configuration found", :green)
-      else
-        say("ℹ No RailsPlan configuration found", :yellow)
-      end
-      
-      say("Diagnostics complete!", :green)
+      exit(1) unless success
     end
 
     # Default behavior: pass through to Rails CLI when no command specified
