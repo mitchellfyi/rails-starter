@@ -327,8 +327,13 @@ module RailsPlan
         issues_found = scan_for_patterns(security_patterns, 'security')
         
         # Check for missing CSRF protection
-        if !File.read('app/controllers/application_controller.rb').include?('protect_from_forgery')
-          add_issue("Missing CSRF protection in ApplicationController", 'error', true, "Add protect_from_forgery to ApplicationController")
+        if File.exist?('app/controllers/application_controller.rb')
+          if !File.read('app/controllers/application_controller.rb').include?('protect_from_forgery')
+            add_issue("Missing CSRF protection in ApplicationController", 'error', true, "Add protect_from_forgery to ApplicationController")
+            issues_found = true
+          end
+        else
+          add_issue("Missing ApplicationController file", 'error', false)
           issues_found = true
         end
         
@@ -374,6 +379,8 @@ module RailsPlan
         issues_found = false
         
         Dir.glob('app/**/*.rb').each do |file|
+          next unless File.exist?(file)
+          
           content = File.read(file)
           line_number = 0
           
@@ -381,9 +388,17 @@ module RailsPlan
             line_number += 1
             
             patterns.each do |pattern, description|
-              if line.match(/#{pattern}/)
-                add_issue("#{file}:#{line_number} - #{description}", 'warning', true, description)
-                issues_found = true
+              begin
+                # Use Regexp.new to safely handle pattern strings
+                regex = Regexp.new(pattern)
+                if line.match(regex)
+                  add_issue("#{file}:#{line_number} - #{description}", 'warning', true, description)
+                  issues_found = true
+                end
+              rescue RegexpError => e
+                # Skip invalid patterns and log if verbose
+                log_verbose("Skipping invalid regex pattern '#{pattern}': #{e.message}")
+                next
               end
             end
           end
