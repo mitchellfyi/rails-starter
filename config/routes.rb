@@ -23,6 +23,13 @@ Rails.application.routes.draw do
   get '/settings/account', to: 'settings#account'
   get '/settings/notifications', to: 'settings#notifications'
 
+  # RailsPlan Chat Interface
+  get '/railsplan/chat', to: 'railsplan_chat#index'
+  post '/railsplan/chat', to: 'railsplan_chat#create'
+  get '/railsplan/chat/preview', to: 'railsplan_chat#preview_query'
+  post '/railsplan/chat/explain', to: 'railsplan_chat#explain_query'
+  get '/railsplan/schema', to: 'railsplan_chat#schema_summary'
+
   # Load admin routes
   load(Rails.root.join('config/routes/admin.rb'))
   

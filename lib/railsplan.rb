@@ -12,6 +12,7 @@ require "railsplan/logger"
 require "railsplan/config"
 require "railsplan/ai_config"
 require "railsplan/context_manager"
+require "railsplan/data_preview"
 require "railsplan/ai_generator"
 require "railsplan/ai"
 
