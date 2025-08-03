@@ -53,6 +53,7 @@ Gem::Specification.new do |spec|
   # AI provider dependencies
   spec.add_dependency "ruby-openai", "~> 6.0"
   spec.add_dependency "anthropic", "~> 0.1"
+  # Note: Gemini uses HTTP API directly, no gem dependency needed
 
   # Development dependencies
   spec.add_development_dependency "rspec", "~> 3.12"

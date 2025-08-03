@@ -26,6 +26,7 @@ module RailsPlan
     class_option :verbose, type: :boolean, aliases: "-v", desc: "Enable verbose output"
     class_option :force, type: :boolean, aliases: "-f", desc: "Force operation without confirmation"
     class_option :quiet, type: :boolean, aliases: "-q", desc: "Suppress output"
+    class_option :provider, desc: "AI provider to use (openai, claude, gemini, cursor)"
 
     # Main command to generate a new Rails application
     desc "new APP_NAME", "Generate a new Rails SaaS application"
@@ -122,6 +123,7 @@ module RailsPlan
     option :overwrite, type: :boolean, desc: "Overwrite existing documentation files"
     option :dry_run, type: :boolean, desc: "Preview changes without writing files"
     option :silent, type: :boolean, desc: "Suppress output for CI usage"
+    option :format, desc: "Expected output format (markdown, ruby, json, html_partial)"
     def generate(*args)
       RailsPlan.logger.info("Running generate command with args: #{args.join(' ')}")
       
@@ -145,6 +147,39 @@ module RailsPlan
         
         exit(1) unless success
       end
+    end
+
+    # AI-powered chat command for free-form testing
+    desc "chat [PROMPT]", "Interactive chat with AI providers for testing"
+    long_desc <<-LONGDESC
+      Start an interactive chat session with AI providers for testing and exploration.
+      
+      This command allows you to:
+        - Test different AI providers and models
+        - Experiment with prompts and formats
+        - Compare responses across providers
+        - Debug AI configuration issues
+        
+      If no prompt is provided, starts an interactive session.
+      
+      Examples:
+        railsplan chat                                    # Interactive mode
+        railsplan chat "Explain Ruby blocks"             # Single prompt
+        railsplan chat --provider=claude "Generate JSON" # Test specific provider
+        railsplan chat --format=json "User model data"   # Test specific format
+    LONGDESC
+    option :format, desc: "Expected output format (markdown, ruby, json, html_partial)"
+    option :creative, type: :boolean, desc: "Use more creative/exploratory AI responses"
+    option :max_tokens, type: :numeric, desc: "Maximum tokens for AI response"
+    option :interactive, type: :boolean, default: true, desc: "Interactive mode (default)"
+    def chat(prompt = nil)
+      RailsPlan.logger.info("Starting chat command")
+      
+      require "railsplan/commands/chat_command"
+      command = RailsPlan::Commands::ChatCommand.new(verbose: options[:verbose])
+      success = command.execute(prompt, options)
+      
+      exit(1) unless success
     end
 
     # Initialize .railsplan/ for existing Rails projects
@@ -603,6 +638,7 @@ module RailsPlan
       say("  railsplan init                 # Initialize existing Rails app")
       say("  railsplan index                # Index Rails app context for AI")
       say("  railsplan generate \"desc\"      # Generate code with AI")
+      say("  railsplan chat                 # Interactive AI chat for testing")
       say("  railsplan evolve \"desc\"       # AI-powered application evolution")
       say("  railsplan refactor <path>      # Refactor files with AI")
       say("  railsplan explain <path>       # Explain code in plain English")
