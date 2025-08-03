@@ -13,6 +13,7 @@ require "railsplan/config"
 require "railsplan/ai_config"
 require "railsplan/context_manager"
 require "railsplan/ai_generator"
+require "railsplan/ai"
 
 # Main module for RailsPlan gem
 module RailsPlan
