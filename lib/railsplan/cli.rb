@@ -554,7 +554,38 @@ module RailsPlan
       end
     end
 
-    # Enhanced doctor command for validation, debugging, and AI analysis
+    # Verify command for CI validation
+    desc "verify", "Verify railsplan app integrity and generated code"
+    long_desc <<-LONGDESC
+      Verify the integrity of railsplan applications and generated code.
+      
+      This command checks:
+        - Context freshness and consistency
+        - No undocumented diffs in generated files
+        - Prompt logs consistency
+        - Test coverage for generated code
+        - Module configurations validity
+        
+      In CI mode (--ci), additional checks include:
+        - No stale artifacts
+        - Environment consistency
+        
+      Examples:
+        railsplan verify
+        railsplan verify --ci
+    LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
+    def verify
+      RailsPlan.logger.info("Running verify command")
+      
+      require "railsplan/commands/verify_command"
+      command = RailsPlan::Commands::VerifyCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
+
+    # Doctor command for validation, debugging, and AI analysis
     desc "doctor", "Run comprehensive diagnostics including AI-powered analysis"
     long_desc <<-LONGDESC
       Run comprehensive diagnostics to validate your setup and analyze code quality.
@@ -571,17 +602,26 @@ module RailsPlan
         - Security issues and best practices
         - AI-powered code quality analysis (if configured)
         
+      In CI mode (--ci), additional checks include:
+        - Schema integrity validation
+        - railsplan context validation
+        - Uncommitted changes in .railsplan/ directory
+        
       Examples:
+        railsplan doctor
         railsplan doctor                      # Run all diagnostics
         railsplan doctor --fix                # Fix automatically fixable issues
         railsplan doctor --report=markdown   # Generate markdown report
         railsplan doctor --report=json       # Generate JSON report
+        railsplan doctor --ci
     LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
     option :fix, type: :boolean, desc: "Automatically fix identified issues where possible"
     option :report, desc: "Generate report in specified format (markdown, json)"
     def doctor
       RailsPlan.logger.info("Running enhanced doctor command")
       
+      require "railsplan/commands/doctor_command"
       command = RailsPlan::Commands::DoctorCommand.new(verbose: options[:verbose])
       success = command.execute(options)
       
@@ -639,6 +679,8 @@ module RailsPlan
       say("  railsplan doctor               # Run comprehensive diagnostics")
       say("  railsplan add MODULE           # Add module to existing app")
       say("  railsplan list                 # List available modules")
+      say("  railsplan verify               # Verify app integrity")
+      say("  railsplan doctor               # Run diagnostics")
       say("  railsplan server               # Start Rails server (passthrough)")
       say("  railsplan console              # Start Rails console (passthrough)")
       say("  railsplan routes               # Show Rails routes (passthrough)")
