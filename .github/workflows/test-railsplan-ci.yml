@@ -1,0 +1,17 @@
+name: Test RailsPlan CI Action
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/railsplan-ci.yml'
+      - 'lib/railsplan/commands/**'
+
+jobs:
+  test-railsplan-ci:
+    uses: ./.github/workflows/railsplan-ci.yml
+    with:
+      ruby_version: "3.3.0"
+      rails_version: "7.2.2"
+      postgres_version: "16"
+      fail_fast: false

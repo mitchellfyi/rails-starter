@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'base_command'
+require 'fileutils'
 require 'railsplan/context_manager'
 require 'railsplan/ai_generator'
 require 'railsplan/ai_config'
@@ -21,7 +22,13 @@ module RailsPlan
       end
       
       def execute(options = {})
-        puts '🏥 Running comprehensive application diagnostics...'
+        ci_mode = options[:ci] || false
+        
+        if ci_mode
+          puts '🏥 Running railsplan CI diagnostics...'
+        else
+          puts '🏥 Running system diagnostics...'
+        end
         
         # Basic system checks
         results = []
@@ -31,7 +38,7 @@ module RailsPlan
         results << check_environment_variables
         results << check_pending_migrations
         results << check_module_integrity
-        
+      
         # Enhanced Rails application checks
         if rails_app?
           puts "\n🔍 Scanning Rails application for issues..."
@@ -48,6 +55,15 @@ module RailsPlan
             results << run_ai_analysis
           end
         end
+          
+        # Additional CI-specific checks
+        if ci_mode
+          results << check_schema_integrity
+          results << check_railsplan_context
+          results << check_uncommitted_railsplan_changes
+        end
+        
+        puts "\n🏥 Diagnostics complete"
         
         # Display results
         display_results(options)
@@ -64,9 +80,21 @@ module RailsPlan
           puts "\n❌ #{failed_checks} check(s) failed"
           puts "💡 Run with --verbose for detailed suggestions"
           puts "💡 Use --fix to automatically fix some issues"
+          
+          # Generate CI report
+          if ci_mode
+            generate_ci_report(results, failed_checks)
+          end
+          
           false
         else
           puts "\n✅ All checks passed"
+          
+          # Generate CI report for successful run too
+          if ci_mode
+            generate_ci_report(results, failed_checks)
+          end
+
           true
         end
       end
@@ -160,6 +188,136 @@ module RailsPlan
         end
         
         integrity_ok
+      end
+
+      # CI-specific checks
+      def check_schema_integrity
+        puts "\nChecking schema integrity:"
+        
+        # Check if schema.rb can be loaded
+        if File.exist?('db/schema.rb')
+          puts "✅ Schema file found"
+          
+          # Try to validate schema loading in test environment
+          begin
+            # This is a simple syntax check, not a full load
+            schema_content = File.read('db/schema.rb')
+            if schema_content.include?('ActiveRecord::Schema')
+              puts "✅ Schema file appears valid"
+              true
+            else
+              puts "❌ Schema file doesn't appear to be a valid Rails schema"
+              false
+            end
+          rescue => e
+            puts "❌ Schema file validation failed: #{e.message}"
+            false
+          end
+        else
+          puts "⚠️  No schema.rb file found"
+          false
+        end
+      end
+
+      def check_railsplan_context
+        puts "\nChecking railsplan context:"
+        
+        context_file = '.railsplan/context.json'
+        if File.exist?(context_file)
+          begin
+            context = JSON.parse(File.read(context_file))
+            
+            # Check for required fields
+            required_fields = %w[generated_at app_name models schema hash]
+            missing_fields = required_fields.reject { |field| context.key?(field) }
+            
+            if missing_fields.empty?
+              puts "✅ railsplan context is valid"
+              
+              # Check if context is recent (not older than 7 days)
+              begin
+                require 'time'
+                generated_at = Time.parse(context['generated_at'])
+                if Time.now - generated_at < 7 * 24 * 60 * 60 # 7 days
+                  puts "✅ railsplan context is recent"
+                  true
+                else
+                  puts "⚠️  railsplan context is older than 7 days - consider running 'railsplan index'"
+                  true # Not a failure, just a warning
+                end
+              rescue => e
+                puts "⚠️  Could not parse context timestamp: #{e.message}"
+                true # Don't fail for timestamp parsing issues
+              end
+            else
+              puts "❌ railsplan context missing required fields: #{missing_fields.join(', ')}"
+              false
+            end
+          rescue JSON::ParserError
+            puts "❌ railsplan context file is corrupted (invalid JSON)"
+            false
+          rescue => e
+            puts "❌ Error reading railsplan context: #{e.message}"
+            false
+          end
+        else
+          puts "⚠️  No railsplan context found - run 'railsplan index' to generate"
+          false
+        end
+      end
+
+      def check_uncommitted_railsplan_changes
+        puts "\nChecking for uncommitted railsplan changes:"
+        
+        railsplan_dir = '.railsplan'
+        return true unless Dir.exist?(railsplan_dir)
+        
+        # Check if we're in a git repository
+        return true unless Dir.exist?('.git')
+        
+        # Use git to check for uncommitted changes in .railsplan directory
+        begin
+          # Check for staged changes
+          staged_output = `git diff --cached --name-only #{railsplan_dir}/ 2>/dev/null`.strip
+          # Check for unstaged changes  
+          unstaged_output = `git diff --name-only #{railsplan_dir}/ 2>/dev/null`.strip
+          # Check for untracked files
+          untracked_output = `git ls-files --others --exclude-standard #{railsplan_dir}/ 2>/dev/null`.strip
+          
+          if staged_output.empty? && unstaged_output.empty? && untracked_output.empty?
+            puts "✅ No uncommitted changes in .railsplan/"
+            true
+          else
+            puts "❌ Uncommitted changes found in .railsplan/ directory:"
+            puts "  Staged: #{staged_output.split("\n").join(', ')}" unless staged_output.empty?
+            puts "  Unstaged: #{unstaged_output.split("\n").join(', ')}" unless unstaged_output.empty?
+            puts "  Untracked: #{untracked_output.split("\n").join(', ')}" unless untracked_output.empty?
+            puts "  Please commit these changes before running CI"
+            false
+          end
+        rescue => e
+          puts "⚠️  Could not check git status: #{e.message}"
+          true # Don't fail CI for git issues
+        end
+      end
+
+      def generate_ci_report(results, failed_checks)
+        # Ensure .railsplan directory exists
+        FileUtils.mkdir_p('.railsplan')
+        
+        report = {
+          timestamp: Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+          total_checks: results.length,
+          failed_checks: failed_checks,
+          passed_checks: results.length - failed_checks,
+          status: failed_checks > 0 ? 'failed' : 'passed',
+          ruby_version: RUBY_VERSION,
+          railsplan_version: defined?(RailsPlan::VERSION) ? RailsPlan::VERSION : 'unknown'
+        }
+        
+        report_file = '.railsplan/doctor_report.json'
+        File.write(report_file, JSON.pretty_generate(report))
+        puts "📊 CI report generated: #{report_file}"
       end
       
       def rails_app?
@@ -511,13 +669,68 @@ module RailsPlan
         # Implement basic fixes for common issues
         case issue[:category]
         when 'test'
-          # Could generate basic test templates
+          # Generate tests for missing test files
+          if issue[:description].include?('Missing tests for')
+            file_path = issue[:description].match(/Missing tests for (.+)/)[1]
+            return generate_test_for_file(file_path)
+          end
           false
         when 'performance'
           # Could suggest index additions
           false
         else
           false
+        end
+      end
+      
+      def generate_test_for_file(file_path)
+        puts "  🤖 Generating test for #{file_path}..."
+        
+        begin
+          # Determine what kind of test to generate based on file path
+          if file_path.include?('app/models/')
+            test_instruction = "Test #{File.basename(file_path, '.rb')} model validations, associations, and methods"
+            test_type = "model"
+          elsif file_path.include?('app/controllers/')
+            controller_name = File.basename(file_path, '.rb').gsub('_controller', '')
+            test_instruction = "Test #{controller_name} controller actions and responses"
+            test_type = "controller"
+          else
+            test_instruction = "Test #{File.basename(file_path, '.rb')} functionality"
+            test_type = "unit"
+          end
+          
+          # Check if AI is configured
+          unless @ai_config.configured?
+            puts "    ⚠️  AI not configured - cannot auto-generate tests"
+            return false
+          end
+          
+          # Use test generation command
+          require "railsplan/commands/test_generate_command"
+          test_command = TestGenerateCommand.new(verbose: false)
+          
+          # Generate test with forced approval and no prompts
+          options = { 
+            force: true, 
+            type: test_type, 
+            silent: true,
+            profile: "default"
+          }
+          
+          success = test_command.execute(test_instruction, options)
+          
+          if success
+            puts "    ✅ Generated test for #{file_path}"
+            return true
+          else
+            puts "    ❌ Failed to generate test for #{file_path}"
+            return false
+          end
+          
+        rescue => e
+          puts "    ❌ Error generating test: #{e.message}"
+          return false
         end
       end
       

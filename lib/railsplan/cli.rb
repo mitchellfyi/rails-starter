@@ -94,6 +94,7 @@ module RailsPlan
       
       Subcommands:
         docs [TYPE]     - Generate comprehensive documentation for the Rails app
+        test "desc"     - Generate Rails tests from natural language descriptions
       
       For AI code generation:
         1. Parse the instruction using an LLM
@@ -102,6 +103,12 @@ module RailsPlan
         4. Prompt user to confirm or modify output before writing
         5. Optionally add AI-generated views (Hotwire/Tailwind)
         6. Log all prompt/response history
+        
+      For test generation:
+        1. Auto-detect test type: system, request, model, job, etc.
+        2. Generate fully working test code (RSpec or Minitest)
+        3. Include realistic test steps and assertions
+        4. Match Rails conventions and project structure
         
       For documentation generation:
         1. Analyze the Rails application structure
@@ -113,6 +120,8 @@ module RailsPlan
       Examples:
         railsplan generate "Add a Project model with title, description, and user association"
         railsplan generate "Create a blog system with posts and comments" --profile=test
+        railsplan generate test "User signs up with email and password"
+        railsplan generate test "API returns user data" --type=request
         railsplan generate docs
         railsplan generate docs schema --overwrite
         railsplan generate docs --dry-run
@@ -124,6 +133,8 @@ module RailsPlan
     option :dry_run, type: :boolean, desc: "Preview changes without writing files"
     option :silent, type: :boolean, desc: "Suppress output for CI usage"
     option :format, desc: "Expected output format (markdown, ruby, json, html_partial)"
+    option :type, desc: "Override test type (model|request|system|job|controller|integration|unit)"
+    option :validate, type: :boolean, desc: "Validate generated test files with syntax check"
     def generate(*args)
       RailsPlan.logger.info("Running generate command with args: #{args.join(' ')}")
       
@@ -137,6 +148,23 @@ module RailsPlan
         
         command = RailsPlan::Commands::DocsCommand.new(verbose: options[:verbose])
         success = command.execute(docs_type, options)
+        
+        exit(1) unless success
+      elsif args.first == "test"
+        # Handle test generation
+        require "railsplan/commands/test_generate_command"
+        
+        # Parse the test instruction (e.g., ["test", "User", "signs", "up"] -> "User signs up")
+        test_instruction = args[1..-1].join(' ')
+        
+        if test_instruction.empty?
+          puts "❌ Test instruction required"
+          puts "Example: railsplan generate test \"User signs up with email and password\""
+          exit(1)
+        end
+        
+        command = RailsPlan::Commands::TestGenerateCommand.new(verbose: options[:verbose])
+        success = command.execute(test_instruction, options)
         
         exit(1) unless success
       else
@@ -561,7 +589,38 @@ module RailsPlan
       end
     end
 
-    # Enhanced doctor command for validation, debugging, and AI analysis
+    # Verify command for CI validation
+    desc "verify", "Verify railsplan app integrity and generated code"
+    long_desc <<-LONGDESC
+      Verify the integrity of railsplan applications and generated code.
+      
+      This command checks:
+        - Context freshness and consistency
+        - No undocumented diffs in generated files
+        - Prompt logs consistency
+        - Test coverage for generated code
+        - Module configurations validity
+        
+      In CI mode (--ci), additional checks include:
+        - No stale artifacts
+        - Environment consistency
+        
+      Examples:
+        railsplan verify
+        railsplan verify --ci
+    LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
+    def verify
+      RailsPlan.logger.info("Running verify command")
+      
+      require "railsplan/commands/verify_command"
+      command = RailsPlan::Commands::VerifyCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
+
+    # Doctor command for validation, debugging, and AI analysis
     desc "doctor", "Run comprehensive diagnostics including AI-powered analysis"
     long_desc <<-LONGDESC
       Run comprehensive diagnostics to validate your setup and analyze code quality.
@@ -578,17 +637,26 @@ module RailsPlan
         - Security issues and best practices
         - AI-powered code quality analysis (if configured)
         
+      In CI mode (--ci), additional checks include:
+        - Schema integrity validation
+        - railsplan context validation
+        - Uncommitted changes in .railsplan/ directory
+        
       Examples:
+        railsplan doctor
         railsplan doctor                      # Run all diagnostics
         railsplan doctor --fix                # Fix automatically fixable issues
         railsplan doctor --report=markdown   # Generate markdown report
         railsplan doctor --report=json       # Generate JSON report
+        railsplan doctor --ci
     LONGDESC
+    option :ci, type: :boolean, desc: "Run in CI mode with additional validation"
     option :fix, type: :boolean, desc: "Automatically fix identified issues where possible"
     option :report, desc: "Generate report in specified format (markdown, json)"
     def doctor
       RailsPlan.logger.info("Running enhanced doctor command")
       
+      require "railsplan/commands/doctor_command"
       command = RailsPlan::Commands::DoctorCommand.new(verbose: options[:verbose])
       success = command.execute(options)
       
@@ -639,6 +707,7 @@ module RailsPlan
       say("  railsplan index                # Index Rails app context for AI")
       say("  railsplan generate \"desc\"      # Generate code with AI")
       say("  railsplan chat                 # Interactive AI chat for testing")
+      say("  railsplan generate test \"desc\" # Generate tests with AI")
       say("  railsplan evolve \"desc\"       # AI-powered application evolution")
       say("  railsplan refactor <path>      # Refactor files with AI")
       say("  railsplan explain <path>       # Explain code in plain English")
@@ -646,6 +715,8 @@ module RailsPlan
       say("  railsplan doctor               # Run comprehensive diagnostics")
       say("  railsplan add MODULE           # Add module to existing app")
       say("  railsplan list                 # List available modules")
+      say("  railsplan verify               # Verify app integrity")
+      say("  railsplan doctor               # Run diagnostics")
       say("  railsplan server               # Start Rails server (passthrough)")
       say("  railsplan console              # Start Rails console (passthrough)")
       say("  railsplan routes               # Show Rails routes (passthrough)")
