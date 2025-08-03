@@ -511,13 +511,68 @@ module RailsPlan
         # Implement basic fixes for common issues
         case issue[:category]
         when 'test'
-          # Could generate basic test templates
+          # Generate tests for missing test files
+          if issue[:description].include?('Missing tests for')
+            file_path = issue[:description].match(/Missing tests for (.+)/)[1]
+            return generate_test_for_file(file_path)
+          end
           false
         when 'performance'
           # Could suggest index additions
           false
         else
           false
+        end
+      end
+      
+      def generate_test_for_file(file_path)
+        puts "  🤖 Generating test for #{file_path}..."
+        
+        begin
+          # Determine what kind of test to generate based on file path
+          if file_path.include?('app/models/')
+            test_instruction = "Test #{File.basename(file_path, '.rb')} model validations, associations, and methods"
+            test_type = "model"
+          elsif file_path.include?('app/controllers/')
+            controller_name = File.basename(file_path, '.rb').gsub('_controller', '')
+            test_instruction = "Test #{controller_name} controller actions and responses"
+            test_type = "controller"
+          else
+            test_instruction = "Test #{File.basename(file_path, '.rb')} functionality"
+            test_type = "unit"
+          end
+          
+          # Check if AI is configured
+          unless @ai_config.configured?
+            puts "    ⚠️  AI not configured - cannot auto-generate tests"
+            return false
+          end
+          
+          # Use test generation command
+          require "railsplan/commands/test_generate_command"
+          test_command = TestGenerateCommand.new(verbose: false)
+          
+          # Generate test with forced approval and no prompts
+          options = { 
+            force: true, 
+            type: test_type, 
+            silent: true,
+            profile: "default"
+          }
+          
+          success = test_command.execute(test_instruction, options)
+          
+          if success
+            puts "    ✅ Generated test for #{file_path}"
+            return true
+          else
+            puts "    ❌ Failed to generate test for #{file_path}"
+            return false
+          end
+          
+        rescue => e
+          puts "    ❌ Error generating test: #{e.message}"
+          return false
         end
       end
       
