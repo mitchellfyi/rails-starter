@@ -93,6 +93,7 @@ module RailsPlan
       
       Subcommands:
         docs [TYPE]     - Generate comprehensive documentation for the Rails app
+        test "desc"     - Generate Rails tests from natural language descriptions
       
       For AI code generation:
         1. Parse the instruction using an LLM
@@ -101,6 +102,12 @@ module RailsPlan
         4. Prompt user to confirm or modify output before writing
         5. Optionally add AI-generated views (Hotwire/Tailwind)
         6. Log all prompt/response history
+        
+      For test generation:
+        1. Auto-detect test type: system, request, model, job, etc.
+        2. Generate fully working test code (RSpec or Minitest)
+        3. Include realistic test steps and assertions
+        4. Match Rails conventions and project structure
         
       For documentation generation:
         1. Analyze the Rails application structure
@@ -112,6 +119,8 @@ module RailsPlan
       Examples:
         railsplan generate "Add a Project model with title, description, and user association"
         railsplan generate "Create a blog system with posts and comments" --profile=test
+        railsplan generate test "User signs up with email and password"
+        railsplan generate test "API returns user data" --type=request
         railsplan generate docs
         railsplan generate docs schema --overwrite
         railsplan generate docs --dry-run
@@ -122,6 +131,8 @@ module RailsPlan
     option :overwrite, type: :boolean, desc: "Overwrite existing documentation files"
     option :dry_run, type: :boolean, desc: "Preview changes without writing files"
     option :silent, type: :boolean, desc: "Suppress output for CI usage"
+    option :type, desc: "Override test type (model|request|system|job|controller|integration|unit)"
+    option :validate, type: :boolean, desc: "Validate generated test files with syntax check"
     def generate(*args)
       RailsPlan.logger.info("Running generate command with args: #{args.join(' ')}")
       
@@ -135,6 +146,23 @@ module RailsPlan
         
         command = RailsPlan::Commands::DocsCommand.new(verbose: options[:verbose])
         success = command.execute(docs_type, options)
+        
+        exit(1) unless success
+      elsif args.first == "test"
+        # Handle test generation
+        require "railsplan/commands/test_generate_command"
+        
+        # Parse the test instruction (e.g., ["test", "User", "signs", "up"] -> "User signs up")
+        test_instruction = args[1..-1].join(' ')
+        
+        if test_instruction.empty?
+          puts "❌ Test instruction required"
+          puts "Example: railsplan generate test \"User signs up with email and password\""
+          exit(1)
+        end
+        
+        command = RailsPlan::Commands::TestGenerateCommand.new(verbose: options[:verbose])
+        success = command.execute(test_instruction, options)
         
         exit(1) unless success
       else
@@ -603,6 +631,7 @@ module RailsPlan
       say("  railsplan init                 # Initialize existing Rails app")
       say("  railsplan index                # Index Rails app context for AI")
       say("  railsplan generate \"desc\"      # Generate code with AI")
+      say("  railsplan generate test \"desc\" # Generate tests with AI")
       say("  railsplan evolve \"desc\"       # AI-powered application evolution")
       say("  railsplan refactor <path>      # Refactor files with AI")
       say("  railsplan explain <path>       # Explain code in plain English")
