@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="turbo-cache-control" content="no-cache" />
+    <meta name="description" content="Rails SaaS Starter Template - Production-ready Rails application with AI-native features and modular architecture" />
     
     <title><%= full_title(content_for(:title)) %></title>
     
@@ -21,14 +22,20 @@
   </head>
 
   <body class="h-full">
+    <!-- Skip Links for Accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white p-2 rounded z-50">Skip to main content</a>
+    <a href="#main-navigation" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-32 bg-blue-600 text-white p-2 rounded z-50">Skip to navigation</a>
+    
     <!-- Main Navigation -->
     <% if user_signed_in? %>
-      <%= render NavigationComponent.new(
-            current_user: current_user,
-            current_workspace: @current_workspace,
-            show_workspace_switcher: defined?(@current_workspace),
-            show_notifications: true
-          ) %>
+      <nav id="main-navigation" aria-label="Main navigation">
+        <%= render NavigationComponent.new(
+              current_user: current_user,
+              current_workspace: @current_workspace,
+              show_workspace_switcher: defined?(@current_workspace),
+              show_notifications: true
+            ) %>
+      </nav>
     <% end %>
 
     <!-- Flash Messages -->
@@ -44,7 +51,7 @@
     <% end %>
 
     <!-- Main Content Area -->
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
       <% if content_for?(:hero) %>
         <!-- Hero Section -->
         <div class="bg-white">

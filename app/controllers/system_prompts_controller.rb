@@ -56,16 +56,18 @@ class SystemPromptsController < ApplicationController
   end
 
   def clone
-    target_workspace_id = params[:target_workspace_id]
+    clone_params = params.permit(:target_workspace_id, :new_name)
+    target_workspace_id = clone_params[:target_workspace_id]
     target_workspace = target_workspace_id.present? ? Workspace.find(target_workspace_id) : nil
     
-    cloned_prompt = @system_prompt.clone!(params[:new_name], target_workspace)
+    cloned_prompt = @system_prompt.clone!(clone_params[:new_name], target_workspace)
     redirect_to system_prompt_path(cloned_prompt), notice: 'System prompt has been cloned.'
   end
 
   def diff
-    @system_prompt = SystemPrompt.find(params[:id])
-    @version_id = params[:version_id]
+    @system_prompt = SystemPrompt.find(params.require(:id))
+    diff_params = params.permit(:version_id)
+    @version_id = diff_params[:version_id]
     @diff = @system_prompt.diff_with_version(@version_id)
     
     if @diff.nil?
@@ -74,7 +76,7 @@ class SystemPromptsController < ApplicationController
   end
 
   def new_version
-    @original_prompt = SystemPrompt.find(params[:id])
+    @original_prompt = SystemPrompt.find(params.require(:id))
     @system_prompt = @original_prompt.create_new_version!
     redirect_to edit_system_prompt_path(@system_prompt), 
                 notice: 'New version created. You can now edit it.'
@@ -83,11 +85,12 @@ class SystemPromptsController < ApplicationController
   private
 
   def set_system_prompt
-    @system_prompt = SystemPrompt.find(params[:id])
+    @system_prompt = SystemPrompt.find(params.require(:id))
   end
 
   def set_workspace
-    @workspace = params[:workspace_id].present? ? Workspace.find(params[:workspace_id]) : nil
+    workspace_params = params.permit(:workspace_id)
+    @workspace = workspace_params[:workspace_id].present? ? Workspace.find(workspace_params[:workspace_id]) : nil
   end
 
   def system_prompt_params
@@ -98,8 +101,9 @@ class SystemPromptsController < ApplicationController
     
     # Convert textarea inputs to arrays
     %w[associated_roles associated_functions associated_agents].each do |field|
-      if params[:system_prompt][field].is_a?(String)
-        params_hash[field] = params[:system_prompt][field].split("\n").map(&:strip).reject(&:blank?)
+      raw_param = params.dig(:system_prompt, field)
+      if raw_param.is_a?(String)
+        params_hash[field] = raw_param.split("\n").map(&:strip).reject(&:blank?)
       end
     end
     

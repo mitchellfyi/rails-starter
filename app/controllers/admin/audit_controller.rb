@@ -3,26 +3,27 @@
 class Admin::AuditController < Admin::BaseController
   def index
     @audit_logs = AuditLog.recent.includes(:user)
+    filter_params = audit_filter_params
     
-    # Apply filters
-    @audit_logs = @audit_logs.where(action: params[:action_type]) if params[:action_type].present?
-    @audit_logs = @audit_logs.where(resource_type: params[:resource_type]) if params[:resource_type].present?
-    @audit_logs = @audit_logs.where(user_id: params[:user_id]) if params[:user_id].present?
+    # Apply filters using strong parameters
+    @audit_logs = @audit_logs.where(action: filter_params[:action_type]) if filter_params[:action_type].present?
+    @audit_logs = @audit_logs.where(resource_type: filter_params[:resource_type]) if filter_params[:resource_type].present?
+    @audit_logs = @audit_logs.where(user_id: filter_params[:user_id]) if filter_params[:user_id].present?
     
-    if params[:start_date].present? && params[:end_date].present?
-      @audit_logs = @audit_logs.where(created_at: Date.parse(params[:start_date])..Date.parse(params[:end_date]))
+    if filter_params[:start_date].present? && filter_params[:end_date].present?
+      @audit_logs = @audit_logs.where(created_at: Date.parse(filter_params[:start_date])..Date.parse(filter_params[:end_date]))
     end
     
     # Search functionality
-    if params[:search].present?
-      search_term = "%#{params[:search]}%"
+    if filter_params[:search].present?
+      search_term = "%#{filter_params[:search]}%"
       @audit_logs = @audit_logs.where(
         "description ILIKE ? OR metadata::text ILIKE ?", 
         search_term, search_term
       )
     end
     
-    @audit_logs = @audit_logs.page(params[:page])
+    @audit_logs = @audit_logs.page(filter_params[:page])
     
     # For filter dropdowns
     @users = User.all.order(:email) if defined?(User)
@@ -32,5 +33,11 @@ class Admin::AuditController < Admin::BaseController
 
   def show
     @audit_log = AuditLog.find(params[:id])
+  end
+
+  private
+
+  def audit_filter_params
+    params.permit(:action_type, :resource_type, :user_id, :start_date, :end_date, :search, :page)
   end
 end
