@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RailsPlan Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .card { @apply bg-white rounded-lg shadow border p-6; }
+      .stat-card { @apply bg-white p-6 rounded-lg shadow border; }
+      .btn { @apply inline-flex items-center px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2; }
+      .btn-primary { @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500; }
+      .btn-secondary { @apply bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500; }
+      .btn-icon { @apply h-4 w-4 mr-2; }
+      .alert-warning { @apply bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded; }
+      .alert-info { @apply bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded; }
+      .status-online { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800; }
+      .status-warning { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800; }
+      .status-offline { @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800; }
+    </style>
+  </head>
+
+  <body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <h1 class="text-xl font-bold text-gray-900">RailsPlan</h1>
+            </div>
+            <div class="hidden md:ml-8 md:flex md:space-x-8">
+              <%= link_to "Dashboard", railsplan_web.root_path, class: "text-gray-900 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path == railsplan_web.root_path}" %>
+              <%= link_to "Schema", railsplan_web.schema_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path.start_with?(railsplan_web.schema_path)}" %>
+              <%= link_to "Generate", railsplan_web.generate_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path.start_with?(railsplan_web.generate_path)}" %>
+              <%= link_to "Prompts", railsplan_web.prompts_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path.start_with?(railsplan_web.prompts_path)}" %>
+              <%= link_to "Doctor", railsplan_web.doctor_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path.start_with?(railsplan_web.doctor_path)}" %>
+              <%= link_to "Chat", railsplan_web.chat_path, class: "text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium #{'border-b-2 border-blue-500' if request.path.start_with?(railsplan_web.chat_path)}" %>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <% if defined?(current_user) && current_user %>
+              <span class="text-sm text-gray-500">Welcome, <%= current_user.email %></span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <!-- Flash Messages -->
+      <% if flash.any? %>
+        <div class="mb-6">
+          <% flash.each do |type, message| %>
+            <div class="alert-<%= type == 'notice' ? 'info' : 'warning' %> mb-4">
+              <%= message %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <%= yield %>
+    </main>
+  </body>
+</html>
