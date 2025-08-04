@@ -5,6 +5,7 @@ require 'fileutils'
 require 'railsplan/context_manager'
 require 'railsplan/ai_generator'
 require 'railsplan/ai_config'
+require 'railsplan/validator'
 require 'railsplan/string_extensions'
 require 'yaml'
 require 'json'
@@ -17,6 +18,7 @@ module RailsPlan
         super
         @context_manager = ContextManager.new
         @ai_config = AIConfig.new
+        @validator = Validator.new(logger: RailsPlan.logger)
         @issues = []
         @fixable_issues = []
       end
@@ -38,6 +40,11 @@ module RailsPlan
         results << check_environment_variables
         results << check_pending_migrations
         results << check_module_integrity
+        
+        # Enhanced module validation
+        puts "\n🔍 Validating module completeness..."
+        module_results = run_module_validation
+        results << (module_results[:overall_passed])
       
         # Enhanced Rails application checks
         if rails_app?
@@ -55,7 +62,12 @@ module RailsPlan
             results << run_ai_analysis
           end
         end
-          
+        
+        # System consistency validation
+        puts "\n🔧 Validating system consistency..."
+        consistency_result = @validator.validate_system_consistency
+        results << consistency_result[:passed]
+        
         # Additional CI-specific checks
         if ci_mode
           results << check_schema_integrity
@@ -66,13 +78,13 @@ module RailsPlan
         puts "\n🏥 Diagnostics complete"
         
         # Display results
-        display_results(options)
+        display_results(options, module_results, consistency_result)
         
         # Handle options
         if options[:fix] && @fixable_issues.any?
           fix_issues(options)
         elsif options[:report]
-          generate_report(options[:report])
+          generate_report(options[:report], module_results, consistency_result)
         end
         
         failed_checks = results.count(false)
@@ -83,7 +95,7 @@ module RailsPlan
           
           # Generate CI report
           if ci_mode
-            generate_ci_report(results, failed_checks)
+            generate_ci_report(results, failed_checks, module_results)
           end
           
           false
@@ -92,7 +104,7 @@ module RailsPlan
           
           # Generate CI report for successful run too
           if ci_mode
-            generate_ci_report(results, failed_checks)
+            generate_ci_report(results, failed_checks, module_results)
           end
 
           true
@@ -100,6 +112,35 @@ module RailsPlan
       end
 
       private
+
+      def run_module_validation
+        module_results = @validator.validate_all_modules
+        overall_passed = true
+        
+        if module_results.empty?
+          puts "ℹ️  No modules found to validate"
+          return { overall_passed: true, modules: {} }
+        end
+        
+        module_results.each do |module_name, result|
+          if result[:passed]
+            puts "✅ Module #{module_name}: passed validation"
+          else
+            puts "❌ Module #{module_name}: failed validation"
+            overall_passed = false
+            
+            result[:errors].each do |error|
+              add_issue("Module #{module_name}: #{error}", 'error', false)
+            end
+            
+            result[:warnings].each do |warning|
+              add_issue("Module #{module_name}: #{warning}", 'warning', true)
+            end
+          end
+        end
+        
+        { overall_passed: overall_passed, modules: module_results }
+      end
 
       def check_ruby_version
         puts "Ruby version: #{RUBY_VERSION}"
@@ -301,7 +342,7 @@ module RailsPlan
         end
       end
 
-      def generate_ci_report(results, failed_checks)
+      def generate_ci_report(results, failed_checks, module_results = {})
         # Ensure .railsplan directory exists
         FileUtils.mkdir_p('.railsplan')
         
@@ -312,7 +353,8 @@ module RailsPlan
           passed_checks: results.length - failed_checks,
           status: failed_checks > 0 ? 'failed' : 'passed',
           ruby_version: RUBY_VERSION,
-          railsplan_version: defined?(RailsPlan::VERSION) ? RailsPlan::VERSION : 'unknown'
+          railsplan_version: defined?(RailsPlan::VERSION) ? RailsPlan::VERSION : 'unknown',
+          module_validation: module_results
         }
         
         report_file = '.railsplan/doctor_report.json'
@@ -628,26 +670,64 @@ module RailsPlan
         end
       end
       
-      def display_results(options)
-        return if @issues.empty?
+      def display_results(options, module_results = {}, consistency_result = {})
+        return if @issues.empty? && module_results.dig(:modules, :empty?) && consistency_result[:errors]&.empty?
         
         puts "\n📋 Issues Summary:"
         puts "━" * 50
         
-        categories = @issues.group_by { |i| i[:category] }
+        # Display module-specific results
+        if module_results[:modules]&.any?
+          puts "\n📦 Module Validation Results:"
+          module_results[:modules].each do |module_name, result|
+            status = result[:passed] ? "✅" : "❌"
+            puts "  #{status} #{module_name}"
+            
+            result[:errors].each do |error|
+              puts "    ❌ #{error}"
+            end
+            
+            result[:warnings].each do |warning|
+              puts "    ⚠️  #{warning}"
+            end
+          end
+        end
         
-        categories.each do |category, issues|
-          puts "\n#{category.humanize}:"
-          issues.each do |issue|
-            puts "  #{severity_icon(issue[:severity])} #{issue[:description]}"
+        # Display system consistency results
+        if consistency_result[:errors]&.any? || consistency_result[:warnings]&.any?
+          puts "\n🔧 System Consistency:"
+          consistency_result[:errors]&.each do |error|
+            puts "  ❌ #{error}"
+          end
+          consistency_result[:warnings]&.each do |warning|
+            puts "  ⚠️  #{warning}"
+          end
+        end
+        
+        # Display general issues
+        if @issues.any?
+          categories = @issues.group_by { |i| i[:category] }
+          
+          categories.each do |category, issues|
+            puts "\n#{category.humanize}:"
+            issues.each do |issue|
+              puts "  #{severity_icon(issue[:severity])} #{issue[:description]}"
+            end
           end
         end
         
         puts "\n━" * 50
-        puts "Total issues: #{@issues.length}"
-        puts "Fixable issues: #{@fixable_issues.length}"
+        total_issues = @issues.length + 
+                      (consistency_result[:errors]&.length || 0) + 
+                      (module_results[:modules]&.values&.sum { |r| r[:errors].length } || 0)
+        total_fixable = @fixable_issues.length + 
+                       (consistency_result[:warnings]&.length || 0) +
+                       (module_results[:modules]&.values&.sum { |r| r[:warnings].length } || 0)
         
-        if @fixable_issues.any?
+        puts "Total issues: #{total_issues}"
+        puts "Fixable issues: #{total_fixable}"
+        
+        if total_fixable > 0
           puts "\n💡 Run 'railsplan doctor --fix' to automatically fix some issues"
           puts "💡 Run 'railsplan fix \"<description>\"' to fix specific issues with AI"
         end
@@ -734,18 +814,18 @@ module RailsPlan
         end
       end
       
-      def generate_report(format)
+      def generate_report(format, module_results = {}, consistency_result = {})
         case format
         when 'markdown'
-          generate_markdown_report
+          generate_markdown_report(module_results, consistency_result)
         when 'json'
-          generate_json_report
+          generate_json_report(module_results, consistency_result)
         else
           puts "❌ Unknown report format: #{format}"
         end
       end
       
-      def generate_markdown_report
+      def generate_markdown_report(module_results = {}, consistency_result = {})
         timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S')
         report_path = "railsplan_doctor_report_#{Time.now.strftime('%Y%m%d_%H%M%S')}.md"
         
@@ -757,29 +837,73 @@ module RailsPlan
         content << "**Fixable Issues**: #{@fixable_issues.length}"
         content << ""
         
-        categories = @issues.group_by { |i| i[:category] }
-        
-        categories.each do |category, issues|
-          content << "## #{category.humanize}"
+        # Module validation results
+        if module_results[:modules]&.any?
+          content << "## Module Validation"
           content << ""
-          
-          issues.each do |issue|
-            severity_emoji = severity_icon(issue[:severity])
-            content << "- #{severity_emoji} #{issue[:description]}"
+          module_results[:modules].each do |module_name, result|
+            status = result[:passed] ? "✅ PASSED" : "❌ FAILED"
+            content << "### #{module_name} - #{status}"
+            content << ""
             
-            if issue[:fix_suggestion]
-              content << "  - **Fix**: #{issue[:fix_suggestion]}"
+            if result[:errors].any?
+              content << "**Errors:**"
+              result[:errors].each { |error| content << "- ❌ #{error}" }
+              content << ""
+            end
+            
+            if result[:warnings].any?
+              content << "**Warnings:**"
+              result[:warnings].each { |warning| content << "- ⚠️  #{warning}" }
+              content << ""
             end
           end
-          
+        end
+        
+        # System consistency results
+        if consistency_result[:errors]&.any? || consistency_result[:warnings]&.any?
+          content << "## System Consistency"
           content << ""
+          
+          if consistency_result[:errors]&.any?
+            content << "**Errors:**"
+            consistency_result[:errors].each { |error| content << "- ❌ #{error}" }
+            content << ""
+          end
+          
+          if consistency_result[:warnings]&.any?
+            content << "**Warnings:**"
+            consistency_result[:warnings].each { |warning| content << "- ⚠️  #{warning}" }
+            content << ""
+          end
+        end
+        
+        # General issues
+        if @issues.any?
+          categories = @issues.group_by { |i| i[:category] }
+          
+          categories.each do |category, issues|
+            content << "## #{category.humanize}"
+            content << ""
+            
+            issues.each do |issue|
+              severity_emoji = severity_icon(issue[:severity])
+              content << "- #{severity_emoji} #{issue[:description]}"
+              
+              if issue[:fix_suggestion]
+                content << "  - **Fix**: #{issue[:fix_suggestion]}"
+              end
+            end
+            
+            content << ""
+          end
         end
         
         File.write(report_path, content.join("\n"))
         puts "📄 Report saved to #{report_path}"
       end
       
-      def generate_json_report
+      def generate_json_report(module_results = {}, consistency_result = {})
         timestamp = Time.now.strftime('%Y-%m-%d %H:%M:%S')
         report_path = "railsplan_doctor_report_#{Time.now.strftime('%Y%m%d_%H%M%S')}.json"
         
@@ -788,6 +912,8 @@ module RailsPlan
           total_issues: @issues.length,
           fixable_issues: @fixable_issues.length,
           issues: @issues,
+          module_validation: module_results,
+          system_consistency: consistency_result,
           summary: @issues.group_by { |i| i[:severity] }.transform_values(&:count)
         }
         
