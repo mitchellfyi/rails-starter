@@ -20,7 +20,7 @@ class TestGenerationIntegrationTest < StandaloneTestCase
     FileUtils.rm_rf(@temp_dir)
   end
   
-  test "generates system test for user signup workflow" do
+  def test_generates_system_test_for_user_signup_workflow
     command = RailsPlan::Commands::TestGenerateCommand.new(verbose: false)
     instruction = "User signs up with email and password"
     

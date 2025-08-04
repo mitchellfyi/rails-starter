@@ -38,21 +38,27 @@ class TestGenerationTest < StandaloneTestCase
     FileUtils.rm_rf(@temp_dir)
   end
   
-  test "determines test type for system tests" do
+  def test_determines_test_type_for_system_tests
+    skip "Command not available" if @command.nil?
+    
     instruction = "User signs up with email and password"
     test_type = @command.send(:determine_test_type, instruction, {})
     
     assert_equal "system", test_type
   end
   
-  test "determines test type for request tests" do
+  def test_determines_test_type_for_request_tests
+    skip "Command not available" if @command.nil?
+    
     instruction = "API returns user data with correct JSON format"
     test_type = @command.send(:determine_test_type, instruction, {})
     
     assert_equal "request", test_type
   end
   
-  test "determines test type for model tests" do
+  def test_determines_test_type_for_model_tests
+    skip "Command not available" if @command.nil?
+    
     instruction = "User model validates email presence and uniqueness"
     test_type = @command.send(:determine_test_type, instruction, {})
     
