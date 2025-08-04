@@ -1,231 +1,185 @@
-<% content_for :layout, 'dashboard' %>
+<%= render Railsplan::UI::SidebarLayoutComponent.new(
+  title: "Dashboard",
+  brand_name: "Rails SaaS",
+  user: { name: "John Doe", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }
+) do %>
+  
+  <div class="px-4 sm:px-6 lg:px-8">
+    <%= render Railsplan::UI::PageHeaderComponent.new(
+      title: "Welcome back, John!",
+      description: "Here's what's happening with your projects today."
+    ) do %>
+      <% content_for :page_actions do %>
+        <%= render Railsplan::UI::ButtonComponent.new(variant: :outline) do %>
+          <svg class="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          New Project
+        <% end %>
+      <% end %>
+    <% end %>
 
-<div class="px-4 sm:px-6 lg:px-8 pb-16 lg:pb-8">
-  <!-- Welcome Header -->
-  <div class="md:flex md:items-center md:justify-between">
-    <div class="min-w-0 flex-1">
-      <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-        Welcome back, John!
-      </h2>
-      <p class="mt-1 text-sm leading-6 text-gray-500">
-        Here's what's happening with your projects today.
-      </p>
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <%= render Railsplan::UI::CardComponent.new(padding: :sm) do %>
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 dark:bg-primary-500">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25H13.19l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4 flex-1">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Projects</p>
+            <div class="flex items-baseline">
+              <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">12</p>
+              <p class="ml-2 flex items-baseline text-sm font-semibold text-success-600 dark:text-success-400">
+                <svg class="h-4 w-4 flex-shrink-0 text-success-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                </svg>
+                <span class="sr-only">Increased by</span>
+                2
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= render Railsplan::UI::CardComponent.new(padding: :sm) do %>
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-success-600">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4 flex-1">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Completed Tasks</p>
+            <div class="flex items-baseline">
+              <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">84</p>
+              <p class="ml-2 flex items-baseline text-sm font-semibold text-success-600 dark:text-success-400">
+                <svg class="h-4 w-4 flex-shrink-0 text-success-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
+                </svg>
+                <span class="sr-only">Increased by</span>
+                12
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= render Railsplan::UI::CardComponent.new(padding: :sm) do %>
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-warning-500">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4 flex-1">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
+            <div class="flex items-baseline">
+              <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">23</p>
+              <p class="ml-2 flex items-baseline text-sm font-semibold text-error-600 dark:text-error-400">
+                <svg class="h-4 w-4 flex-shrink-0 text-error-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd" />
+                </svg>
+                <span class="sr-only">Decreased by</span>
+                3
+              </p>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%= render Railsplan::UI::CardComponent.new(padding: :sm) do %>
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-600">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4 flex-1">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Team Members</p>
+            <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">8</p>
+          </div>
+        </div>
+      <% end %>
     </div>
-    <div class="mt-4 flex md:ml-4 md:mt-0">
-      <button type="button" class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-        <svg class="-ml-0.5 mr-1.5 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-        </svg>
-        New Project
-      </button>
-    </div>
-  </div>
 
-  <!-- Stats Overview -->
-  <div class="mt-8">
-    <dl class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6">
-        <dt>
-          <div class="absolute rounded-md bg-indigo-500 p-3">
-            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25H13.19l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44Z" />
-            </svg>
-          </div>
-          <p class="ml-16 truncate text-sm font-medium text-gray-500">Total Projects</p>
-        </dt>
-        <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
-          <p class="text-2xl font-semibold text-gray-900">12</p>
-          <p class="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-            <svg class="h-5 w-5 flex-shrink-0 self-center text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
-            </svg>
-            <span class="sr-only"> Increased by </span>
-            2
-          </p>
-          <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
-            <div class="text-sm">
-              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">View all</a>
-            </div>
-          </div>
-        </dd>
+    <!-- Quick Actions -->
+    <%= render Railsplan::UI::CardComponent.new(
+      title: "Quick Actions",
+      description: "Common tasks and shortcuts for your workflow."
+    ) do %>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <% [
+          { icon: "folder", label: "New Project" },
+          { icon: "users", label: "Invite Team" },
+          { icon: "document", label: "Generate Report" },
+          { icon: "cog", label: "Settings" }
+        ].each do |action| %>
+          <button type="button" class="group relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+            <%= render "railsplan/ui/icon", name: action[:icon], class: "mx-auto h-8 w-8 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400" %>
+            <span class="mt-2 block text-sm font-medium text-gray-900 dark:text-gray-100"><%= action[:label] %></span>
+          </button>
+        <% end %>
       </div>
+    <% end %>
 
-      <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6">
-        <dt>
-          <div class="absolute rounded-md bg-green-500 p-3">
-            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p class="ml-16 truncate text-sm font-medium text-gray-500">Completed Tasks</p>
-        </dt>
-        <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
-          <p class="text-2xl font-semibold text-gray-900">84</p>
-          <p class="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-            <svg class="h-5 w-5 flex-shrink-0 self-center text-green-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04L10.75 5.612V16.25A.75.75 0 0110 17z" clip-rule="evenodd" />
-            </svg>
-            <span class="sr-only"> Increased by </span>
-            12
-          </p>
-          <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
-            <div class="text-sm">
-              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">View details</a>
-            </div>
-          </div>
-        </dd>
+    <!-- Recent Activity -->
+    <%= render Railsplan::UI::CardComponent.new(
+      title: "Recent Activity",
+      description: "Latest updates from your projects and team."
+    ) do %>
+      <div class="flow-root">
+        <ul role="list" class="-mb-8">
+          <% [
+            { name: "John Doe", action: "Completed \"User Authentication System\"", time: "2 hours ago", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" },
+            { name: "Jane Smith", action: "Added new feature to Mobile App project", time: "4 hours ago", avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b77c?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" },
+            { name: "Michael Wilson", action: "Created new project \"Dashboard Analytics\"", time: "1 day ago", avatar: "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" }
+          ].each_with_index do |activity, index| %>
+            <li>
+              <div class="relative <%= 'pb-8' unless index == 2 %>">
+                <% unless index == 2 %>
+                  <span class="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></span>
+                <% end %>
+                <div class="relative flex space-x-3">
+                  <div>
+                    <img class="h-8 w-8 rounded-full" src="<%= activity[:avatar] %>" alt="<%= activity[:name] %>">
+                  </div>
+                  <div class="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                    <div>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">
+                        <span class="font-medium text-gray-900 dark:text-gray-100"><%= activity[:name] %></span>
+                        <%= activity[:action] %>
+                      </p>
+                    </div>
+                    <div class="whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
+                      <%= activity[:time] %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          <% end %>
+        </ul>
       </div>
-
-      <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6">
-        <dt>
-          <div class="absolute rounded-md bg-yellow-500 p-3">
-            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p class="ml-16 truncate text-sm font-medium text-gray-500">In Progress</p>
-        </dt>
-        <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
-          <p class="text-2xl font-semibold text-gray-900">23</p>
-          <p class="ml-2 flex items-baseline text-sm font-semibold text-red-600">
-            <svg class="h-5 w-5 flex-shrink-0 self-center text-red-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd" />
-            </svg>
-            <span class="sr-only"> Decreased by </span>
-            3
-          </p>
-          <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
-            <div class="text-sm">
-              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">Manage tasks</a>
-            </div>
-          </div>
-        </dd>
-      </div>
-
-      <div class="relative overflow-hidden rounded-lg bg-white px-4 pb-12 pt-5 shadow sm:px-6 sm:pt-6">
-        <dt>
-          <div class="absolute rounded-md bg-purple-500 p-3">
-            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-            </svg>
-          </div>
-          <p class="ml-16 truncate text-sm font-medium text-gray-500">Team Members</p>
-        </dt>
-        <dd class="ml-16 flex items-baseline pb-6 sm:pb-7">
-          <p class="text-2xl font-semibold text-gray-900">8</p>
-          <div class="absolute inset-x-0 bottom-0 bg-gray-50 px-4 py-4 sm:px-6">
-            <div class="text-sm">
-              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">View team</a>
-            </div>
-          </div>
-        </dd>
-      </div>
-    </dl>
-  </div>
-
-  <!-- Quick Actions (Mobile-Optimized) -->
-  <div class="mt-8">
-    <div class="sm:flex sm:items-center">
-      <div class="sm:flex-auto">
-        <h1 class="text-base font-semibold leading-6 text-gray-900">Quick Actions</h1>
-        <p class="mt-2 text-sm text-gray-700">Common tasks and shortcuts for your workflow.</p>
-      </div>
-    </div>
-    <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-      <button type="button" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25H13.19l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44Z" />
-        </svg>
-        <span class="mt-2 block text-sm font-medium text-gray-900">New Project</span>
-      </button>
-
-      <button type="button" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-        </svg>
-        <span class="mt-2 block text-sm font-medium text-gray-900">Invite Team</span>
-      </button>
-
-      <button type="button" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-        </svg>
-        <span class="mt-2 block text-sm font-medium text-gray-900">Generate Report</span>
-      </button>
-
-      <button type="button" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-        <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-        </svg>
-        <span class="mt-2 block text-sm font-medium text-gray-900">Settings</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Recent Activity -->
-  <div class="mt-8">
-    <div class="overflow-hidden bg-white shadow sm:rounded-md">
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-base font-semibold leading-6 text-gray-900">Recent Activity</h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">Latest updates from your projects and team.</p>
-      </div>
-      <ul role="list" class="divide-y divide-gray-200">
-        <li class="px-4 py-4 sm:px-6">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-gray-900">John Doe</p>
-                <p class="truncate text-sm text-gray-500">Completed "User Authentication System"</p>
-              </div>
-            </div>
-            <div class="flex-shrink-0 text-sm text-gray-500">
-              2 hours ago
-            </div>
-          </div>
-        </li>
-        <li class="px-4 py-4 sm:px-6">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1494790108755-2616b612b77c?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-gray-900">Jane Smith</p>
-                <p class="truncate text-sm text-gray-500">Added new feature to Mobile App project</p>
-              </div>
-            </div>
-            <div class="flex-shrink-0 text-sm text-gray-500">
-              4 hours ago
-            </div>
-          </div>
-        </li>
-        <li class="px-4 py-4 sm:px-6">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <img class="h-8 w-8 rounded-full" src="https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="">
-              </div>
-              <div class="ml-4 min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-gray-900">Michael Wilson</p>
-                <p class="truncate text-sm text-gray-500">Created new project "Dashboard Analytics"</p>
-              </div>
-            </div>
-            <div class="flex-shrink-0 text-sm text-gray-500">
-              1 day ago
-            </div>
-          </div>
-        </li>
-      </ul>
-      <div class="bg-gray-50 px-4 py-3 text-right sm:px-6">
-        <a href="#" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+      <div class="mt-6 flex">
+        <%= render Railsplan::UI::ButtonComponent.new(variant: :ghost, href: "#") do %>
           View all activity
-          <span aria-hidden="true"> &rarr;</span>
-        </a>
+          <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        <% end %>
       </div>
-    </div>
+    <% end %>
   </div>
-</div>
+
+<% end %>
