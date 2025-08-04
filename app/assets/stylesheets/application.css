@@ -35,4 +35,17 @@
 /* Component layer for custom component styles */
 @layer components {
   /* ViewComponent styles will be injected here */
+  
+  /* Prose styles for documentation with better dark mode support */
+  .prose code {
+    @apply text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1.5 py-0.5 rounded-md;
+  }
+  
+  .prose pre {
+    @apply bg-gray-900 dark:bg-gray-950 text-gray-100 p-4 rounded-lg overflow-x-auto;
+  }
+  
+  .prose pre code {
+    @apply bg-transparent text-gray-100 p-0;
+  }
 }

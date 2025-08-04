@@ -123,4 +123,26 @@ module ApplicationHelper
       end
     end
   end
+
+  # Helper methods for docs navigation
+  def docs_navigation_items
+    []
+  end
+
+  def docs_table_of_contents  
+    []
+  end
+
+  # Markdown helper
+  def markdown_to_html(content)
+    return '' unless content.present?
+    
+    # Simple markdown conversion - in production you'd use a proper markdown processor
+    content.gsub(/^### (.*$)/, '<h3>\1</h3>')
+           .gsub(/^## (.*$)/, '<h2>\1</h2>')
+           .gsub(/^# (.*$)/, '<h1>\1</h1>')
+           .gsub(/\*\*(.*?)\*\*/, '<strong>\1</strong>')
+           .gsub(/\*(.*?)\*/, '<em>\1</em>')
+           .gsub(/`(.*?)`/, '<code>\1</code>')
+  end
 end

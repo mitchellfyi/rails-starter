@@ -14,6 +14,43 @@ class HomeController < ApplicationController
     @sidebar_sections = documentation_sidebar_sections
   end
 
+  def docs_navigation_items
+    [
+      {
+        label: "Getting Started",
+        href: "/docs",
+        current: @doc_path == 'README',
+        children: [
+          { label: "Setup Guide", href: "/docs/setup", current: @doc_path == 'setup' },
+          { label: "Configuration", href: "/docs/configuration", current: @doc_path == 'configuration' }
+        ]
+      },
+      {
+        label: "Architecture",
+        href: "/docs/domain-architecture",
+        current: @doc_path == 'domain-architecture',
+        children: [
+          { label: "Components", href: "/docs/components", current: @doc_path == 'components' },
+          { label: "Responsive Design", href: "/docs/responsive-design", current: @doc_path == 'responsive-design' }
+        ]
+      },
+      {
+        label: "Modules",
+        href: "/docs/ai-module",
+        current: false,
+        children: [
+          { label: "AI Module", href: "/docs/ai-module", current: @doc_path == 'ai-module' },
+          { label: "Admin Module", href: "/docs/admin-module", current: @doc_path == 'admin-module' },
+          { label: "Billing Module", href: "/docs/billing-module", current: @doc_path == 'billing-module' }
+        ]
+      }
+    ]
+  end
+
+  def docs_table_of_contents
+    []
+  end
+
   private
 
   def set_documentation_sections
