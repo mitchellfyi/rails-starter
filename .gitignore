@@ -89,3 +89,7 @@ package-lock.json
 # Preview and temporary files
 *_preview.html
 admin_dashboard_preview.html
+
+# Test and demo files
+test_railsplan_system.rb
+demo_system_enhancements.rb
