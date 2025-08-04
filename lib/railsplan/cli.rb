@@ -11,6 +11,7 @@ require "railsplan/commands/refactor_command"
 require "railsplan/commands/explain_command"
 require "railsplan/commands/fix_command"
 require "railsplan/commands/doctor_command"
+require "railsplan/commands/replay_command"
 
 module RailsPlan
   # Main CLI class using Thor
@@ -337,7 +338,45 @@ module RailsPlan
       exit(1) unless success
     end
 
-    # AI-powered fix command
+    # Replay AI interactions from prompt logs
+    desc "replay", "Replay AI interactions from prompt logs"
+    long_desc <<-LONGDESC
+      Replay AI interactions from the .railsplan/prompts.log file.
+      
+      This command allows you to:
+        - Re-execute previous AI commands with the same prompts
+        - Test consistency of AI responses
+        - Replay specific sessions or command types
+        - Run replays in dry-run mode to see what would happen
+        
+      Useful for:
+        - Testing AI consistency
+        - Reproducing previous results
+        - Training and documentation
+        - Debugging AI interactions
+        
+      Examples:
+        railsplan replay                           # Replay all logged interactions
+        railsplan replay --session=abc123         # Replay specific session
+        railsplan replay --command=generate       # Replay only generate commands
+        railsplan replay --dry-run                # Preview what would be replayed
+        railsplan replay --interactive             # Prompt before each replay
+    LONGDESC
+    option :session, desc: "Replay only entries from specific session ID"
+    option :command, desc: "Replay only entries matching command pattern"
+    option :dry_run, type: :boolean, desc: "Preview replays without executing them"
+    option :interactive, type: :boolean, desc: "Prompt before each replay"
+    option :continue_on_error, type: :boolean, desc: "Continue replaying even if an entry fails"
+    option :replay_dry_run, type: :boolean, desc: "Force dry-run mode for replayed commands"
+    option :replay_interactive, type: :boolean, desc: "Allow interactive prompts in replayed commands"
+    def replay
+      RailsPlan.logger.info("Running replay command")
+      
+      command = RailsPlan::Commands::ReplayCommand.new(verbose: options[:verbose])
+      success = command.execute(options)
+      
+      exit(1) unless success
+    end
     desc "fix ISSUE_DESCRIPTION", "Apply AI-powered fixes based on issue descriptions"
     long_desc <<-LONGDESC
       Apply fixes to specific issues using AI assistance.
@@ -387,13 +426,51 @@ module RailsPlan
       Examples:
         railsplan add ai
         railsplan add billing --force
+        railsplan add auth --dry-run
+        railsplan add cms --silent
     LONGDESC
+    option :dry_run, type: :boolean, desc: "Preview changes without applying them"
+    option :silent, type: :boolean, aliases: "--ci", desc: "Suppress output for CI usage"
+    option :skip_validation, type: :boolean, desc: "Skip post-install validation"
     def add(module_name)
       RailsPlan.logger.info("Adding module: #{module_name}")
       
-      # TODO: Implement module addition
-      say("Adding module '#{module_name}' to existing application...", :green)
-      say("This feature is coming soon!", :yellow)
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        
+        if options[:dry_run]
+          plan = module_manager.plan_module_installation(module_name)
+          if plan[:success]
+            puts "📋 Installation plan for '#{module_name}' module:"
+            puts "📁 Files to create/modify: #{plan[:files_to_create].length}"
+            plan[:files_to_create].each do |file_info|
+              action_icon = file_info[:action] == "create" ? "+" : "~"
+              puts "  #{action_icon} #{file_info[:target]}"
+            end
+            puts "🔧 Install hooks: #{plan[:install_hooks].join(', ')}" if plan[:install_hooks].any?
+            puts "📦 Dependencies: #{plan[:dependencies].join(', ')}" if plan[:dependencies].any?
+            puts "\n💡 To proceed with installation, run: railsplan add #{module_name}"
+          else
+            puts "❌ #{plan[:error]}"
+            exit(1)
+          end
+        else
+          module_manager.install_module(module_name, options.dup)
+          
+          unless options[:silent]
+            puts "✅ Successfully added #{module_name} module!"
+            puts "💡 Run 'railsplan doctor' to validate the installation"
+          end
+        end
+      rescue RailsPlan::Error => e
+        puts "❌ #{e.message}"
+        exit(1)
+      rescue => e
+        puts "❌ Unexpected error: #{e.message}"
+        puts "💡 Run with --verbose for detailed error information" unless options[:verbose]
+        exit(1)
+      end
     end
 
     # List available modules
@@ -405,22 +482,89 @@ module RailsPlan
         railsplan list
         railsplan list --available
         railsplan list --installed
+        railsplan list --detailed
     LONGDESC
     option :available, type: :boolean, aliases: "-a", desc: "Show only available modules"
     option :installed, type: :boolean, aliases: "-i", desc: "Show only installed modules"
+    option :detailed, type: :boolean, aliases: "-d", desc: "Show detailed module information"
     def list
       RailsPlan.logger.info("Listing modules")
       
-      # TODO: Implement module listing
-      say("Available modules:", :green)
-      say("  ai          - AI/LLM integration")
-      say("  billing     - Subscription and payment processing")
-      say("  admin       - Admin panel and user management")
-      say("  cms         - Content management system")
-      say("  auth        - Enhanced authentication")
-      say("  api         - RESTful API with documentation")
-      say("  notifications - Real-time notifications")
-      say("  workspace   - Multi-tenant workspace management")
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        
+        available_modules = module_manager.available_modules
+        installed_modules = module_manager.installed_modules
+        
+        unless options[:installed]
+          if options[:available] || !options[:installed]
+            puts "📦 Available modules:"
+            if available_modules.empty?
+              puts "  No modules available"
+            else
+              available_modules.each do |module_name|
+                status = installed_modules.include?(module_name) ? "✅ installed" : "⚪ available"
+                description = get_module_description(module_name)
+                
+                if options[:detailed]
+                  puts "  #{module_name} - #{status}"
+                  puts "    Description: #{description}"
+                  if installed_modules.include?(module_name)
+                    metadata = module_manager.registry.module_metadata(module_name)
+                    puts "    Version: #{metadata['version'] || 'unknown'}"
+                    puts "    Installed: #{metadata['installed_at'] || 'unknown'}"
+                  end
+                  puts
+                else
+                  puts "  #{module_name.ljust(15)} #{status.ljust(15)} #{description}"
+                end
+              end
+            end
+          end
+        end
+        
+        unless options[:available]
+          if options[:installed] || !options[:available]
+            puts "\n🔧 Installed modules:"
+            if installed_modules.empty?
+              puts "  No modules installed"
+            else
+              installed_modules.each do |module_name|
+                description = get_module_description(module_name)
+                
+                if options[:detailed]
+                  metadata = module_manager.registry.module_metadata(module_name)
+                  validation_status = metadata['validation_status'] || 'unknown'
+                  validation_icon = case validation_status
+                                  when 'passed' then '✅'
+                                  when 'failed' then '❌'
+                                  else '⚪'
+                                  end
+                  
+                  puts "  #{module_name} #{validation_icon}"
+                  puts "    Description: #{description}"
+                  puts "    Version: #{metadata['version'] || 'unknown'}"
+                  puts "    Installed: #{metadata['installed_at'] || 'unknown'}"
+                  puts "    Validation: #{validation_status}"
+                  puts
+                else
+                  puts "  #{module_name.ljust(15)} ✅ installed      #{description}"
+                end
+              end
+            end
+          end
+        end
+        
+        # Show summary
+        unless options[:detailed]
+          puts "\n📊 Summary: #{installed_modules.length} installed, #{available_modules.length - installed_modules.length} available"
+        end
+        
+      rescue => e
+        puts "❌ Error listing modules: #{e.message}"
+        exit(1)
+      end
     end
 
     # Remove modules from existing application
@@ -432,24 +576,48 @@ module RailsPlan
         - Remove module files and directories
         - Update module registry
         - Clean up any module-specific configurations
+        - Run module-specific removal hooks
         
       Examples:
         railsplan remove ai
         railsplan remove billing --force
+        railsplan remove auth --dry-run
     LONGDESC
+    option :dry_run, type: :boolean, desc: "Preview changes without applying them"
+    option :silent, type: :boolean, aliases: "--ci", desc: "Suppress output for CI usage"
     def remove(module_name)
       RailsPlan.logger.info("Removing module: #{module_name}")
       
-      say("🗑️  Removing #{module_name} module...", :yellow)
-      
-      # Check if module is installed
-      unless module_installed?(module_name)
-        say("❌ Module '#{module_name}' is not installed", :red)
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        
+        # Check if module is installed
+        unless module_manager.registry.module_installed?(module_name)
+          puts "❌ Module '#{module_name}' is not installed"
+          exit(1)
+        end
+        
+        if options[:dry_run]
+          puts "🗑️  [DRY RUN] Would remove #{module_name} module..."
+          puts "💡 To proceed with removal, run: railsplan remove #{module_name}"
+        else
+          puts "🗑️  Removing #{module_name} module..." unless options[:silent]
+          
+          module_manager.remove_module(module_name, options.dup)
+          
+          unless options[:silent]
+            puts "✅ Successfully removed #{module_name} module!"
+          end
+        end
+      rescue RailsPlan::Error => e
+        puts "❌ #{e.message}"
+        exit(1)
+      rescue => e
+        puts "❌ Unexpected error: #{e.message}"
+        puts "💡 Run with --verbose for detailed error information" unless options[:verbose]
         exit(1)
       end
-      
-      # TODO: Implement actual module removal
-      say("✅ Successfully removed #{module_name} module!", :green)
     end
 
     # Upgrade modules
@@ -741,34 +909,31 @@ module RailsPlan
 
     # Helper methods for module management
     def module_installed?(module_name)
-      # TODO: Check actual module registry
-      # For now, return false for most modules, true for test_module only if it exists in test environment
-      if module_name == "test_module"
-        File.exist?("scaffold/config/railsplan_modules.json") && 
-        File.exist?("app/domains/test_module")
-      else
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        module_manager.registry.module_installed?(module_name)
+      rescue
         false
       end
     end
 
     def module_exists?(module_name)
-      # TODO: Check actual module templates
-      # For now, return true for known modules
-      known_modules = %w[ai billing admin cms auth api notifications workspace test_module test_module_with_migrations]
-      known_modules.include?(module_name)
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        module_manager.available_modules.include?(module_name)
+      rescue
+        false
+      end
     end
 
     def get_installed_modules
-      # TODO: Read from actual module registry
-      # For now, return test_module if it exists in test environment
-      if File.exist?("scaffold/config/railsplan_modules.json")
-        begin
-          registry = JSON.parse(File.read("scaffold/config/railsplan_modules.json"))
-          registry["installed"]&.keys || []
-        rescue JSON::ParserError
-          []
-        end
-      else
+      begin
+        require "railsplan/module_manager"
+        module_manager = ModuleManager.new
+        module_manager.installed_modules
+      rescue
         []
       end
     end
