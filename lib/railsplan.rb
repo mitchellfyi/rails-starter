@@ -16,6 +16,11 @@ require "railsplan/data_preview"
 require "railsplan/ai_generator"
 require "railsplan/ai"
 
+# Only load web interface when Rails is available
+if defined?(Rails) && defined?(Rails::Engine)
+  require "railsplan/web"
+end
+
 # Main module for RailsPlan gem
 module RailsPlan
   class Error < StandardError; end

@@ -1,0 +1,350 @@
+<!-- AI Code Generator Header -->
+<div class="mb-8">
+  <h1 class="text-3xl font-bold text-gray-900">AI Code Generator</h1>
+  <p class="mt-2 text-gray-600">Generate Rails code using natural language instructions</p>
+</div>
+
+<!-- Main Generator Interface -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <!-- Input Section -->
+  <div class="lg:col-span-2">
+    <div class="card">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Describe what you want to generate</h2>
+      
+      <form id="generation-form" class="space-y-4">
+        <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+        
+        <div>
+          <label for="instruction" class="block text-sm font-medium text-gray-700 mb-2">
+            Instruction
+          </label>
+          <textarea id="instruction" 
+                    name="instruction" 
+                    rows="4" 
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Example: Add a Project model with title, description, and user association. Include CRUD controller and views."
+                    required></textarea>
+        </div>
+        
+        <div class="flex space-x-3">
+          <button type="button" 
+                  id="preview-btn" 
+                  class="btn btn-secondary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            Preview
+          </button>
+          
+          <button type="submit" 
+                  id="generate-btn" 
+                  class="btn btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"/>
+            </svg>
+            Generate Code
+          </button>
+        </div>
+      </form>
+      
+      <!-- Loading State -->
+      <div id="loading-state" class="hidden mt-6 text-center">
+        <div class="inline-flex items-center px-4 py-2 text-blue-600">
+          <svg class="animate-spin -ml-1 mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Generating code with AI...
+        </div>
+      </div>
+      
+      <!-- Error State -->
+      <div id="error-state" class="hidden mt-6">
+        <div class="alert-warning">
+          <div class="flex">
+            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium">Generation Error</h3>
+              <p class="text-sm" id="error-message"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div id="results-section" class="hidden mt-8">
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">Generated Code</h2>
+          <div class="flex space-x-2">
+            <button id="copy-btn" class="btn btn-secondary btn-sm">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              Copy
+            </button>
+            <button id="apply-btn" class="btn btn-primary btn-sm">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Apply Changes
+            </button>
+          </div>
+        </div>
+        
+        <!-- Code Preview -->
+        <div id="code-preview" class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+          <!-- Generated code will appear here -->
+        </div>
+        
+        <!-- Files List -->
+        <div id="files-list" class="mt-4">
+          <h3 class="text-sm font-medium text-gray-700 mb-2">Files to be created/modified:</h3>
+          <div id="files-container" class="space-y-2">
+            <!-- File list will appear here -->
+          </div>
+        </div>
+        
+        <!-- Explanation -->
+        <div id="explanation" class="mt-4 p-3 bg-blue-50 rounded-lg">
+          <h3 class="text-sm font-medium text-blue-800 mb-1">Explanation</h3>
+          <p id="explanation-text" class="text-sm text-blue-700"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Sidebar -->
+  <div class="space-y-6">
+    <!-- Quick Examples -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Examples</h3>
+      <div class="space-y-2">
+        <button class="example-btn w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-example="Add a Blog model with title, content, and published_at. Include belongs_to user association.">
+          📝 Blog Model
+        </button>
+        <button class="example-btn w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-example="Create an API controller for Users with index, show, create, update, delete actions.">
+          🚀 API Controller
+        </button>
+        <button class="example-btn w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-example="Add authentication with Devise gem including User model and sessions.">
+          🔐 Authentication
+        </button>
+        <button class="example-btn w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-example="Create a background job to send welcome emails to new users.">
+          ⚡ Background Job
+        </button>
+      </div>
+    </div>
+    
+    <!-- Recent Generations -->
+    <% if @recent_generations.any? %>
+      <div class="card">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Generations</h3>
+        <div class="space-y-2">
+          <% @recent_generations.each do |generation| %>
+            <div class="p-3 border rounded-lg">
+              <p class="text-sm text-gray-600 truncate"><%= generation['prompt'] %></p>
+              <p class="text-xs text-gray-400 mt-1">
+                <%= Time.parse(generation['timestamp']).strftime('%B %d at %I:%M %p') %>
+              </p>
+            </div>
+          <% end %>
+        </div>
+        <div class="mt-4">
+          <%= link_to "View All", railsplan_web.prompts_path, class: "text-blue-600 hover:text-blue-500 text-sm" %>
+        </div>
+      </div>
+    <% end %>
+    
+    <!-- Tips -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Tips</h3>
+      <div class="space-y-3 text-sm text-gray-600">
+        <p>• Be specific about model attributes and associations</p>
+        <p>• Mention if you want tests included</p>
+        <p>• Specify controller actions you need</p>
+        <p>• Include validation requirements</p>
+        <p>• Mention styling preferences (Tailwind, Bootstrap)</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for AI Code Generator -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('generation-form');
+  const instructionInput = document.getElementById('instruction');
+  const previewBtn = document.getElementById('preview-btn');
+  const generateBtn = document.getElementById('generate-btn');
+  const loadingState = document.getElementById('loading-state');
+  const errorState = document.getElementById('error-state');
+  const resultsSection = document.getElementById('results-section');
+  const exampleBtns = document.querySelectorAll('.example-btn');
+  
+  // Handle example buttons
+  exampleBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      instructionInput.value = this.dataset.example;
+    });
+  });
+  
+  // Handle preview
+  previewBtn.addEventListener('click', function() {
+    const instruction = instructionInput.value.trim();
+    if (!instruction) {
+      alert('Please enter an instruction');
+      return;
+    }
+    
+    handleGeneration(instruction, true);
+  });
+  
+  // Handle form submission
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const instruction = instructionInput.value.trim();
+    if (!instruction) {
+      alert('Please enter an instruction');
+      return;
+    }
+    
+    handleGeneration(instruction, false);
+  });
+  
+  function handleGeneration(instruction, isPreview) {
+    showLoading();
+    
+    const endpoint = isPreview ? '<%= railsplan_web.preview_generate_path %>' : '<%= railsplan_web.generate_path %>';
+    
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="authenticity_token"]').value
+      },
+      body: JSON.stringify({ instruction: instruction })
+    })
+    .then(response => response.json())
+    .then(data => {
+      hideLoading();
+      
+      if (data.success) {
+        showResults(data, isPreview);
+      } else {
+        showError(data.error || 'Generation failed');
+      }
+    })
+    .catch(error => {
+      hideLoading();
+      showError('Network error: ' + error.message);
+    });
+  }
+  
+  function showLoading() {
+    loadingState.classList.remove('hidden');
+    errorState.classList.add('hidden');
+    resultsSection.classList.add('hidden');
+    generateBtn.disabled = true;
+    previewBtn.disabled = true;
+  }
+  
+  function hideLoading() {
+    loadingState.classList.add('hidden');
+    generateBtn.disabled = false;
+    previewBtn.disabled = false;
+  }
+  
+  function showError(message) {
+    document.getElementById('error-message').textContent = message;
+    errorState.classList.remove('hidden');
+  }
+  
+  function showResults(data, isPreview) {
+    document.getElementById('code-preview').textContent = data.preview || 'No preview available';
+    document.getElementById('explanation-text').textContent = data.explanation || 'No explanation provided';
+    
+    // Show files
+    const filesContainer = document.getElementById('files-container');
+    filesContainer.innerHTML = '';
+    
+    const files = data.files || data.estimated_files || [];
+    if (Array.isArray(files)) {
+      files.forEach(file => {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded';
+        fileDiv.textContent = file;
+        filesContainer.appendChild(fileDiv);
+      });
+    } else {
+      Object.keys(files).forEach(filePath => {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'text-sm text-gray-600 bg-gray-50 px-2 py-1 rounded';
+        fileDiv.textContent = filePath;
+        filesContainer.appendChild(fileDiv);
+      });
+    }
+    
+    // Show/hide apply button based on preview mode
+    const applyBtn = document.getElementById('apply-btn');
+    if (isPreview) {
+      applyBtn.style.display = 'none';
+    } else {
+      applyBtn.style.display = 'inline-flex';
+      applyBtn.onclick = function() {
+        applyChanges(data.files);
+      };
+    }
+    
+    resultsSection.classList.remove('hidden');
+  }
+  
+  function applyChanges(files) {
+    if (!files || Object.keys(files).length === 0) {
+      alert('No files to apply');
+      return;
+    }
+    
+    if (!confirm('Are you sure you want to apply these changes?')) {
+      return;
+    }
+    
+    fetch('<%= railsplan_web.apply_generate_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="authenticity_token"]').value
+      },
+      body: JSON.stringify({ files: files })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message || 'Changes applied successfully!');
+      } else {
+        alert('Failed to apply changes: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      alert('Network error: ' + error.message);
+    });
+  }
+  
+  // Copy functionality
+  document.getElementById('copy-btn').addEventListener('click', function() {
+    const codeText = document.getElementById('code-preview').textContent;
+    navigator.clipboard.writeText(codeText).then(() => {
+      alert('Code copied to clipboard!');
+    }).catch(() => {
+      alert('Failed to copy code');
+    });
+  });
+});
+</script>

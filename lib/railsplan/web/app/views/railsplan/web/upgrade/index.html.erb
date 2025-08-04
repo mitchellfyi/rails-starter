@@ -1,0 +1,491 @@
+<!-- Upgrade Tool Header -->
+<div class="mb-8">
+  <h1 class="text-3xl font-bold text-gray-900">Upgrade Tool</h1>
+  <p class="mt-2 text-gray-600">AI-powered application evolution and refactoring assistant</p>
+</div>
+
+<!-- Main Interface -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <!-- Input Section -->
+  <div class="lg:col-span-2">
+    <div class="card">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Describe your upgrade or refactoring needs</h2>
+      
+      <form id="upgrade-form" class="space-y-4">
+        <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+        
+        <div>
+          <label for="instruction" class="block text-sm font-medium text-gray-700 mb-2">
+            Upgrade Instruction
+          </label>
+          <textarea id="instruction" 
+                    name="instruction" 
+                    rows="4" 
+                    class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Example: Convert all integer enums to Postgres native enums, or Migrate from UJS to Hotwire Turbo and Stimulus"
+                    required></textarea>
+        </div>
+        
+        <div class="flex space-x-3">
+          <button type="button" 
+                  id="preview-btn" 
+                  class="btn btn-secondary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            Preview Plan
+          </button>
+          
+          <button type="submit" 
+                  id="generate-plan-btn" 
+                  class="btn btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            Generate Plan
+          </button>
+        </div>
+      </form>
+      
+      <!-- Loading State -->
+      <div id="loading-state" class="hidden mt-6 text-center">
+        <div class="inline-flex items-center px-4 py-2 text-blue-600">
+          <svg class="animate-spin -ml-1 mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Analyzing upgrade requirements...
+        </div>
+      </div>
+      
+      <!-- Error State -->
+      <div id="error-state" class="hidden mt-6">
+        <div class="alert-warning">
+          <div class="flex">
+            <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium">Planning Error</h3>
+              <p class="text-sm" id="error-message"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div id="results-section" class="hidden mt-8 space-y-6">
+      <!-- Upgrade Plan -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">Upgrade Plan</h2>
+          <div class="flex items-center space-x-2">
+            <span id="risk-indicator" class="status-warning">Medium Risk</span>
+            <span id="time-estimate" class="text-sm text-gray-500">Est. 2-4 hours</span>
+          </div>
+        </div>
+        
+        <div id="plan-content">
+          <!-- Plan phases will be rendered here -->
+        </div>
+        
+        <div id="plan-explanation" class="mt-4 p-3 bg-blue-50 rounded-lg">
+          <h3 class="text-sm font-medium text-blue-800 mb-1">Plan Explanation</h3>
+          <p id="explanation-text" class="text-sm text-blue-700"></p>
+        </div>
+      </div>
+      
+      <!-- Warnings -->
+      <div id="warnings-section" class="hidden">
+        <div class="card">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">⚠️ Important Warnings</h3>
+          <div id="warnings-list" class="space-y-2">
+            <!-- Warnings will be rendered here -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- Changes Preview -->
+      <div class="card">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Affected Files & Changes</h3>
+        <div id="changes-list" class="space-y-2">
+          <!-- Changes will be rendered here -->
+        </div>
+        
+        <div class="flex space-x-3 mt-6">
+          <button id="dry-run-btn" class="btn btn-secondary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Dry Run
+          </button>
+          
+          <button id="apply-btn" class="btn btn-primary">
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+            </svg>
+            Apply Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Sidebar -->
+  <div class="space-y-6">
+    <!-- Suggested Upgrades -->
+    <% if @suggested_upgrades.any? %>
+      <div class="card">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Suggested Upgrades</h3>
+        <div class="space-y-3">
+          <% @suggested_upgrades.each do |suggestion| %>
+            <div class="border rounded-lg p-3 hover:bg-gray-50">
+              <div class="flex items-start justify-between">
+                <div class="flex-1">
+                  <h4 class="text-sm font-medium text-gray-900"><%= suggestion[:title] %></h4>
+                  <p class="text-xs text-gray-600 mt-1"><%= suggestion[:description] %></p>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                              <%= case suggestion[:priority]
+                                  when 'high' then 'bg-red-100 text-red-800'
+                                  when 'medium' then 'bg-yellow-100 text-yellow-800'
+                                  else 'bg-green-100 text-green-800'
+                                  end %> mt-2">
+                    <%= suggestion[:priority].capitalize %> Priority
+                  </span>
+                </div>
+                <button class="suggestion-btn btn btn-sm btn-secondary ml-2" 
+                        data-suggestion="<%= suggestion[:title] %>">
+                  Use
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    
+    <!-- Common Upgrades -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Common Upgrades</h3>
+      <div class="space-y-2">
+        <button class="common-upgrade w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-upgrade="Convert all enums to Postgres native enums">
+          🔄 Postgres Native Enums
+        </button>
+        <button class="common-upgrade w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-upgrade="Migrate from UJS to Hotwire Turbo and Stimulus">
+          ⚡ Rails UJS → Hotwire
+        </button>
+        <button class="common-upgrade w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-upgrade="Extract admin UI into ViewComponents">
+          🧩 Extract ViewComponents
+        </button>
+        <button class="common-upgrade w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-upgrade="Add API versioning with namespace">
+          🚀 API Versioning
+        </button>
+        <button class="common-upgrade w-full text-left p-3 rounded-lg border hover:bg-gray-50 text-sm"
+                data-upgrade="Implement HTTPS enforcement and security headers">
+          🔒 Security Hardening
+        </button>
+      </div>
+    </div>
+    
+    <!-- Recent Upgrades -->
+    <% if @recent_upgrades.any? %>
+      <div class="card">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Upgrades</h3>
+        <div class="space-y-2">
+          <% @recent_upgrades.each do |upgrade| %>
+            <div class="p-3 border rounded-lg">
+              <p class="text-sm text-gray-600 truncate"><%= upgrade['prompt'] %></p>
+              <p class="text-xs text-gray-400 mt-1">
+                <%= Time.parse(upgrade['timestamp']).strftime('%B %d at %I:%M %p') %>
+              </p>
+              <% if upgrade['metadata'] && upgrade['metadata']['estimated_changes'] %>
+                <p class="text-xs text-green-600">
+                  <%= upgrade['metadata']['estimated_changes'] %> changes planned
+                </p>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    
+    <!-- Safety Tips -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Safety Tips</h3>
+      <div class="space-y-3 text-sm text-gray-600">
+        <p>• Always create backups before major upgrades</p>
+        <p>• Test upgrades in development first</p>
+        <p>• Run your test suite after changes</p>
+        <p>• Use dry-run mode to preview changes</p>
+        <p>• Upgrade incrementally for major versions</p>
+        <p>• Review deprecation warnings</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Upgrade Tool -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('upgrade-form');
+  const instructionInput = document.getElementById('instruction');
+  const previewBtn = document.getElementById('preview-btn');
+  const generateBtn = document.getElementById('generate-plan-btn');
+  const loadingState = document.getElementById('loading-state');
+  const errorState = document.getElementById('error-state');
+  const resultsSection = document.getElementById('results-section');
+  const commonUpgrades = document.querySelectorAll('.common-upgrade');
+  const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+  
+  let currentChanges = null;
+  
+  // Handle common upgrade buttons
+  commonUpgrades.forEach(btn => {
+    btn.addEventListener('click', function() {
+      instructionInput.value = this.dataset.upgrade;
+    });
+  });
+  
+  // Handle suggestion buttons
+  suggestionBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      instructionInput.value = this.dataset.suggestion;
+    });
+  });
+  
+  // Handle preview
+  previewBtn.addEventListener('click', function() {
+    const instruction = instructionInput.value.trim();
+    if (!instruction) {
+      alert('Please enter an upgrade instruction');
+      return;
+    }
+    
+    handleUpgrade(instruction, true);
+  });
+  
+  // Handle form submission
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const instruction = instructionInput.value.trim();
+    if (!instruction) {
+      alert('Please enter an upgrade instruction');
+      return;
+    }
+    
+    handleUpgrade(instruction, false);
+  });
+  
+  function handleUpgrade(instruction, isPreview) {
+    showLoading();
+    
+    const endpoint = isPreview ? '<%= railsplan_web.preview_upgrade_path %>' : '<%= railsplan_web.upgrade_path %>';
+    
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="authenticity_token"]').value
+      },
+      body: JSON.stringify({ instruction: instruction })
+    })
+    .then(response => response.json())
+    .then(data => {
+      hideLoading();
+      
+      if (data.success) {
+        if (isPreview) {
+          showPreviewResults(data);
+        } else {
+          showPlanResults(data);
+        }
+      } else {
+        showError(data.error || 'Planning failed');
+      }
+    })
+    .catch(error => {
+      hideLoading();
+      showError('Network error: ' + error.message);
+    });
+  }
+  
+  function showLoading() {
+    loadingState.classList.remove('hidden');
+    errorState.classList.add('hidden');
+    resultsSection.classList.add('hidden');
+    generateBtn.disabled = true;
+    previewBtn.disabled = true;
+  }
+  
+  function hideLoading() {
+    loadingState.classList.add('hidden');
+    generateBtn.disabled = false;
+    previewBtn.disabled = false;
+  }
+  
+  function showError(message) {
+    document.getElementById('error-message').textContent = message;
+    errorState.classList.remove('hidden');
+  }
+  
+  function showPreviewResults(data) {
+    // Show basic preview information
+    alert(`Preview: ${data.preview}\nRisk Level: ${data.risk_level}\nBackup Recommended: ${data.backup_recommended}`);
+  }
+  
+  function showPlanResults(data) {
+    currentChanges = data.changes;
+    
+    // Update risk and time indicators
+    const riskIndicator = document.getElementById('risk-indicator');
+    const timeEstimate = document.getElementById('time-estimate');
+    
+    if (data.plan.risk_level) {
+      riskIndicator.textContent = data.plan.risk_level.charAt(0).toUpperCase() + data.plan.risk_level.slice(1) + ' Risk';
+      riskIndicator.className = `status-${data.plan.risk_level === 'high' ? 'offline' : data.plan.risk_level === 'medium' ? 'warning' : 'online'}`;
+    }
+    
+    if (data.estimated_time) {
+      timeEstimate.textContent = 'Est. ' + data.estimated_time;
+    }
+    
+    // Show plan phases
+    const planContent = document.getElementById('plan-content');
+    planContent.innerHTML = '';
+    
+    if (data.plan.phases) {
+      data.plan.phases.forEach((phase, index) => {
+        const phaseDiv = document.createElement('div');
+        phaseDiv.className = 'mb-4 border rounded-lg p-4';
+        phaseDiv.innerHTML = `
+          <h4 class="font-medium text-gray-900 mb-2">Phase ${index + 1}: ${phase.name}</h4>
+          <p class="text-sm text-gray-600 mb-3">${phase.description}</p>
+          <ul class="text-sm text-gray-600 space-y-1">
+            ${phase.steps.map(step => `<li>• ${step}</li>`).join('')}
+          </ul>
+          ${phase.estimated_time ? `<p class="text-xs text-gray-500 mt-2">Estimated time: ${phase.estimated_time}</p>` : ''}
+        `;
+        planContent.appendChild(phaseDiv);
+      });
+    }
+    
+    // Show explanation
+    document.getElementById('explanation-text').textContent = data.explanation || 'Upgrade plan generated successfully';
+    
+    // Show warnings
+    const warningsSection = document.getElementById('warnings-section');
+    const warningsList = document.getElementById('warnings-list');
+    
+    if (data.warnings && data.warnings.length > 0) {
+      warningsList.innerHTML = '';
+      data.warnings.forEach(warning => {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'p-3 bg-yellow-50 border border-yellow-200 rounded-lg';
+        warningDiv.innerHTML = `<p class="text-sm text-yellow-800">${warning}</p>`;
+        warningsList.appendChild(warningDiv);
+      });
+      warningsSection.classList.remove('hidden');
+    } else {
+      warningsSection.classList.add('hidden');
+    }
+    
+    // Show changes
+    const changesList = document.getElementById('changes-list');
+    changesList.innerHTML = '';
+    
+    if (data.changes && data.changes.length > 0) {
+      data.changes.forEach(change => {
+        const changeDiv = document.createElement('div');
+        changeDiv.className = 'flex items-center justify-between p-3 border rounded-lg';
+        changeDiv.innerHTML = `
+          <div>
+            <span class="font-medium text-gray-900">${change.file}</span>
+            <p class="text-sm text-gray-600">${change.description}</p>
+          </div>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                   ${change.action === 'create' ? 'bg-green-100 text-green-800' : 
+                     change.action === 'modify' ? 'bg-blue-100 text-blue-800' : 
+                     'bg-red-100 text-red-800'}">
+            ${change.action}
+          </span>
+        `;
+        changesList.appendChild(changeDiv);
+      });
+    } else {
+      changesList.innerHTML = '<p class="text-gray-500 text-center py-4">No specific file changes identified</p>';
+    }
+    
+    resultsSection.classList.remove('hidden');
+  }
+  
+  // Handle dry run and apply buttons
+  document.getElementById('dry-run-btn').addEventListener('click', function() {
+    if (!currentChanges) {
+      alert('No changes to apply');
+      return;
+    }
+    
+    applyChanges(true);
+  });
+  
+  document.getElementById('apply-btn').addEventListener('click', function() {
+    if (!currentChanges) {
+      alert('No changes to apply');
+      return;
+    }
+    
+    if (!confirm('Are you sure you want to apply these changes? Make sure you have a backup!')) {
+      return;
+    }
+    
+    applyChanges(false);
+  });
+  
+  function applyChanges(dryRun) {
+    const btn = dryRun ? document.getElementById('dry-run-btn') : document.getElementById('apply-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin btn-icon" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${dryRun ? 'Running...' : 'Applying...'}`;
+    
+    fetch('<%= railsplan_web.apply_upgrade_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="authenticity_token"]').value
+      },
+      body: JSON.stringify({ 
+        changes: currentChanges,
+        dry_run: dryRun
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        let message = data.message || (dryRun ? 'Dry run completed' : 'Changes applied successfully');
+        if (data.backup_location) {
+          message += `\nBackup saved to: ${data.backup_location}`;
+        }
+        alert(message);
+      } else {
+        alert('Failed: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      alert('Network error: ' + error.message);
+    })
+    .finally(() => {
+      btn.disabled = false;
+      const originalText = dryRun ? 'Dry Run' : 'Apply Changes';
+      const originalIcon = dryRun ? 
+        '<svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' :
+        '<svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>';
+      btn.innerHTML = originalIcon + originalText;
+    });
+  }
+});
+</script>

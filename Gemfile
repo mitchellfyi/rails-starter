@@ -1,1 +1,2 @@
-source "https://rubygems.org"\ngem "rails"
+source "https://rubygems.org"
+gem "rails"

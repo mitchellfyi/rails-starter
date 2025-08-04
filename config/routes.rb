@@ -33,6 +33,9 @@ Rails.application.routes.draw do
   # Load admin routes
   load(Rails.root.join('config/routes/admin.rb'))
   
+  # Mount RailsPlan Web Engine for AI Dashboard
+  mount Railsplan::Web::Engine, at: "/railsplan" if defined?(Railsplan::Web::Engine)
+  
   # Health check
   get '/health', to: proc { [200, {}, ['OK']] }
 end
