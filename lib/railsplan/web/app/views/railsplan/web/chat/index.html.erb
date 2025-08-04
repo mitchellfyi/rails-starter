@@ -1,0 +1,403 @@
+<!-- AI Agent Console Header -->
+<div class="mb-8">
+  <h1 class="text-3xl font-bold text-gray-900">AI Agent Console</h1>
+  <p class="mt-2 text-gray-600">Interactive chat with AI assistant that knows your Rails application</p>
+</div>
+
+<!-- Chat Interface -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+  <!-- Main Chat Area -->
+  <div class="lg:col-span-3">
+    <div class="card h-96 flex flex-col">
+      <!-- Chat Messages -->
+      <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-t-lg">
+        <!-- Welcome Message -->
+        <div class="flex items-start space-x-3">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.847a4.5 4.5 0 003.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 00-3.09 3.09z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="flex-1 bg-white rounded-lg p-3 shadow-sm">
+            <p class="text-sm text-gray-900">
+              Hello! I'm your AI assistant. I can help you understand your Rails application, generate code, and answer questions about your project structure.
+            </p>
+            <% if @context_summary[:models_count] && @context_summary[:models_count] > 0 %>
+              <p class="text-xs text-gray-500 mt-2">
+                📊 I can see your app has <%= @context_summary[:models_count] %> models and is running Rails <%= @context_summary[:rails_version] %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+        
+        <!-- Chat history -->
+        <% if @chat_history.any? %>
+          <% @chat_history.reverse.first(10).each do |chat| %>
+            <!-- User Message -->
+            <div class="flex items-start space-x-3 justify-end">
+              <div class="flex-1 bg-blue-600 text-white rounded-lg p-3 shadow-sm max-w-xs ml-12">
+                <p class="text-sm"><%= chat['prompt'] %></p>
+                <p class="text-xs opacity-75 mt-1">
+                  <%= Time.parse(chat['timestamp']).strftime('%I:%M %p') %>
+                </p>
+              </div>
+              <div class="flex-shrink-0">
+                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            <!-- AI Response -->
+            <% if chat['response'] %>
+              <div class="flex items-start space-x-3">
+                <div class="flex-shrink-0">
+                  <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.847a4.5 4.5 0 003.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 00-3.09 3.09z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="flex-1 bg-white rounded-lg p-3 shadow-sm">
+                  <% if chat['response'].is_a?(Hash) && chat['response']['error'] %>
+                    <p class="text-sm text-red-600">Error: <%= chat['response']['error'] %></p>
+                  <% else %>
+                    <p class="text-sm text-gray-900 whitespace-pre-wrap"><%= chat['response'].is_a?(String) ? chat['response'] : chat['response']['content'] || 'Response received' %></p>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+      
+      <!-- Chat Input -->
+      <div class="border-t bg-white rounded-b-lg p-4">
+        <form id="chat-form" class="flex space-x-3">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+          
+          <div class="flex-1">
+            <input type="text" 
+                   id="chat-input" 
+                   name="message" 
+                   placeholder="Ask me about your Rails app, request code generation, or general Rails questions..." 
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   autocomplete="off">
+          </div>
+          
+          <div class="flex items-center space-x-2">
+            <label class="flex items-center text-sm text-gray-600">
+              <input type="checkbox" id="include-context" class="mr-1" checked>
+              Use app context
+            </label>
+            
+            <button type="submit" 
+                    id="send-btn" 
+                    class="btn btn-primary">
+              <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+              Send
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Suggestions -->
+    <div id="suggestions-container" class="hidden mt-4">
+      <div class="card">
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Suggested follow-ups:</h3>
+        <div id="suggestions-list" class="flex flex-wrap gap-2">
+          <!-- Suggestions will be added here -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Sidebar -->
+  <div class="space-y-6">
+    <!-- Context Summary -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">App Context</h3>
+      <div class="space-y-3 text-sm">
+        <% if @context_summary[:app_name] %>
+          <div>
+            <span class="font-medium text-gray-700">App:</span>
+            <span class="text-gray-600"><%= @context_summary[:app_name] %></span>
+          </div>
+        <% end %>
+        
+        <div>
+          <span class="font-medium text-gray-700">Ruby:</span>
+          <span class="text-gray-600"><%= @context_summary[:ruby_version] %></span>
+        </div>
+        
+        <div>
+          <span class="font-medium text-gray-700">Rails:</span>
+          <span class="text-gray-600"><%= @context_summary[:rails_version] %></span>
+        </div>
+        
+        <% if @context_summary[:models_count] %>
+          <div>
+            <span class="font-medium text-gray-700">Models:</span>
+            <span class="text-gray-600"><%= @context_summary[:models_count] %></span>
+          </div>
+        <% end %>
+        
+        <% if @context_summary[:generated_at] %>
+          <div>
+            <span class="font-medium text-gray-700">Indexed:</span>
+            <span class="text-gray-600"><%= Time.parse(@context_summary[:generated_at]).strftime('%m/%d %H:%M') %></span>
+          </div>
+        <% end %>
+      </div>
+      
+      <button id="refresh-context" class="btn btn-secondary btn-sm w-full mt-4">
+        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Refresh Context
+      </button>
+    </div>
+    
+    <!-- Quick Questions -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Questions</h3>
+      <div class="space-y-2">
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="Explain my application structure">
+          📊 App structure overview
+        </button>
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="What models do I have and how are they related?">
+          🔗 Model relationships
+        </button>
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="Show me my database schema">
+          🗄️ Database schema
+        </button>
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="What controllers and routes do I have?">
+          🛣️ Routes overview
+        </button>
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="Help me generate a new feature">
+          ⚡ Generate new code
+        </button>
+        <button class="quick-question w-full text-left p-2 rounded border hover:bg-gray-50 text-sm"
+                data-question="Run health checks on my application">
+          🏥 Health diagnostics
+        </button>
+      </div>
+    </div>
+    
+    <!-- Chat Settings -->
+    <div class="card">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Settings</h3>
+      <div class="space-y-3">
+        <label class="flex items-center text-sm">
+          <input type="checkbox" id="auto-scroll" class="mr-2" checked>
+          Auto-scroll to new messages
+        </label>
+        <label class="flex items-center text-sm">
+          <input type="checkbox" id="show-timestamps" class="mr-2" checked>
+          Show message timestamps
+        </label>
+        <button id="clear-chat" class="btn btn-secondary btn-sm w-full">
+          Clear Chat History
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Chat Interface -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const messagesContainer = document.getElementById('chat-messages');
+  const suggestionsContainer = document.getElementById('suggestions-container');
+  const suggestionsList = document.getElementById('suggestions-list');
+  const quickQuestions = document.querySelectorAll('.quick-question');
+  const includeContextCheckbox = document.getElementById('include-context');
+  const autoScrollCheckbox = document.getElementById('auto-scroll');
+  
+  // Auto-focus chat input
+  chatInput.focus();
+  
+  // Handle chat form submission
+  chatForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    sendMessage(message);
+  });
+  
+  // Handle quick questions
+  quickQuestions.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const question = this.dataset.question;
+      chatInput.value = question;
+      sendMessage(question);
+    });
+  });
+  
+  // Handle suggestion clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('suggestion-btn')) {
+      const suggestion = e.target.textContent;
+      chatInput.value = suggestion;
+      sendMessage(suggestion);
+    }
+  });
+  
+  function sendMessage(message) {
+    // Add user message to chat
+    addUserMessage(message);
+    
+    // Clear input and disable send button
+    chatInput.value = '';
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<svg class="animate-spin btn-icon" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Thinking...';
+    
+    // Send to backend
+    fetch('<%= railsplan_web.chat_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="authenticity_token"]').value
+      },
+      body: JSON.stringify({ 
+        message: message,
+        include_context: includeContextCheckbox.checked
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        addAIMessage(data.response, data.context_used);
+        showSuggestions(data.suggestions);
+      } else {
+        addAIMessage('Sorry, I encountered an error: ' + (data.error || 'Unknown error'), false);
+      }
+    })
+    .catch(error => {
+      addAIMessage('Network error: ' + error.message, false);
+    })
+    .finally(() => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>Send';
+      chatInput.focus();
+    });
+  }
+  
+  function addUserMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'flex items-start space-x-3 justify-end';
+    messageDiv.innerHTML = `
+      <div class="flex-1 bg-blue-600 text-white rounded-lg p-3 shadow-sm max-w-xs ml-12">
+        <p class="text-sm">${escapeHtml(message)}</p>
+        ${document.getElementById('show-timestamps').checked ? `<p class="text-xs opacity-75 mt-1">${new Date().toLocaleTimeString()}</p>` : ''}
+      </div>
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+        </div>
+      </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    if (autoScrollCheckbox.checked) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }
+  
+  function addAIMessage(message, contextUsed) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'flex items-start space-x-3';
+    messageDiv.innerHTML = `
+      <div class="flex-shrink-0">
+        <div class="w-8 h-8 ${contextUsed ? 'bg-green-100' : 'bg-gray-100'} rounded-full flex items-center justify-center">
+          <svg class="w-5 h-5 ${contextUsed ? 'text-green-600' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.847a4.5 4.5 0 003.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 00-3.09 3.09z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="flex-1 bg-white rounded-lg p-3 shadow-sm">
+        <p class="text-sm text-gray-900 whitespace-pre-wrap">${escapeHtml(message)}</p>
+        ${contextUsed ? '<p class="text-xs text-green-600 mt-1">📊 Used app context</p>' : ''}
+      </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    if (autoScrollCheckbox.checked) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }
+  
+  function showSuggestions(suggestions) {
+    if (!suggestions || suggestions.length === 0) {
+      suggestionsContainer.classList.add('hidden');
+      return;
+    }
+    
+    suggestionsList.innerHTML = '';
+    suggestions.forEach(suggestion => {
+      const btn = document.createElement('button');
+      btn.className = 'suggestion-btn px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200';
+      btn.textContent = suggestion;
+      suggestionsList.appendChild(btn);
+    });
+    
+    suggestionsContainer.classList.remove('hidden');
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // Clear chat functionality
+  document.getElementById('clear-chat').addEventListener('click', function() {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      const welcomeMessage = messagesContainer.querySelector('.flex:first-child');
+      messagesContainer.innerHTML = '';
+      if (welcomeMessage) {
+        messagesContainer.appendChild(welcomeMessage);
+      }
+      suggestionsContainer.classList.add('hidden');
+    }
+  });
+  
+  // Refresh context functionality
+  document.getElementById('refresh-context').addEventListener('click', function() {
+    fetch('<%= railsplan_web.context_chat_path %>')
+    .then(response => response.json())
+    .then(data => {
+      alert('Context refreshed! Models: ' + (data.models || []).length);
+    })
+    .catch(error => {
+      alert('Failed to refresh context: ' + error.message);
+    });
+  });
+  
+  // Enter key handling
+  chatInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      chatForm.dispatchEvent(new Event('submit'));
+    }
+  });
+});
+</script>
