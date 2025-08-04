@@ -162,7 +162,12 @@ module RailsPlan
       return {} unless File.exist?(schema_file)
       
       schema_content = File.read(schema_file)
-      parse_schema(schema_content)
+      parsed_schema = parse_schema(schema_content)
+      
+      # Enhance with basic index information
+      enhance_schema_with_indexes(parsed_schema, schema_content)
+      
+      parsed_schema
     end
     
     def extract_routes
@@ -267,14 +272,29 @@ module RailsPlan
       content.scan(/create_table\s+["']([^"']+)["'][^{]*do\s*\|t\|(.*?)end/m) do |table_name, table_content|
         columns = {}
         
-        # Extract column definitions
-        table_content.scan(/t\.(\w+)\s+["']([^"']+)["']/) do |type, name|
-          columns[name] = { "type" => type, "options" => nil }
+        # Extract column definitions with options
+        table_content.scan(/t\.(\w+)\s+["']([^"']+)["'](?:,\s*([^\n]+))?/) do |type, name, options|
+          column_info = { "type" => type }
+          if options
+            # Parse basic options
+            column_info["null"] = false if options.include?("null: false")
+            column_info["default"] = $1 if options =~ /default:\s*([^,\n]+)/
+            column_info["limit"] = $1.to_i if options =~ /limit:\s*(\d+)/
+          end
+          columns[name] = column_info
         end
         
         # Also try without quotes for some formats
-        table_content.scan(/t\.(\w+)\s+:([a-zA-Z_][a-zA-Z0-9_]*)/) do |type, name|
-          columns[name] = { "type" => type, "options" => nil }
+        table_content.scan(/t\.(\w+)\s+:([a-zA-Z_][a-zA-Z0-9_]*)(?:,\s*([^\n]+))?/) do |type, name, options|
+          unless columns[name] # Don't override if already found with quotes
+            column_info = { "type" => type }
+            if options
+              column_info["null"] = false if options.include?("null: false")
+              column_info["default"] = $1 if options =~ /default:\s*([^,\n]+)/
+              column_info["limit"] = $1.to_i if options =~ /limit:\s*(\d+)/
+            end
+            columns[name] = column_info
+          end
         end
         
         tables[table_name] = { "columns" => columns } if columns.any?
@@ -339,6 +359,36 @@ module RailsPlan
     # Simple Rails-like string inflections for when Rails isn't available
     def classify(string)
       string.split('_').map(&:capitalize).join
+    end
+    
+    def enhance_schema_with_indexes(schema, schema_content)
+      # Extract index information from schema content
+      schema_content.scan(/add_index\s+["']([^"']+)["'],\s*([^,\n]+)(?:,\s*(.+?))?(?:\n|#)/) do |table_name, columns, options|
+        next unless schema[table_name]
+        
+        schema[table_name]["indexes"] ||= []
+        
+        # Parse column names
+        column_names = if columns.include?('[')
+                         # Array format: ["col1", "col2"] or [:col1, :col2]
+                         columns.scan(/["']?([^"',\]\[:\s]+)["']?/).flatten
+                       else
+                         # Single column: "column" or :column
+                         [columns.gsub(/[:"']/, '')]
+                       end
+        
+        index_info = { "columns" => column_names }
+        
+        # Parse options if present
+        if options
+          index_info["unique"] = true if options.include?("unique: true")
+          index_info["name"] = $1 if options =~ /name:\s*["']([^"']+)["']/
+        end
+        
+        schema[table_name]["indexes"] << index_info
+      end
+      
+      schema
     end
   end
 end

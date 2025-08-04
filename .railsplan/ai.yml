@@ -1,0 +1,32 @@
+# AI Configuration for RailsPlan Chat Interface
+# This file controls schema-aware chat capabilities
+
+# Database query execution settings
+allow_query_execution: true
+max_query_limit: 100
+require_confirmation: true
+
+# AI provider settings (will be merged with global ~/.railsplan/ai.yml)
+default_provider: openai
+max_tokens: 4000
+creative: false
+
+# Audit and logging
+audit_data_access: true
+log_all_interactions: true
+
+# Security settings
+allowed_tables: []  # Empty means all tables allowed, specify to restrict
+forbidden_keywords:
+  - DROP
+  - DELETE  
+  - UPDATE
+  - INSERT
+  - TRUNCATE
+  - ALTER
+  - CREATE
+
+# UI settings
+max_suggestions: 8
+auto_refresh_schema: true
+show_query_preview: true
