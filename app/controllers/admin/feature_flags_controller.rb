@@ -7,7 +7,7 @@ class Admin::FeatureFlagsController < Admin::BaseController
   end
 
   def show
-    @feature_flag = FeatureFlag.find(params[:id])
+    @feature_flag = FeatureFlag.find(params.require(:id))
     @workspaces = Workspace.all.order(:name) if defined?(Workspace)
   end
 
@@ -16,7 +16,7 @@ class Admin::FeatureFlagsController < Admin::BaseController
   end
 
   def edit
-    @feature_flag = FeatureFlag.find(params[:id])
+    @feature_flag = FeatureFlag.find(params.require(:id))
   end
 
   def create
@@ -40,7 +40,7 @@ class Admin::FeatureFlagsController < Admin::BaseController
   end
 
   def update
-    @feature_flag = FeatureFlag.find(params[:id])
+    @feature_flag = FeatureFlag.find(params.require(:id))
     old_enabled = @feature_flag.enabled
     
     if @feature_flag.update(feature_flag_params)
@@ -63,7 +63,7 @@ class Admin::FeatureFlagsController < Admin::BaseController
   end
 
   def toggle
-    @feature_flag = FeatureFlag.find(params[:id])
+    @feature_flag = FeatureFlag.find(params.require(:id))
     @feature_flag.update!(enabled: !@feature_flag.enabled)
     
     AuditLog.create_log(
@@ -80,8 +80,8 @@ class Admin::FeatureFlagsController < Admin::BaseController
   end
 
   def toggle_workspace
-    @feature_flag = FeatureFlag.find(params[:id])
-    @workspace = Workspace.find(params[:workspace_id]) if defined?(Workspace)
+    @feature_flag = FeatureFlag.find(params.require(:id))
+    @workspace = Workspace.find(params.require(:workspace_id)) if defined?(Workspace)
     
     if @workspace && @feature_flag
       workspace_flag = @feature_flag.workspace_feature_flags.find_or_initialize_by(workspace: @workspace)

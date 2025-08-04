@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
-require "test_helper"
-require "railsplan/commands/test_generate_command"
+require_relative "standalone_test_helper"
 
-class TestGenerationTest < ActiveSupport::TestCase
+class TestGenerationTest < StandaloneTestCase
   def setup
-    @command = RailsPlan::Commands::TestGenerateCommand.new(verbose: false)
-    @temp_dir = Dir.mktmpdir("railsplan_test_generation")
-    @original_dir = Dir.pwd
+    super
+    # Try to load test generation command
+    begin
+      require "railsplan/commands/test_generate_command"
+      @command = RailsPlan::Commands::TestGenerateCommand.new(verbose: false)
+    rescue LoadError
+      @command = nil
+    end
+    
     Dir.chdir(@temp_dir)
     
     # Create basic Rails app structure

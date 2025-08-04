@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require_relative "standalone_test_helper"
 
 # Integration test to demonstrate the test generation feature
-class TestGenerationIntegrationTest < ActiveSupport::TestCase
+class TestGenerationIntegrationTest < StandaloneTestCase
   def setup
     @temp_dir = Dir.mktmpdir("railsplan_integration_test")
     @original_dir = Dir.pwd
